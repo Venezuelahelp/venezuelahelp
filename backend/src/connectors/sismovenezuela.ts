@@ -97,29 +97,11 @@ async function solicitudes(): Promise<NormalizedItem[]> {
   }));
 }
 
-async function desaparecidos(): Promise<NormalizedItem[]> {
-  const fc = await fetchJson<{ features: GeoFeature[] }>(
-    `${BASE}/api/missing-persons/external`,
-  );
-  return (fc.features ?? []).map((f) => {
-    const p = f.properties;
-    const c = f.geometry?.coordinates;
-    return {
-      category: "desaparecidos",
-      sourceId: ID,
-      externalId: String(p.id),
-      titulo: truncate(String(p.nombre ?? "Desaparecido"), 120),
-      texto: truncate(
-        [p.edad ? `Edad ${p.edad}` : "", p.descripcion, p.ubicacion]
-          .filter(Boolean)
-          .join(" · "),
-      ),
-      ubicacion: c ? geo(c[1], c[0], p.ubicacion as string) : undefined,
-      status: p.estado ? String(p.estado) : undefined,
-      raw: p,
-    };
-  });
-}
+// NOTE: desaparecidos NO se ingieren desde sismovenezuela. Su endpoint
+// /api/missing-persons/external devuelve el feed externo COMPLETO (~38K),
+// lo que viola la decisión de costo del patrocinador (subconjunto
+// geolocalizado) e infla el snapshot. Los desaparecidos geolocalizados
+// vienen solo de terremotovenezuela /api/missing/map (~3.475).
 
 export const sismovenezuela: SourceConnector = {
   id: ID,
@@ -129,7 +111,6 @@ export const sismovenezuela: SourceConnector = {
       safe("acopios", acopios),
       safe("edificios", edificios),
       safe("solicitudes", solicitudes),
-      safe("desaparecidos", desaparecidos),
     ]);
     return groups.flat();
   },
