@@ -15,7 +15,8 @@
         "descripcion": null,
         "contacto": "Luis Salazar 04120272349",
         "foto": "1782407716956-2l8fv33d4wn.webp",
-        "estado": "sin-contacto"
+        "estado": "sin-contacto",
+        "external_source": "desaparecidos-vzla"
       }
     },
     {
@@ -32,7 +33,8 @@
         "descripcion": "hombre de tez clara, facciones alargadas y cejas pobladas",
         "contacto": "José Gregorio Melgarejo 04160564979",
         "foto": null,
-        "estado": "sin-contacto"
+        "estado": "sin-contacto",
+        "external_source": "desaparecidos-vzla"
       }
     }
   ]
