@@ -1,7 +1,7 @@
 import { ConfigRepo } from "@/shared/repos/configRepo";
 import { QaLogRepo } from "@/shared/repos/qaLogRepo";
 import { logger } from "@/shared/logger";
-import { getTelegramToken } from "@/telegram/secret";
+import { getTelegramToken, getWebhookSecret } from "@/telegram/secret";
 import { getMe, sendMessage as realSend } from "@/telegram/telegramApi";
 import { loadSnapshot as realLoad } from "@/telegram/snapshot";
 import { askBedrock as realAsk } from "@/telegram/bedrock";
@@ -19,6 +19,7 @@ let botUsernameCache: string | null = null;
 
 interface Deps {
   getToken: typeof getTelegramToken;
+  getWebhookSecret: typeof getWebhookSecret;
   getBotUsername: (token: string) => Promise<string>;
   configRepo: Pick<ConfigRepo, "get">;
   qaLogRepo: Pick<QaLogRepo, "append">;
@@ -34,11 +35,12 @@ async function defaultBotUsername(token: string): Promise<string> {
 }
 
 export async function handler(
-  event: { body?: string },
+  event: { body?: string; headers?: Record<string, string | undefined> },
   deps?: Partial<Deps>,
 ): Promise<{ statusCode: number; body: string }> {
   const d: Deps = {
     getToken: deps?.getToken ?? getTelegramToken,
+    getWebhookSecret: deps?.getWebhookSecret ?? getWebhookSecret,
     getBotUsername: deps?.getBotUsername ?? defaultBotUsername,
     configRepo: deps?.configRepo ?? new ConfigRepo(),
     qaLogRepo: deps?.qaLogRepo ?? new QaLogRepo(),
@@ -54,6 +56,17 @@ export async function handler(
     const msg = update.message;
     if (!msg || !msg.text) return ok();
     chatId = msg.chat.id;
+
+    const expectedSecret = await d.getWebhookSecret();
+    if (expectedSecret) {
+      const got = event.headers?.["x-telegram-bot-api-secret-token"];
+      if (got !== expectedSecret) {
+        logger.warn("telegram webhook secret mismatch");
+        return ok();
+      }
+    }
+
+    if (msg.from?.is_bot) return ok();
 
     token = await d.getToken();
     const botUsername = await d.getBotUsername(token);

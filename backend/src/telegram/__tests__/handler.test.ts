@@ -20,6 +20,7 @@ const snap: Snapshot = {
 function deps(over = {}) {
   return {
     getToken: vi.fn(async () => "TOK"),
+    getWebhookSecret: vi.fn(async () => ""),
     getBotUsername: vi.fn(async () => "vh_bot"),
     configRepo: {
       get: vi.fn(async () => ({
@@ -80,7 +81,25 @@ describe("telegram handler", () => {
     const d = deps();
     await handler(event("@vh_bot xyzzy plutonio"), d as any);
     expect(d.askBedrock).not.toHaveBeenCalled();
-    expect(d.sendMessage).toHaveBeenCalled();
+    expect(d.qaLogRepo.append).toHaveBeenCalled();
+    expect(d.sendMessage).toHaveBeenCalledWith(
+      "TOK",
+      9,
+      expect.stringContaining("No tengo"),
+    );
+  });
+
+  it("rejects webhook when secret mismatch (returns 200, no reply)", async () => {
+    const d = deps({
+      getWebhookSecret: vi.fn(async () => "topsecret"),
+    });
+    const res = await handler(
+      { body: event("@vh_bot dónde hay agua").body, headers: {} },
+      d as any,
+    );
+    expect(res.statusCode).toBe(200);
+    expect(d.sendMessage).not.toHaveBeenCalled();
+    expect(d.askBedrock).not.toHaveBeenCalled();
   });
 
   it("on bedrock error, sends a fallback and still returns 200", async () => {

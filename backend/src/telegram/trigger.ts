@@ -10,11 +10,7 @@ function isMentioned(msg: TgMessage, botUsername: string): boolean {
 
 function isReplyToBot(msg: TgMessage, botUsername: string): boolean {
   const u = msg.reply_to_message?.from;
-  return (
-    !!u &&
-    (u.is_bot === true ||
-      u.username?.toLowerCase() === botUsername.toLowerCase())
-  );
+  return !!u && u.username?.toLowerCase() === botUsername.toLowerCase();
 }
 
 export function shouldRespond(

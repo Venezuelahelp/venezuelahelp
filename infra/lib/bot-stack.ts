@@ -41,6 +41,7 @@ export class BotStack extends Stack {
         actions: ["ssm:GetParameter"],
         resources: [
           `arn:aws:ssm:${this.region}:${this.account}:parameter/venezuelahelp/telegram-token`,
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/venezuelahelp/telegram-webhook-secret`,
         ],
       }),
     );
