@@ -1,0 +1,144 @@
+import { ConfigRepo } from "@/shared/repos/configRepo";
+import { QaLogRepo } from "@/shared/repos/qaLogRepo";
+import { logger } from "@/shared/logger";
+import { getTelegramToken } from "@/telegram/secret";
+import { getMe, sendMessage as realSend } from "@/telegram/telegramApi";
+import { loadSnapshot as realLoad } from "@/telegram/snapshot";
+import { askBedrock as realAsk } from "@/telegram/bedrock";
+import { retrieve } from "@/telegram/retrieval";
+import { buildUserText } from "@/telegram/prompt";
+import { shouldRespond, extractQuestion } from "@/telegram/trigger";
+import type { TgUpdate } from "@/telegram/types";
+
+const FALLBACK =
+  "Disculpa, estoy con mucha demanda ahora mismo. Intenta de nuevo en un momento.";
+const NO_DATA =
+  "No tengo ese dato en la información del terremoto que tengo disponible.";
+
+let botUsernameCache: string | null = null;
+
+interface Deps {
+  getToken: typeof getTelegramToken;
+  getBotUsername: (token: string) => Promise<string>;
+  configRepo: Pick<ConfigRepo, "get">;
+  qaLogRepo: Pick<QaLogRepo, "append">;
+  loadSnapshot: typeof realLoad;
+  askBedrock: typeof realAsk;
+  sendMessage: typeof realSend;
+}
+
+async function defaultBotUsername(token: string): Promise<string> {
+  if (botUsernameCache) return botUsernameCache;
+  botUsernameCache = (await getMe(token)).username;
+  return botUsernameCache;
+}
+
+export async function handler(
+  event: { body?: string },
+  deps?: Partial<Deps>,
+): Promise<{ statusCode: number; body: string }> {
+  const d: Deps = {
+    getToken: deps?.getToken ?? getTelegramToken,
+    getBotUsername: deps?.getBotUsername ?? defaultBotUsername,
+    configRepo: deps?.configRepo ?? new ConfigRepo(),
+    qaLogRepo: deps?.qaLogRepo ?? new QaLogRepo(),
+    loadSnapshot: deps?.loadSnapshot ?? realLoad,
+    askBedrock: deps?.askBedrock ?? realAsk,
+    sendMessage: deps?.sendMessage ?? realSend,
+  };
+
+  let chatId: number | undefined;
+  let token: string | undefined;
+  try {
+    const update = JSON.parse(event.body ?? "{}") as TgUpdate;
+    const msg = update.message;
+    if (!msg || !msg.text) return ok();
+    chatId = msg.chat.id;
+
+    token = await d.getToken();
+    const botUsername = await d.getBotUsername(token);
+    const config = await d.configRepo.get();
+    if (!shouldRespond(msg, botUsername, config.botTriggerMode)) return ok();
+
+    const question = extractQuestion(msg, botUsername);
+    const snap = await d.loadSnapshot();
+    const items = retrieve(question, snap);
+
+    if (items.length === 0) {
+      await d.sendMessage(token, chatId, NO_DATA);
+      await logQa(
+        d,
+        chatId,
+        question,
+        NO_DATA,
+        [],
+        config.bedrockModelId,
+        0,
+        0,
+      );
+      return ok();
+    }
+
+    const userText = buildUserText(question, items);
+    const ans = await d.askBedrock(
+      config.bedrockModelId,
+      config.systemPrompt,
+      userText,
+    );
+    const reply = ans.text.trim() || NO_DATA;
+    await d.sendMessage(token, chatId, reply);
+    await logQa(
+      d,
+      chatId,
+      question,
+      reply,
+      items.map((i) => `${i.category}/${i.sourceId}#${i.externalId}`),
+      config.bedrockModelId,
+      ans.tokensIn,
+      ans.tokensOut,
+    );
+    return ok();
+  } catch (err) {
+    logger.error("telegram handler error", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    if (token && chatId !== undefined) {
+      try {
+        await d.sendMessage(token, chatId, FALLBACK);
+      } catch (e) {
+        logger.error("fallback send failed", {
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+    return ok();
+  }
+}
+
+async function logQa(
+  d: Deps,
+  chatId: number,
+  pregunta: string,
+  respuesta: string,
+  itemsUsados: string[],
+  modelo: string,
+  tokensIn: number,
+  tokensOut: number,
+): Promise<void> {
+  await d.qaLogRepo.append({
+    chatId: String(chatId),
+    ts: new Date().toISOString(),
+    pregunta,
+    respuesta,
+    itemsUsados,
+    tokensIn,
+    tokensOut,
+    modelo,
+    costoEstimado: 0,
+    flagged: false,
+  });
+}
+
+function ok() {
+  return { statusCode: 200, body: "ok" };
+}
