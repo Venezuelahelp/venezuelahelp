@@ -47,11 +47,17 @@ describe("sismovenezuela connector", () => {
     );
   });
 
-  it("maps GeoJSON building-damage coordinates to ubicacion (lng,lat order)", async () => {
+  it("maps GeoJSON building-damage coordinates to ubicacion (lat=coords[1], lng=coords[0])", async () => {
     const items = await sismovenezuela.fetchItems();
-    const edi = items.find((i) => i.category === "edificios" && i.ubicacion);
-    expect(edi?.ubicacion?.lat).toBeTypeOf("number");
-    expect(edi?.ubicacion?.lng).toBeTypeOf("number");
+    const f = buildingDamage.features[0];
+    const edi = items.find(
+      (i) =>
+        i.category === "edificios" && i.externalId === String(f.properties.id),
+    );
+    expect(edi?.ubicacion?.lat).toBe(f.geometry.coordinates[1]);
+    expect(edi?.ubicacion?.lng).toBe(f.geometry.coordinates[0]);
+    // guard against a lat/lng swap when the two differ
+    expect(edi?.ubicacion?.lat).not.toBe(edi?.ubicacion?.lng);
   });
 
   it("isolates a failing endpoint (still returns items from the others)", async () => {

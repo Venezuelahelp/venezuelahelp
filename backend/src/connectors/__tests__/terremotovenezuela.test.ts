@@ -40,5 +40,12 @@ describe("terremotovenezuela connector", () => {
     const desap = items.filter((i) => i.category === "desaparecidos");
     expect(desap.length).toBeGreaterThan(0);
     expect(desap.every((i) => i.ubicacion?.lat && i.ubicacion?.lng)).toBe(true);
+    // assert exact lat/lng values from fixture to catch a lat/lng swap
+    const marker = missingMap.markers[0];
+    const found = desap.find((i) => i.externalId === String(marker.id));
+    expect(found?.ubicacion?.lat).toBe(marker.lat);
+    expect(found?.ubicacion?.lng).toBe(marker.lng);
+    // guard against a lat/lng swap when the two differ
+    expect(found?.ubicacion?.lat).not.toBe(found?.ubicacion?.lng);
   });
 });
