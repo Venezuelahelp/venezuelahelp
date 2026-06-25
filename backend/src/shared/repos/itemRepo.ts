@@ -34,14 +34,22 @@ export class ItemRepo {
   }
 
   async listByCategory(category: Category): Promise<StoredItem[]> {
-    const res = await ddb.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "PK = :pk",
-        ExpressionAttributeValues: { ":pk": `CAT#${category}` },
-      }),
-    );
-    const items = (res.Items ?? []) as unknown as StoredItem[];
+    const items: StoredItem[] = [];
+    let ExclusiveStartKey: Record<string, unknown> | undefined;
+    do {
+      const res = await ddb.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "PK = :pk",
+          ExpressionAttributeValues: { ":pk": `CAT#${category}` },
+          ExclusiveStartKey,
+        }),
+      );
+      items.push(...((res.Items ?? []) as unknown as StoredItem[]));
+      ExclusiveStartKey = res.LastEvaluatedKey as
+        | Record<string, unknown>
+        | undefined;
+    } while (ExclusiveStartKey);
     return items.sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt));
   }
 }

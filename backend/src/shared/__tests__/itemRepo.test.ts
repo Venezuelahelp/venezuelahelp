@@ -7,6 +7,7 @@ import {
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ItemRepo } from "@/shared/repos/itemRepo";
+import { contentHash } from "@/shared/keys";
 import type { NormalizedItem } from "@/shared/types";
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
@@ -36,7 +37,6 @@ describe("ItemRepo.upsert", () => {
   });
 
   it("returns 'unchanged' and skips write when hash matches", async () => {
-    const { contentHash } = await import("@/shared/keys");
     ddbMock.on(GetCommand).resolves({
       Item: {
         PK: "CAT#reportes",
@@ -88,6 +88,34 @@ describe("ItemRepo.listByCategory", () => {
         },
       ],
     });
+    const items = await new ItemRepo().listByCategory("reportes");
+    expect(items.map((i) => i.titulo)).toEqual(["b", "a"]);
+  });
+
+  it("follows pagination across multiple pages", async () => {
+    ddbMock
+      .on(QueryCommand)
+      .resolvesOnce({
+        Items: [
+          {
+            PK: "CAT#reportes",
+            SK: "sismo#1",
+            lastSeenAt: "2026-06-25T00:00:00Z",
+            titulo: "a",
+          },
+        ],
+        LastEvaluatedKey: { PK: "CAT#reportes", SK: "sismo#1" },
+      })
+      .resolvesOnce({
+        Items: [
+          {
+            PK: "CAT#reportes",
+            SK: "sismo#2",
+            lastSeenAt: "2026-06-26T00:00:00Z",
+            titulo: "b",
+          },
+        ],
+      });
     const items = await new ItemRepo().listByCategory("reportes");
     expect(items.map((i) => i.titulo)).toEqual(["b", "a"]);
   });
