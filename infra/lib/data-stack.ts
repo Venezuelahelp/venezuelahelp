@@ -29,6 +29,7 @@ export class DataStack extends Stack {
     this.scraperDlq = new sqs.Queue(this, "ScraperDlq", {
       queueName: "venezuelahelp-scraper-dlq",
     });
+    this.scraperDlq.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
     new ssm.StringParameter(this, "TableNameParam", {
       parameterName: "/venezuelahelp/table-name",

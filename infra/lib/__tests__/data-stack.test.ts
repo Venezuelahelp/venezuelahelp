@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 import { App } from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
 import { DataStack } from "../data-stack";
@@ -20,8 +20,20 @@ describe("DataStack", () => {
   it("creates a snapshot S3 bucket and a scraper DLQ", () => {
     const t = template();
     t.resourceCountIs("AWS::S3::Bucket", 1);
+    t.hasResourceProperties("AWS::S3::Bucket", {
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: true,
+        BlockPublicPolicy: true,
+        IgnorePublicAcls: true,
+        RestrictPublicBuckets: true,
+      },
+    });
     t.hasResourceProperties("AWS::SQS::Queue", {
       QueueName: "venezuelahelp-scraper-dlq",
+    });
+    t.hasResourceProperties("AWS::SSM::Parameter", {
+      Name: "/venezuelahelp/table-name",
+      Type: "String",
     });
   });
 });
