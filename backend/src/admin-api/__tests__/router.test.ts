@@ -256,7 +256,9 @@ describe("admin-api router", () => {
     it("POST /sources appends -2 when the slug already exists", async () => {
       const sourceRepo = {
         list: vi.fn(),
-        get: vi.fn(async (id: string) => (id === "noticias-ve" ? { id } : null)),
+        get: vi.fn(async (id: string) =>
+          id === "noticias-ve" ? { id } : null,
+        ),
         put: vi.fn(async () => {}),
         delete: vi.fn(),
       };
