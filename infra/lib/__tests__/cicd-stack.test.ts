@@ -70,8 +70,8 @@ describe("CicdStack", () => {
       "AWSCloudFormationFullAccess",
       "AmazonS3FullAccess",
       "AWSLambda_FullAccess",
-      "IAMFullAccess",
       "CloudFrontFullAccess",
+      "AmazonDynamoDBFullAccess",
     ]) {
       t.hasResourceProperties("AWS::IAM::Role", {
         ManagedPolicyArns: Match.arrayWith([

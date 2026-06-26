@@ -1,8 +1,19 @@
-import { describe, it } from "vitest";
+import { describe, it, beforeAll } from "vitest";
 import { App } from "aws-cdk-lib";
 import { Template, Match } from "aws-cdk-lib/assertions";
 import { DataStack } from "../data-stack";
 import { FrontendStack } from "../frontend-stack";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+// BucketDeployment checks the source path exists at synth time.
+// Create a placeholder so CDK can construct the stack without a real build.
+beforeAll(() => {
+  fs.mkdirSync(
+    path.join(__dirname, "../../../../frontend-public/dist"),
+    { recursive: true },
+  );
+});
 
 function template() {
   const app = new App();
