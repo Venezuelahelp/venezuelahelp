@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import type { Item } from "@/types";
 
@@ -14,30 +15,53 @@ vi.mock("react-leaflet", () => ({
   TileLayer: ({ url }: { url: string }) => (
     <div data-testid="tile-layer" data-url={url} />
   ),
-  CircleMarker: ({
-    center,
+  Marker: ({
+    position,
     children,
-    pathOptions,
+    icon,
   }: {
-    center: [number, number];
+    position: [number, number];
     children?: React.ReactNode;
-    pathOptions?: { color?: string };
+    icon?: { options?: { html?: string } };
   }) => (
     <div
       data-testid="marker"
-      data-center={JSON.stringify(center)}
-      data-color={pathOptions?.color ?? ""}
+      data-position={JSON.stringify(position)}
+      data-icon-html={icon?.options?.html ?? ""}
     >
+      {children}
+    </div>
+  ),
+  CircleMarker: ({
+    center,
+    children,
+  }: {
+    center: [number, number];
+    children?: React.ReactNode;
+  }) => (
+    <div data-testid="user-marker" data-center={JSON.stringify(center)}>
       {children}
     </div>
   ),
   Popup: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="popup">{children}</div>
   ),
+  Tooltip: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tooltip">{children}</div>
+  ),
 }));
 
-// Mock leaflet CSS import (no-op in jsdom)
+// Cluster group is a pass-through wrapper in tests (renders its markers).
+vi.mock("react-leaflet-cluster", () => ({
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="cluster">{children}</div>
+  ),
+}));
+
+// Mock CSS imports (no-op in jsdom)
 vi.mock("leaflet/dist/leaflet.css", () => ({}));
+vi.mock("leaflet.markercluster/dist/MarkerCluster.css", () => ({}));
+vi.mock("leaflet.markercluster/dist/MarkerCluster.Default.css", () => ({}));
 
 import MapView from "@/components/MapView";
 
@@ -111,14 +135,14 @@ describe("MapView", () => {
   it("places marker at the correct lat/lng", () => {
     render(<MapView items={[itemWithLocation]} />);
     const marker = screen.getByTestId("marker");
-    expect(JSON.parse(marker.dataset.center!)).toEqual([10.48, -66.87]);
+    expect(JSON.parse(marker.dataset.position!)).toEqual([10.48, -66.87]);
   });
 
   it("renders a popup containing the titulo", () => {
     render(<MapView items={[itemWithLocation]} />);
-    expect(screen.getByTestId("popup")).toBeInTheDocument();
+    const popup = screen.getByTestId("popup");
     expect(
-      screen.getByText("Edificio colapsado en Caracas"),
+      within(popup).getByText("Edificio colapsado en Caracas"),
     ).toBeInTheDocument();
   });
 
@@ -134,18 +158,44 @@ describe("MapView", () => {
     expect(popup).toHaveTextContent("src-1");
   });
 
-  it("marker has a non-empty color pathOption", () => {
+  it("marker uses a category DivIcon with non-empty html", () => {
     render(<MapView items={[itemWithLocation]} />);
     const marker = screen.getByTestId("marker");
-    expect(marker.dataset.color).toBeTruthy();
-    expect(marker.dataset.color!.length).toBeGreaterThan(0);
+    expect(marker.dataset.iconHtml).toBeTruthy();
+    expect(marker.dataset.iconHtml!.length).toBeGreaterThan(0);
   });
 
-  it("markers for different categories get different colors", () => {
+  it("markers for different categories get different icons", () => {
     render(<MapView items={[itemWithLocation, itemWithLocation2]} />);
     const markers = screen.getAllByTestId("marker");
-    const colors = markers.map((m) => m.dataset.color);
-    // reportes vs desaparecidos should differ
-    expect(colors[0]).not.toEqual(colors[1]);
+    const icons = markers.map((m) => m.dataset.iconHtml);
+    // reportes vs desaparecidos differ in color + glyph
+    expect(icons[0]).not.toEqual(icons[1]);
+  });
+
+  it("renders a hover tooltip with the titulo", () => {
+    render(<MapView items={[itemWithLocation]} />);
+    const tooltip = screen.getByTestId("tooltip");
+    expect(tooltip).toHaveTextContent("Edificio colapsado en Caracas");
+  });
+
+  it("groups markers inside a cluster group", () => {
+    render(<MapView items={[itemWithLocation, itemWithLocation2]} />);
+    const cluster = screen.getByTestId("cluster");
+    expect(within(cluster).getAllByTestId("marker")).toHaveLength(2);
+  });
+
+  it("renders a locate (geolocation) button", () => {
+    render(<MapView items={[itemWithLocation]} />);
+    expect(
+      screen.getByRole("button", { name: /mi ubicación/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a message when geolocation is unavailable", async () => {
+    const user = userEvent.setup();
+    render(<MapView items={[itemWithLocation]} />);
+    await user.click(screen.getByRole("button", { name: /mi ubicación/i }));
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 });

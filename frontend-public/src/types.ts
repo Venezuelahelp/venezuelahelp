@@ -19,6 +19,10 @@ export interface Item {
   texto: string;
   ubicacion?: Ubicacion;
   status?: string;
+  /** ISO — primera vez que la plataforma agregó este ítem ("Registrado"). */
+  firstSeenAt?: string;
+  /** ISO — última vez que se vio en una fuente. */
+  lastSeenAt?: string;
 }
 
 export interface Snapshot {

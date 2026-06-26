@@ -1,103 +1,102 @@
 {
-  "generatedAt": "2026-06-26T02:22:00Z",
+  "generatedAt": "2026-06-26T18:00:00Z",
   "categories": {
     "reportes": [
       {
         "category": "reportes",
-        "sourceId": "src-001",
-        "externalId": "rep-001",
-        "titulo": "Corte de servicios en Altamira",
-        "texto": "Reporte de falta de agua potable en la zona de Altamira, Caracas. Afecta aproximadamente 500 familias.",
+        "sourceId": "sismovenezuela",
+        "externalId": "r-1001",
+        "titulo": "Caracas, La Candelaria",
+        "texto": "Grietas visibles en fachada de edificio residencial. Vecinos reportan caída de escombros en la acera.",
         "ubicacion": {
-          "lat": 10.4806,
-          "lng": -66.8239,
-          "nombre": "Altamira, Caracas"
+          "lat": 10.506,
+          "lng": -66.905,
+          "nombre": "La Candelaria, Caracas"
         },
-        "status": "activo"
+        "status": "2",
+        "firstSeenAt": "2026-06-25T09:30:00Z",
+        "lastSeenAt": "2026-06-26T18:00:00Z"
       },
       {
         "category": "reportes",
-        "sourceId": "src-002",
-        "externalId": "rep-002",
-        "titulo": "Emergencia médica en hospital regional",
-        "texto": "Escasez de medicamentos antiinflamatorios en el hospital de Maracaibo.",
-        "status": "activo"
+        "sourceId": "terremotovenezuela",
+        "externalId": "r-1002",
+        "titulo": "Valencia, zona norte",
+        "texto": "Corte de luz prolongado en varios sectores tras el sismo.",
+        "ubicacion": {
+          "lat": 10.205,
+          "lng": -68,
+          "nombre": "Valencia norte"
+        },
+        "status": "nopower",
+        "firstSeenAt": "2026-06-25T16:00:00Z",
+        "lastSeenAt": "2026-06-26T18:00:00Z"
       }
     ],
     "desaparecidos": [
       {
         "category": "desaparecidos",
-        "sourceId": "src-003",
-        "externalId": "des-001",
-        "titulo": "Desaparición de Juan Pérez García",
-        "texto": "Persona desaparecida desde el 20 de junio. Edad: 45 años. Última vez visto en la Avenida Bolívar.",
+        "sourceId": "terremotovenezuela",
+        "externalId": "d-2001",
+        "titulo": "Persona reportada como desaparecida",
+        "texto": "Vista por última vez en el sector centro. Familiares solicitan información.",
         "ubicacion": {
-          "lat": 10.5064,
-          "lng": -66.5809,
-          "nombre": "Avenida Bolívar, Caracas"
+          "lat": 10.48,
+          "lng": -66.87,
+          "nombre": "Centro, Caracas"
         },
-        "status": "activo"
+        "firstSeenAt": "2026-06-26T08:15:00Z",
+        "lastSeenAt": "2026-06-26T18:00:00Z"
       }
     ],
     "acopios": [
       {
         "category": "acopios",
-        "sourceId": "src-004",
-        "externalId": "acp-001",
-        "titulo": "Acopio de alimentos en Chacao",
-        "texto": "Centro de acopio recibiendo donaciones de alimentos básicos, agua embotellada y artículos de higiene.",
+        "sourceId": "sismovenezuela",
+        "externalId": "a-3001",
+        "titulo": "Centro de acopio Las Mercedes",
+        "texto": "Reciben agua potable, medicamentos básicos y ropa de abrigo.",
         "ubicacion": {
-          "lat": 10.4837,
-          "lng": -66.8656,
-          "nombre": "Chacao, Caracas"
+          "lat": 10.42,
+          "lng": -66.86,
+          "nombre": "Las Mercedes"
         },
-        "status": "activo"
-      },
-      {
-        "category": "acopios",
-        "sourceId": "src-005",
-        "externalId": "acp-002",
-        "titulo": "Acopio de medicinas en Los Palos Grandes",
-        "texto": "Recibiendo medicinas específicas para enfermedades crónicas. Horario: 8am-5pm de lunes a viernes.",
-        "status": "activo"
+        "firstSeenAt": "2026-06-26T12:40:00Z",
+        "lastSeenAt": "2026-06-26T18:00:00Z"
       }
     ],
     "edificios": [
       {
         "category": "edificios",
-        "sourceId": "src-006",
-        "externalId": "edf-001",
-        "titulo": "Refugio temporal en escuela San José",
-        "texto": "Escuela disponible como albergue temporal con capacidad para 150 personas. Cuenta con servicios básicos.",
+        "sourceId": "sismovenezuela",
+        "externalId": "e-4001",
+        "titulo": "Edificio con daño estructural",
+        "texto": "Columnas afectadas en planta baja. Evacuación preventiva en curso.",
         "ubicacion": {
-          "lat": 10.5032,
-          "lng": -66.6043,
-          "nombre": "Escuela San José, Petare"
+          "lat": 10.49,
+          "lng": -66.9,
+          "nombre": "El Silencio, Caracas"
         },
-        "status": "operativo"
+        "status": "alto",
+        "firstSeenAt": "2026-06-25T09:30:00Z",
+        "lastSeenAt": "2026-06-26T18:00:00Z"
       }
     ],
     "solicitudes": [
       {
         "category": "solicitudes",
-        "sourceId": "src-007",
-        "externalId": "sol-001",
-        "titulo": "Necesidad de transporte hacia zona de frontera",
-        "texto": "Familia de 6 personas requiere ayuda para trasladarse a Táchira. No cuenta con recursos.",
-        "status": "pendiente"
-      },
-      {
-        "category": "solicitudes",
-        "sourceId": "src-008",
-        "externalId": "sol-002",
-        "titulo": "Solicitud de atención médica urgente",
-        "texto": "Adulto mayor requiere consulta oftalmológica urgente. Caso crítico.",
+        "sourceId": "venezuela-te-busca",
+        "externalId": "s-5001",
+        "titulo": "Se necesitan insumos médicos",
+        "texto": "Solicitan gasas, antisépticos y analgésicos para refugio temporal.",
         "ubicacion": {
-          "lat": 10.4872,
-          "lng": -66.8735,
-          "nombre": "Zona Metropolitana, Caracas"
+          "lat": 10.5,
+          "lng": -66.91,
+          "nombre": "Refugio temporal Caracas"
         },
-        "status": "urgente"
+        "status": "alta",
+        "firstSeenAt": "2026-06-25T16:00:00Z",
+        "lastSeenAt": "2026-06-26T18:00:00Z"
       }
     ]
   }

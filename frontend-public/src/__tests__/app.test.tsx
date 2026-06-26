@@ -40,6 +40,11 @@ vi.mock("@/data/useSnapshot", () => ({
   useSnapshot: vi.fn(),
 }));
 
+// Analytics beacon is fire-and-forget; stub it so tests don't hit the network.
+vi.mock("@/track", () => ({
+  sendBeacon: () => {},
+}));
+
 import { useSnapshot } from "@/data/useSnapshot";
 import App from "@/App";
 import type { Snapshot } from "@/types";

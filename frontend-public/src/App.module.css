@@ -5,9 +5,10 @@
   flex-direction: column;
   min-height: 100dvh;
   background: var(--bg);
+  /* Sticky-header height, reused by sticky controls + scroll offsets */
+  --header-h: 56px;
 }
 
-/* Main content area */
 .main {
   flex: 1;
 }
@@ -17,7 +18,7 @@
   max-width: 1100px;
   margin-inline: auto;
   padding-inline: 16px;
-  padding-block: 24px;
+  padding-block: 16px 32px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -29,53 +30,73 @@
   }
 }
 
-/* ── Results layout ─────────────────────────────────────────── */
+/* ── Sticky controls (search + chips + result count) ─────────── */
 
-/* Mobile-first: list first (column), map below */
-.results {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+.controls {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 10; /* below header (20), above content */
+  background: var(--bg);
+  padding-block: 12px;
+  /* Bleed to the viewport edges so the sticky background covers full width */
+  margin-inline: -16px;
+  padding-inline: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-/* List always on top on mobile */
-.listSection {
-  order: 1;
+@media (min-width: 640px) {
+  .controls {
+    margin-inline: -24px;
+    padding-inline: 24px;
+  }
+}
+
+/* Sub-bar inside the sticky controls: view toggle + (list) pagination, so the
+   current page stays visible while scrolling. */
+.subControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (min-width: 640px) {
+  .subControls {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+/* ── Results (single view at a time: list OR map) ───────────── */
+
+.results {
+  /* Offset so page-change scroll doesn't hide the top under sticky header */
+  scroll-margin-top: calc(var(--header-h) + 84px);
 }
 
 .mapSection {
-  order: 2;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
-  min-height: 280px;
+  height: 70vh;
+  min-height: 420px;
 }
 
-/* Desktop: side-by-side, list left, map right */
+.mapLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 0.875rem;
+  background: var(--surface);
+}
+
 @media (min-width: 768px) {
-  .results {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .listSection {
-    flex: 1;
-    order: 1;
-    min-width: 0;
-  }
-
   .mapSection {
-    flex: 0 0 380px;
-    order: 2;
-    min-height: 420px;
-    position: sticky;
-    top: calc(56px + 16px); /* below sticky header */
-  }
-}
-
-@media (min-width: 1024px) {
-  .mapSection {
-    flex: 0 0 440px;
+    height: calc(100dvh - var(--header-h) - 160px);
     min-height: 480px;
+    max-height: 760px;
   }
 }

@@ -1,0 +1,35 @@
+/* Pines de categoría del mapa. Leaflet inserta el HTML del DivIcon fuera del
+   árbol de React, por eso estas clases son globales (no CSS Modules). */
+
+.vh-pin-wrap {
+  background: transparent;
+  border: 0;
+}
+
+.vh-pin {
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vh-pin__i {
+  transform: rotate(45deg);
+  display: flex;
+  color: #fff;
+  line-height: 0;
+}
+
+/* Popup chrome: tighten Leaflet defaults to match the site */
+.leaflet-popup-content {
+  margin: 12px 14px;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+}

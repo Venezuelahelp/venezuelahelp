@@ -62,6 +62,22 @@ export function filterItems(
 }
 
 /**
+ * Count items per source, sorted by count descending. Used by the footer to
+ * list the pages information is collected from.
+ */
+export function countBySource(
+  items: Item[],
+): { sourceId: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    counts.set(item.sourceId, (counts.get(item.sourceId) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([sourceId, count]) => ({ sourceId, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/**
  * Count items by category.
  * Returns an object with all 5 categories initialized to 0,
  * then incremented based on items.

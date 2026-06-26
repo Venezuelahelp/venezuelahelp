@@ -20,6 +20,8 @@ export function sendBeacon(): void {
         keepalive: true,
         headers: { "content-type": "application/json" },
         body,
+      }).catch(() => {
+        /* fire-and-forget: ignora fallos de red */
       });
     }
   } catch {

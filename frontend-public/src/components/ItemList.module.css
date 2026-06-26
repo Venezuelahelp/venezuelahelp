@@ -1,12 +1,27 @@
-/* ItemList — row layout, stagger entrance, DESIGN.md compliant */
+/* ItemList — clickable rows opening a detail modal. DESIGN.md compliant. */
 
+/* Grid: 1 col mobile → 2 col tablet → 3 col web */
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
-/* Each row: visible by default, animated on load */
+@media (min-width: 680px) {
+  .list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @keyframes rowIn {
   from {
     opacity: 0;
@@ -18,72 +33,209 @@
   }
 }
 
-.row {
+/* ── Card ───────────────────────────────────────────────────── */
+
+.card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-
-  /* Visible by default; the entrance only enhances it (DESIGN.md). With
-     `backwards` the opacity:0 start applies during the delay; if the
-     animation never runs, the base opacity:1 keeps content visible. */
+  background: var(--bg); /* white body/footer */
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
   opacity: 1;
-  /* Stagger: base 60ms + 40ms × index, capped via --stagger-i. ease-out-quart */
   animation: rowIn 260ms cubic-bezier(0.165, 0.84, 0.44, 1) backwards;
   animation-delay: calc(60ms + var(--stagger-i, 0) * 40ms);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.row:last-child {
-  border-bottom: none;
+.card:hover {
+  border-color: color-mix(in oklab, var(--row-tint) 45%, var(--border));
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--row-tint) 20%, transparent);
 }
 
-/* Reduced motion: show content instantly, no transform */
 @media (prefers-reduced-motion: reduce) {
-  .row {
+  .card {
     animation: none;
     opacity: 1;
     transform: none;
+    transition: none;
   }
 }
 
-.rowMeta {
+/* Clickable header + body (opens the detail modal) */
+.cardMain {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cardMain:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* ── Header (accent background) ─────────────────────────────── */
+
+.cardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: color-mix(in oklab, var(--row-tint) 16%, var(--bg));
+  /* separator line below the header */
+  border-bottom: 1px solid color-mix(in oklab, var(--row-tint) 30%, var(--border));
+}
+
+.card:hover .cardHeader {
+  background: color-mix(in oklab, var(--row-tint) 22%, var(--bg));
+}
+
+.cardHeadRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.titulo {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 650;
-  color: var(--ink-strong);
-  line-height: 1.4;
+.chevron {
+  color: color-mix(in oklab, var(--row-tint) 55%, var(--ink-strong));
+  flex-shrink: 0;
 }
 
-.texto {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--ink);
-  line-height: 1.6;
+/* Title in the (darkened) category color */
+.cardTitle {
+  display: block;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: color-mix(in oklab, var(--row-tint) 58%, var(--ink-strong));
+}
 
-  /* Truncate to 3 lines */
+/* ── Body (white) ───────────────────────────────────────────── */
+
+.cardBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.cardText {
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  font-size: 0.9rem;
+  color: var(--ink);
+  line-height: 1.5;
 }
 
-.ubicacion {
+.cardLoc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.cardLoc svg {
+  color: color-mix(in oklab, var(--row-tint) 60%, var(--border-strong));
+  flex-shrink: 0;
+}
+
+/* ── Footer (white) ─────────────────────────────────────────── */
+
+.cardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  /* separator line above the footer */
+  border-top: 1px solid var(--border);
+}
+
+.cardDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.75rem;
   color: var(--muted);
   font-weight: 500;
 }
 
-.source {
-  font-size: 0.75rem;
+.cardDate svg {
+  flex-shrink: 0;
+}
+
+/* ── Detail modal content ───────────────────────────────────── */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.detailTitle {
+  margin: 0;
+  padding-right: 36px; /* clear the close button */
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink-strong);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.detailMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.detailMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
   color: var(--muted);
-  font-family: ui-monospace, monospace;
-  align-self: flex-start;
+  font-weight: 500;
+}
+
+.detailMetaItem svg {
+  color: var(--border-strong);
+  flex-shrink: 0;
+}
+
+.detailText {
+  margin: 0;
+  width: 100%;
+  font-size: 0.9375rem;
+  color: var(--ink);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.detailFoot {
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }

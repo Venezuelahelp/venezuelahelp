@@ -6,7 +6,7 @@
 
 .search {
   width: 100%;
-  padding: 8px 12px;
+  padding: 11px 14px;
   font-family: var(--font-sans, system-ui, sans-serif);
   font-size: 1rem;
   color: var(--ink);
@@ -32,23 +32,91 @@
   -webkit-appearance: none;
 }
 
+/* ── Collapse trigger (mobile only) ─────────────────────────── */
+
+.filtersToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 14px;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 140ms ease;
+}
+
+.filtersToggle:hover {
+  border-color: var(--primary);
+}
+
+.filtersToggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.filtersCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--on-primary);
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+.caret {
+  transition: transform 160ms ease;
+}
+
+.caretOpen {
+  transform: rotate(180deg);
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
+/* Desktop: chips always visible, no collapse trigger */
+@media (min-width: 768px) {
+  .filtersToggle {
+    display: none;
+  }
+}
+
+/* Mobile: chips collapse behind the "Filtros" trigger */
+@media (max-width: 767px) {
+  .chips:not(.chipsOpen) {
+    display: none;
+  }
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  gap: 7px;
+  /* ≥40px tall touch target on every viewport (mobile-first) */
+  min-height: 40px;
+  padding: 0 14px;
   font-family: var(--font-sans, system-ui, sans-serif);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  color: var(--ink);
   background: transparent;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
@@ -59,22 +127,112 @@
     color 140ms ease;
 }
 
+/* Hover preview: a light tint of the chip's own category color (--chip-color
+   set inline per chip). Mixed in oklab so the hue stays true. */
+.chip:hover {
+  background: color-mix(in oklab, var(--chip-color) 12%, var(--bg));
+  border-color: color-mix(in oklab, var(--chip-color) 45%, var(--border-strong));
+}
+
+/* Selected: stronger tint + category-colored border + darker category text */
+.chipActive {
+  background: color-mix(in oklab, var(--chip-color) 18%, var(--bg));
+  border-color: var(--chip-color);
+  color: color-mix(in oklab, var(--chip-color) 55%, var(--ink-strong));
+}
+
+.chipActive:hover {
+  background: color-mix(in oklab, var(--chip-color) 26%, var(--bg));
+}
+
+.chip:active {
+  transform: scale(0.97);
+}
+
 .chip:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-.dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+/* Icon always wears the category color, regardless of text color */
+.icon {
   flex-shrink: 0;
+  color: var(--chip-color);
+}
+
+.chipLabel {
+  line-height: 1;
+}
+
+/* Count badge inside each chip — inherits chip text color via currentColor */
+.chipCount {
+  font-family: ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, currentColor 14%, transparent);
+}
+
+/* ── Results feedback row ─────────────────────────────────────── */
+
+.results {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.resultsCount {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.resultsCount strong {
+  color: var(--ink-strong);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.clear {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+  margin: -6px -4px;
+  min-height: 40px;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  border-radius: 6px;
+}
+
+.clear:hover {
+  color: var(--primary-strong);
+}
+
+.clear:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .chip,
-  .search {
+  .search,
+  .filtersToggle,
+  .caret {
     transition: none;
+  }
+  .chip:active {
+    transform: none;
   }
 }

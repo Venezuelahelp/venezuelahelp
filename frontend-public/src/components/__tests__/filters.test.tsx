@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FilterBar from "@/components/FilterBar";
-import SummaryBar from "@/components/SummaryBar";
 import { CATEGORY_META, CATEGORY_ORDER } from "@/data/categories";
 import type { Category } from "@/types";
 
@@ -13,18 +12,30 @@ const counts: Record<Category, number> = {
   solicitudes: 7,
 };
 
+const TOTAL = Object.values(counts).reduce((a, b) => a + b, 0);
+
+type Overrides = Partial<React.ComponentProps<typeof FilterBar>>;
+
+function renderBar(overrides: Overrides = {}) {
+  const props = {
+    query: "",
+    onQuery: () => {},
+    active: new Set<Category>(),
+    onToggle: () => {},
+    counts,
+    resultCount: TOTAL,
+    total: TOTAL,
+    onClear: () => {},
+    ...overrides,
+  };
+  return render(<FilterBar {...props} />);
+}
+
 // --------------- FilterBar ---------------
 
 describe("FilterBar", () => {
   it("renders a search input with aria-label 'Buscar'", () => {
-    render(
-      <FilterBar
-        query=""
-        onQuery={() => {}}
-        active={new Set()}
-        onToggle={() => {}}
-      />,
-    );
+    renderBar();
     expect(
       screen.getByRole("searchbox", { name: "Buscar" }),
     ).toBeInTheDocument();
@@ -33,28 +44,14 @@ describe("FilterBar", () => {
   it("calls onQuery when the user types in the search input", async () => {
     const onQuery = vi.fn();
     const user = userEvent.setup();
-    render(
-      <FilterBar
-        query=""
-        onQuery={onQuery}
-        active={new Set()}
-        onToggle={() => {}}
-      />,
-    );
+    renderBar({ onQuery });
     const input = screen.getByRole("searchbox", { name: "Buscar" });
     await user.type(input, "r");
     expect(onQuery).toHaveBeenCalledWith("r");
   });
 
   it("renders a chip button for every category in CATEGORY_ORDER", () => {
-    render(
-      <FilterBar
-        query=""
-        onQuery={() => {}}
-        active={new Set()}
-        onToggle={() => {}}
-      />,
-    );
+    renderBar();
     for (const cat of CATEGORY_ORDER) {
       expect(
         screen.getByRole("button", {
@@ -64,17 +61,18 @@ describe("FilterBar", () => {
     }
   });
 
+  it("each category chip shows its count", () => {
+    renderBar();
+    const reportesBtn = screen.getByRole("button", {
+      name: new RegExp(CATEGORY_META["reportes"].label, "i"),
+    });
+    expect(reportesBtn).toHaveTextContent("10");
+  });
+
   it("clicking a category chip calls onToggle with that category", async () => {
     const onToggle = vi.fn();
     const user = userEvent.setup();
-    render(
-      <FilterBar
-        query=""
-        onQuery={() => {}}
-        active={new Set()}
-        onToggle={onToggle}
-      />,
-    );
+    renderBar({ onToggle });
     const btn = screen.getByRole("button", {
       name: new RegExp(CATEGORY_META["reportes"].label, "i"),
     });
@@ -83,14 +81,7 @@ describe("FilterBar", () => {
   });
 
   it("inactive chip has aria-pressed='false'", () => {
-    render(
-      <FilterBar
-        query=""
-        onQuery={() => {}}
-        active={new Set()}
-        onToggle={() => {}}
-      />,
-    );
+    renderBar();
     const btn = screen.getByRole("button", {
       name: new RegExp(CATEGORY_META["reportes"].label, "i"),
     });
@@ -98,81 +89,39 @@ describe("FilterBar", () => {
   });
 
   it("active chip has aria-pressed='true'", () => {
-    render(
-      <FilterBar
-        query=""
-        onQuery={() => {}}
-        active={new Set<Category>(["reportes"])}
-        onToggle={() => {}}
-      />,
-    );
+    renderBar({ active: new Set<Category>(["reportes"]) });
     const btn = screen.getByRole("button", {
       name: new RegExp(CATEGORY_META["reportes"].label, "i"),
     });
     expect(btn).toHaveAttribute("aria-pressed", "true");
   });
-});
 
-// --------------- SummaryBar ---------------
-
-describe("SummaryBar", () => {
-  it("renders a button for every category showing its label", () => {
-    render(
-      <SummaryBar counts={counts} active={new Set()} onToggle={() => {}} />,
+  it("shows the total result count when no filters are active", () => {
+    renderBar({ resultCount: TOTAL, total: TOTAL });
+    expect(screen.getByText(/resultados/i)).toHaveTextContent(
+      `${TOTAL} resultados`,
     );
-    for (const cat of CATEGORY_ORDER) {
-      expect(
-        screen.getByRole("button", {
-          name: new RegExp(CATEGORY_META[cat].label, "i"),
-        }),
-      ).toBeInTheDocument();
-    }
   });
 
-  it("each category button shows its count", () => {
-    render(
-      <SummaryBar counts={counts} active={new Set()} onToggle={() => {}} />,
-    );
-    const reportesBtn = screen.getByRole("button", {
-      name: new RegExp(CATEGORY_META["reportes"].label, "i"),
-    });
-    expect(reportesBtn).toHaveTextContent("10");
-  });
-
-  it("clicking a category entry calls onToggle with that category", async () => {
-    const onToggle = vi.fn();
+  it("shows a 'Limpiar filtros' button and X de Y count when filtering", async () => {
+    const onClear = vi.fn();
     const user = userEvent.setup();
-    render(
-      <SummaryBar counts={counts} active={new Set()} onToggle={onToggle} />,
-    );
-    const btn = screen.getByRole("button", {
-      name: new RegExp(CATEGORY_META["acopios"].label, "i"),
+    renderBar({
+      query: "agua",
+      resultCount: 4,
+      total: TOTAL,
+      onClear,
     });
-    await user.click(btn);
-    expect(onToggle).toHaveBeenCalledWith("acopios");
+    expect(screen.getByText(`de ${TOTAL} resultados`)).toBeInTheDocument();
+    const clear = screen.getByRole("button", { name: /limpiar filtros/i });
+    await user.click(clear);
+    expect(onClear).toHaveBeenCalledTimes(1);
   });
 
-  it("inactive entry has aria-pressed='false'", () => {
-    render(
-      <SummaryBar counts={counts} active={new Set()} onToggle={() => {}} />,
-    );
-    const btn = screen.getByRole("button", {
-      name: new RegExp(CATEGORY_META["desaparecidos"].label, "i"),
-    });
-    expect(btn).toHaveAttribute("aria-pressed", "false");
-  });
-
-  it("active entry has aria-pressed='true'", () => {
-    render(
-      <SummaryBar
-        counts={counts}
-        active={new Set<Category>(["desaparecidos"])}
-        onToggle={() => {}}
-      />,
-    );
-    const btn = screen.getByRole("button", {
-      name: new RegExp(CATEGORY_META["desaparecidos"].label, "i"),
-    });
-    expect(btn).toHaveAttribute("aria-pressed", "true");
+  it("does not show 'Limpiar filtros' when no filters are active", () => {
+    renderBar();
+    expect(
+      screen.queryByRole("button", { name: /limpiar filtros/i }),
+    ).not.toBeInTheDocument();
   });
 });

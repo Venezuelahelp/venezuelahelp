@@ -1,0 +1,10 @@
+node_modules
+dist
+*.tsbuildinfo
+
+# Datos de entorno: el snapshot real (con PII de desaparecidos, ~2.5MB) NO se
+# commitea. Se baja con `npm run snapshot:pull` a snapshot.local.json y el dev
+# lo sirve vía .env.local (VITE_SNAPSHOT_URL). El repo solo lleva snapshot.json
+# (sample sintético) como fallback para clones/CI.
+.env.local
+public/snapshot.local.json
