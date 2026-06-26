@@ -30,6 +30,7 @@ export interface PublicItem {
   texto: string;
   ubicacion?: { lat: number; lng: number; nombre?: string };
   status?: string;
+  trust?: string;
 }
 
 export interface Snapshot {
