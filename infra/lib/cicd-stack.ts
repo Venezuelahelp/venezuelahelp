@@ -27,33 +27,15 @@ export class CicdStack extends Stack {
           },
         },
       ),
+      // AdministratorAccess is required because:
+      // 1. cdk bootstrap (runs in the pipeline) creates IAM roles, S3, ECR, SSM
+      // 2. cdk deploy creates Lambda, CloudFront, Route53, ACM, DynamoDB, Cognito, etc.
+      // The OIDC condition (main branch only) is the security boundary — the role
+      // cannot be assumed from feature branches, forks, or outside GitHub Actions.
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"),
+      ],
     });
-
-    // Minimal permissions: the CDK CLI assumes bootstrap roles for all operations.
-    // - cdk-*-lookup-role   → context lookups (hosted zone, etc.)
-    // - cdk-*-file-publishing-role → uploads Lambda zips to the bootstrap S3 bucket
-    // - cdk-*-deploy-role   → calls CloudFormation to create/update stacks
-    // CloudFormation then assumes cdk-*-cfn-exec-role (AdministratorAccess) to
-    // create resources — that role is assumed by the CloudFormation service principal,
-    // never directly by this role.
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        sid: "CdkBootstrapRoles",
-        effect: iam.Effect.ALLOW,
-        actions: ["sts:AssumeRole"],
-        resources: [`arn:aws:iam::${this.account}:role/cdk-*`],
-      }),
-    );
-
-    // CDK CLI calls GetCallerIdentity to verify credentials before synthesising.
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        sid: "CallerIdentity",
-        effect: iam.Effect.ALLOW,
-        actions: ["sts:GetCallerIdentity"],
-        resources: ["*"],
-      }),
-    );
 
     new CfnOutput(this, "DeployRoleArn", { value: role.roleArn });
   }
