@@ -65,6 +65,19 @@ describe("telegram handler", () => {
     expect(d.sendMessage).not.toHaveBeenCalled();
   });
 
+  it("fails closed when no secret is configured and TELEGRAM_REQUIRE_SECRET=true", async () => {
+    process.env.TELEGRAM_REQUIRE_SECRET = "true";
+    try {
+      const d = deps({ getWebhookSecret: vi.fn(async () => "") });
+      const res = await handler(event("@vh_bot dónde hay agua"), d as any);
+      expect(res.statusCode).toBe(200);
+      expect(d.sendMessage).not.toHaveBeenCalled();
+      expect(d.askBedrock).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.TELEGRAM_REQUIRE_SECRET;
+    }
+  });
+
   it("answers a mention: retrieves, calls bedrock, sends, logs", async () => {
     const d = deps();
     const res = await handler(event("@vh_bot dónde hay agua"), d as any);

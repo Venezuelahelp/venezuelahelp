@@ -86,6 +86,12 @@ export async function handler(
         logger.warn("telegram webhook secret mismatch");
         return ok();
       }
+    } else if (process.env.TELEGRAM_REQUIRE_SECRET === "true") {
+      // Falla-cerrado: en producción exigimos el secret. Si SSM no lo entrega
+      // (borrado/ilegible/mal desplegado), rechazamos en vez de aceptar
+      // cualquier webhook forjado. Devolvemos 200 para que Telegram no reintente.
+      logger.error("telegram webhook secret required but missing; rejecting");
+      return ok();
     }
 
     if (msg.from?.is_bot) return ok();

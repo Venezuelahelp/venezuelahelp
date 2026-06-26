@@ -49,6 +49,14 @@ describe("BotStack", () => {
     });
   });
 
+  it("requires the webhook secret (fail-closed) via env flag", () => {
+    template().hasResourceProperties("AWS::Lambda::Function", {
+      Environment: {
+        Variables: Match.objectLike({ TELEGRAM_REQUIRE_SECRET: "true" }),
+      },
+    });
+  });
+
   it("throttles the default API stage to bound request rate", () => {
     template().hasResourceProperties("AWS::ApiGatewayV2::Stage", {
       DefaultRouteSettings: {

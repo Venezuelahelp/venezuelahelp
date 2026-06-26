@@ -42,6 +42,8 @@ export class BotStack extends Stack {
       environment: {
         TABLE_NAME: props.table.tableName,
         SNAPSHOT_BUCKET: props.snapshotBucket.bucketName,
+        // Exige el secret del webhook (falla-cerrado) en producción.
+        TELEGRAM_REQUIRE_SECRET: "true",
       },
       bundling: {
         format: OutputFormat.ESM,
