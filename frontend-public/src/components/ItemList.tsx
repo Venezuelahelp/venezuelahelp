@@ -108,7 +108,7 @@ export default function ItemList({ items }: ItemListProps) {
                     </span>
                   )}
                   <span className={styles.metaItem}>
-                    Fuente: <Source sourceId={item.sourceId} />
+                    <Source sourceId={item.sourceId} />
                   </span>
                 </div>
               </div>
