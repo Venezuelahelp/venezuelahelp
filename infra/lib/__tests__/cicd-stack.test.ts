@@ -30,9 +30,9 @@ describe("CicdStack", () => {
           Match.objectLike({
             Action: "sts:AssumeRoleWithWebIdentity",
             Condition: Match.objectLike({
-              StringLike: {
-                "token.actions.githubusercontent.com:sub": `repo:${TEST_REPO}:*`,
-              },
+              StringEquals: Match.objectLike({
+                "token.actions.githubusercontent.com:sub": `repo:${TEST_REPO}:ref:refs/heads/main`,
+              }),
             }),
           }),
         ]),

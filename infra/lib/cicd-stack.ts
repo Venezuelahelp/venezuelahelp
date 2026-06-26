@@ -21,9 +21,9 @@ export class CicdStack extends Stack {
         {
           StringEquals: {
             "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          },
-          StringLike: {
-            "token.actions.githubusercontent.com:sub": `repo:${props.githubRepo}:*`,
+            // Only workflows running on the main branch can assume this role.
+            // workflow_dispatch (rollback) also runs on main, so this covers both.
+            "token.actions.githubusercontent.com:sub": `repo:${props.githubRepo}:ref:refs/heads/main`,
           },
         },
       ),
