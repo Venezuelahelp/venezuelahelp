@@ -6,6 +6,45 @@
   padding: 24px 16px;
 }
 
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.refreshButton {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  cursor: pointer;
+  background-color: var(--surface);
+  color: var(--ink-strong);
+  transition: background-color 120ms ease-out;
+  white-space: nowrap;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background-color: var(--border);
+}
+
+.refreshButton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.refreshButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refreshButton {
+    transition: none;
+  }
+}
+
 .section {
   display: flex;
   flex-direction: column;

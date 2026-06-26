@@ -344,6 +344,40 @@ describe("App (integration)", () => {
     });
   });
 
+  it("clicking 'Scrape ahora' calls scrapeNow and shows a started notice", async () => {
+    const { deps, api } = buildDeps(() => Promise.resolve("mock-token"));
+    const user = userEvent.setup();
+    render(<App deps={deps} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("navigation")).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /Fuentes/i }));
+    await user.click(screen.getByRole("button", { name: /scrape ahora/i }));
+
+    await waitFor(() => {
+      expect(api.scrapeNow).toHaveBeenCalledOnce();
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/Scrape iniciado/i);
+    });
+  });
+
+  it("clicking 'Actualizar' in Dashboard re-fetches stats", async () => {
+    const { deps, api } = buildDeps(() => Promise.resolve("mock-token"));
+    const user = userEvent.setup();
+    render(<App deps={deps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Conteos por categoría/i)).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /actualizar/i }));
+
+    await waitFor(() => {
+      expect(api.getStats).toHaveBeenCalledTimes(2); // initial load + refresh
+    });
+  });
+
   it("sign-out calls signOutUser and reverts to Login screen", async () => {
     const { deps } = buildDeps(() => Promise.resolve("mock-token"));
     const user = userEvent.setup();
