@@ -4,6 +4,7 @@ import { ScraperStack } from "../lib/scraper-stack";
 import { BotStack } from "../lib/bot-stack";
 import { FrontendStack } from "../lib/frontend-stack";
 import { AdminStack } from "../lib/admin-stack";
+import { DomainStack } from "../lib/domain-stack";
 
 const app = new App();
 // Env explícito desde CDK_DEFAULT_ACCOUNT/REGION (poblado por el CLI o pasado
@@ -13,6 +14,8 @@ const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: process.env.CDK_DEFAULT_REGION ?? "us-east-1",
 };
+const domainName = app.node.getContext("domainName") as string;
+const hostedZoneId = app.node.getContext("hostedZoneId") as string;
 const data = new DataStack(app, "VenezuelaHelpDataStack", { env });
 const scraper = new ScraperStack(app, "VenezuelaHelpScraperStack", {
   env,
@@ -25,12 +28,23 @@ new BotStack(app, "VenezuelaHelpBotStack", {
   table: data.table,
   snapshotBucket: data.snapshotBucket,
 });
+const domain = new DomainStack(app, "VenezuelaHelpDomainStack", {
+  env,
+  domainName,
+  hostedZoneId,
+});
 new FrontendStack(app, "VenezuelaHelpFrontendStack", {
   env,
   snapshotBucket: data.snapshotBucket,
+  domainName,
+  certificate: domain.certificate,
+  hostedZone: domain.hostedZone,
 });
 new AdminStack(app, "VenezuelaHelpAdminStack", {
   env,
   table: data.table,
   scraperFn: scraper.scraperFn,
+  adminDomain: `admin.${domainName}`,
+  certificate: domain.certificate,
+  hostedZone: domain.hostedZone,
 });

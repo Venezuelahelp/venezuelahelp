@@ -21,11 +21,17 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as route53 from "aws-cdk-lib/aws-route53";
+import * as route53targets from "aws-cdk-lib/aws-route53-targets";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as path from "node:path";
 
 export interface AdminStackProps extends StackProps {
   table: dynamodb.Table;
   scraperFn: lambda.IFunction;
+  adminDomain?: string;
+  certificate?: acm.ICertificate;
+  hostedZone?: route53.IHostedZone;
 }
 
 export class AdminStack extends Stack {
@@ -75,7 +81,9 @@ export class AdminStack extends Stack {
     const api = new HttpApi(this, "AdminApi", {
       defaultAuthorizer: authorizer,
       corsPreflight: {
-        allowOrigins: ["*"],
+        allowOrigins: props.adminDomain
+          ? [`https://${props.adminDomain}`]
+          : ["*"],
         allowMethods: [
           CorsHttpMethod.GET,
           CorsHttpMethod.PUT,
@@ -132,6 +140,12 @@ export class AdminStack extends Stack {
       "AdminDistribution",
       {
         defaultRootObject: "index.html",
+        ...(props.adminDomain && props.certificate
+          ? {
+              domainNames: [props.adminDomain],
+              certificate: props.certificate,
+            }
+          : {}),
         defaultBehavior: {
           origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
           viewerProtocolPolicy:
@@ -151,6 +165,16 @@ export class AdminStack extends Stack {
         ],
       },
     );
+
+    if (props.hostedZone && props.adminDomain) {
+      new route53.ARecord(this, "AdminAlias", {
+        zone: props.hostedZone,
+        recordName: props.adminDomain,
+        target: route53.RecordTarget.fromAlias(
+          new route53targets.CloudFrontTarget(distribution),
+        ),
+      });
+    }
 
     new s3deploy.BucketDeployment(this, "DeployAdmin", {
       sources: [
@@ -174,7 +198,9 @@ export class AdminStack extends Stack {
     new CfnOutput(this, "UserPoolId", { value: userPool.userPoolId });
     new CfnOutput(this, "UserPoolClientId", { value: client.userPoolClientId });
     new CfnOutput(this, "AdminUrl", {
-      value: `https://${distribution.distributionDomainName}`,
+      value: props.adminDomain
+        ? `https://${props.adminDomain}`
+        : `https://${distribution.distributionDomainName}`,
     });
   }
 }

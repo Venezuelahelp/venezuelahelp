@@ -10,10 +10,16 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as route53 from "aws-cdk-lib/aws-route53";
+import * as route53targets from "aws-cdk-lib/aws-route53-targets";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as path from "node:path";
 
 export interface FrontendStackProps extends StackProps {
   snapshotBucket: s3.Bucket;
+  domainName?: string;
+  certificate?: acm.ICertificate;
+  hostedZone?: route53.IHostedZone;
 }
 
 export class FrontendStack extends Stack {
@@ -53,6 +59,12 @@ export class FrontendStack extends Stack {
 
     const distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultRootObject: "index.html",
+      ...(props.domainName && props.certificate
+        ? {
+            domainNames: [props.domainName, `www.${props.domainName}`],
+            certificate: props.certificate,
+          }
+        : {}),
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -80,6 +92,22 @@ export class FrontendStack extends Stack {
       ],
     });
 
+    if (props.hostedZone && props.domainName) {
+      const cfTarget = route53.RecordTarget.fromAlias(
+        new route53targets.CloudFrontTarget(distribution),
+      );
+      new route53.ARecord(this, "ApexAlias", {
+        zone: props.hostedZone,
+        recordName: props.domainName,
+        target: cfTarget,
+      });
+      new route53.ARecord(this, "WwwAlias", {
+        zone: props.hostedZone,
+        recordName: `www.${props.domainName}`,
+        target: cfTarget,
+      });
+    }
+
     // Deploy frontend-public/dist to site bucket, invalidate distribution on deploy
     new s3deploy.BucketDeployment(this, "DeploySite", {
       sources: [
@@ -93,7 +121,9 @@ export class FrontendStack extends Stack {
     });
 
     new CfnOutput(this, "SiteUrl", {
-      value: `https://${distribution.distributionDomainName}`,
+      value: props.domainName
+        ? `https://www.${props.domainName}`
+        : `https://${distribution.distributionDomainName}`,
     });
   }
 }
