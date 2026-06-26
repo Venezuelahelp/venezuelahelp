@@ -1,0 +1,167 @@
+/* Hero — editorial, sobrio. Sin hero-metric template, sin gradient text. */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* Acento de marca muy sutil (no glassmorphism, no stripes). */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 120px;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 80% 120%,
+    oklch(0.48 0.13 250 / 0.05),
+    transparent 60%
+  );
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin-inline: auto;
+  padding: 40px 16px 28px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cat-acopios);
+  animation: pulse 2.4s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.5 0.1 150 / 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 7px oklch(0.5 0.1 150 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.5 0.1 150 / 0);
+  }
+}
+
+.title {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--ink-strong);
+  font-size: clamp(2rem, 5.2vw, 3.3rem);
+  line-height: 1.06;
+  text-wrap: balance;
+  max-width: 18ch;
+}
+
+.lede {
+  margin: 16px 0 0;
+  color: var(--ink);
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  max-width: 54ch;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.ctaPrimary,
+.ctaGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.94rem;
+  border-radius: var(--r-input);
+  padding: 11px 18px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition:
+    transform 120ms ease,
+    background 150ms ease;
+}
+
+.ctaPrimary {
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.ctaPrimary:hover {
+  background: var(--primary-strong);
+  transform: translateY(-1px);
+}
+
+.ctaGhost {
+  background: var(--bg);
+  color: var(--ink-strong);
+  border-color: var(--border-strong);
+}
+
+.ctaGhost:hover {
+  background: var(--surface);
+}
+
+.ctaPrimary:focus-visible,
+.ctaGhost:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.meta b {
+  color: var(--ink-strong);
+  font-weight: 700;
+}
+
+.dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+@media (min-width: 640px) {
+  .inner {
+    padding: 56px 24px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+  .ctaPrimary,
+  .ctaGhost {
+    transition: none;
+  }
+}
