@@ -4,11 +4,12 @@ import { Template, Match } from "aws-cdk-lib/assertions";
 import { CicdStack } from "../cicd-stack";
 
 const TEST_REPO = "org/repo";
+const TEST_ENV = { account: "123456789012", region: "us-east-1" };
 
 function template() {
   const app = new App();
   return Template.fromStack(
-    new CicdStack(app, "Cicd", { githubRepo: TEST_REPO }),
+    new CicdStack(app, "Cicd", { env: TEST_ENV, githubRepo: TEST_REPO }),
   );
 }
 
@@ -23,7 +24,7 @@ describe("CicdStack", () => {
     );
   });
 
-  it("creates an IAM role with WebIdentity principal scoped to the repo", () => {
+  it("creates an IAM role restricted to main branch", () => {
     template().hasResourceProperties("AWS::IAM::Role", {
       AssumeRolePolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
@@ -40,18 +41,30 @@ describe("CicdStack", () => {
     });
   });
 
-  it("attaches AdministratorAccess to the deploy role", () => {
-    template().hasResourceProperties("AWS::IAM::Role", {
-      ManagedPolicyArns: Match.arrayWith([
-        Match.objectLike({
-          "Fn::Join": Match.arrayWith([
-            Match.arrayWith([
-              Match.stringLikeRegexp("AdministratorAccess"),
-            ]),
-          ]),
-        }),
-      ]),
+  it("grants sts:AssumeRole on CDK bootstrap roles only", () => {
+    template().hasResourceProperties("AWS::IAM::Policy", {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: "sts:AssumeRole",
+            Effect: "Allow",
+            Resource: `arn:aws:iam::${TEST_ENV.account}:role/cdk-*`,
+          }),
+        ]),
+      }),
     });
+  });
+
+  it("does NOT attach AdministratorAccess", () => {
+    const t = template();
+    const roles = t.findResources("AWS::IAM::Role");
+    for (const role of Object.values(roles)) {
+      const managed = role.Properties?.ManagedPolicyArns ?? [];
+      const hasAdmin = managed.some((arn: unknown) =>
+        JSON.stringify(arn).includes("AdministratorAccess"),
+      );
+      expect(hasAdmin).toBe(false);
+    }
   });
 
   it("outputs the deploy role ARN", () => {

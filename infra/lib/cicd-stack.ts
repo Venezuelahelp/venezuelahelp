@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 import * as iam from "aws-cdk-lib/aws-iam";
 
 export interface CicdStackProps extends StackProps {
-  githubRepo: string; // e.g. "mserranolm/venezuelahelp"
+  githubRepo: string; // e.g. "Venezuelahelp/venezuelahelp"
 }
 
 export class CicdStack extends Stack {
@@ -27,10 +27,33 @@ export class CicdStack extends Stack {
           },
         },
       ),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"),
-      ],
     });
+
+    // Minimal permissions: the CDK CLI assumes bootstrap roles for all operations.
+    // - cdk-*-lookup-role   → context lookups (hosted zone, etc.)
+    // - cdk-*-file-publishing-role → uploads Lambda zips to the bootstrap S3 bucket
+    // - cdk-*-deploy-role   → calls CloudFormation to create/update stacks
+    // CloudFormation then assumes cdk-*-cfn-exec-role (AdministratorAccess) to
+    // create resources — that role is assumed by the CloudFormation service principal,
+    // never directly by this role.
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "CdkBootstrapRoles",
+        effect: iam.Effect.ALLOW,
+        actions: ["sts:AssumeRole"],
+        resources: [`arn:aws:iam::${this.account}:role/cdk-*`],
+      }),
+    );
+
+    // CDK CLI calls GetCallerIdentity to verify credentials before synthesising.
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "CallerIdentity",
+        effect: iam.Effect.ALLOW,
+        actions: ["sts:GetCallerIdentity"],
+        resources: ["*"],
+      }),
+    );
 
     new CfnOutput(this, "DeployRoleArn", { value: role.roleArn });
   }
