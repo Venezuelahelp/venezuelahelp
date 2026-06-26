@@ -47,10 +47,16 @@ describe("scoreTrust", () => {
     expect(r.trust).toBe("sospechoso");
     expect(r.trustReasons.join(" ")).toMatch(/geocerca|venezuela/i);
   });
-  it("texto demasiado corto → sospechoso", () => {
-    expect(scoreTrust(item({ texto: "corto" }), 1, undefined, CFG).trust).toBe(
-      "sospechoso",
-    );
+  it("título válido con texto corto → NO sospechoso (poca info no es falsedad)", () => {
+    expect(
+      scoreTrust(item({ titulo: "Ana Ruiz", texto: "25" }), 1, undefined, CFG)
+        .trust,
+    ).toBe("no_verificado");
+  });
+  it("título vacío y texto corto → sospechoso (sin contenido útil)", () => {
+    expect(
+      scoreTrust(item({ titulo: "  ", texto: "x" }), 1, undefined, CFG).trust,
+    ).toBe("sospechoso");
   });
   it("match de blocklist → sospechoso", () => {
     expect(

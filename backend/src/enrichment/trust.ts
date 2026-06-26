@@ -20,9 +20,13 @@ export function scoreTrust(
       reasons.push("ubicación fuera de la geocerca de Venezuela");
     }
   }
-  if (!item.titulo.trim()) reasons.push("título vacío");
-  if ((item.texto ?? "").trim().length < cfg.minTextLen) {
-    reasons.push("texto demasiado corto");
+  // Solo es sospechoso por contenido cuando NO hay nada útil: título vacío y, a
+  // la vez, texto demasiado corto. Un ítem con título válido pero descripción
+  // breve (p. ej. una ficha de desaparecido escueta) es legítimo, no falso.
+  const tituloVacio = !item.titulo.trim();
+  const textoCorto = (item.texto ?? "").trim().length < cfg.minTextLen;
+  if (tituloVacio && textoCorto) {
+    reasons.push("sin contenido útil (título y texto vacíos)");
   }
   const hay = normalizeText(`${item.titulo} ${item.texto}`);
   if (cfg.blocklist.some((b) => b && hay.includes(normalizeText(b)))) {
