@@ -1,0 +1,136 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background-color: var(--bg);
+}
+
+/* ── Header ── */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 56px;
+  background-color: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink-strong);
+  letter-spacing: -0.01em;
+}
+
+.signOutButton {
+  padding: 6px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  background-color: var(--bg);
+  color: var(--ink);
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out;
+}
+
+.signOutButton:hover {
+  background-color: var(--surface);
+  border-color: var(--primary);
+}
+
+.signOutButton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Tab navigation ── */
+
+.nav {
+  display: flex;
+  gap: 2px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--bg);
+}
+
+.navButton {
+  padding: 12px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 120ms ease-out,
+    border-color 120ms ease-out;
+  margin-bottom: -1px;
+}
+
+.navButton:hover {
+  color: var(--ink);
+}
+
+.navButton[aria-current="page"] {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+.navButton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+/* ── Main content ── */
+
+.main {
+  flex: 1;
+  padding: 24px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── States ── */
+
+.init,
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.init {
+  min-height: 100dvh;
+}
+
+.errorBanner {
+  padding: 12px 24px;
+  font-size: 0.875rem;
+  color: oklch(0.42 0.13 25);
+  background-color: oklch(0.97 0.02 25);
+  border-bottom: 1px solid oklch(0.88 0.05 25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signOutButton,
+  .navButton {
+    transition: none;
+  }
+}

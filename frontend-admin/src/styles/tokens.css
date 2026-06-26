@@ -1,0 +1,49 @@
+:root {
+  /* superficies */
+  --bg: oklch(1 0 0); /* blanco puro */
+  --surface: oklch(0.975 0.004 255); /* tinte frío sutil para zonas/inputs */
+  --border: oklch(0.9 0.006 255);
+  --border-strong: oklch(0.82 0.008 255);
+
+  /* texto (contraste verificado sobre --bg) */
+  --ink: oklch(0.24 0.02 255); /* cuerpo ~13:1 */
+  --ink-strong: oklch(0.17 0.02 255); /* títulos */
+  --muted: oklch(0.45 0.02 255); /* secundario ≥4.5:1 sobre blanco */
+
+  /* marca */
+  --primary: oklch(0.48 0.13 250); /* azul institucional */
+  --primary-strong: oklch(0.4 0.14 250); /* hover/active */
+  --primary-tint: oklch(0.96 0.02 250); /* fondo de chips activos */
+  --on-primary: oklch(1 0 0);
+
+  /* roles por categoría (full palette para data viz: marcadores + badges, desaturados) */
+  --cat-reportes: oklch(0.5 0.07 250); /* azul-gris */
+  --cat-desaparecidos: oklch(0.58 0.11 65); /* ámbar (atención, no alarma) */
+  --cat-acopios: oklch(0.52 0.09 150); /* verde */
+  --cat-edificios: oklch(0.5 0.11 30); /* terracota/rojo-tierra */
+  --cat-solicitudes: oklch(0.5 0.1 290); /* violeta */
+
+  /* estados */
+  --focus-ring: oklch(0.48 0.13 250);
+
+  /* tipografía */
+  --font-sans:
+    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background-color: var(--bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+}

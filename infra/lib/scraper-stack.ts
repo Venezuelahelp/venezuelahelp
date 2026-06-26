@@ -16,6 +16,8 @@ export interface ScraperStackProps extends StackProps {
 }
 
 export class ScraperStack extends Stack {
+  public readonly scraperFn: lambda.IFunction;
+
   constructor(scope: Construct, id: string, props: ScraperStackProps) {
     super(scope, id, props);
 
@@ -35,6 +37,8 @@ export class ScraperStack extends Stack {
         tsconfig: path.join(__dirname, "../../backend/tsconfig.json"),
       },
     });
+
+    this.scraperFn = fn;
 
     props.table.grantReadWriteData(fn);
     props.snapshotBucket.grantWrite(fn);

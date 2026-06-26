@@ -1,0 +1,239 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { route, type RouteDeps } from "@/admin-api/router";
+
+const mockConfig = {
+  scrapeRateMin: 30,
+  bedrockModelId: "amazon.nova-lite-v1:0",
+  systemPrompt: "Eres un asistente.",
+  botTriggerMode: "mention" as const,
+};
+
+const mockSource = {
+  id: "src-1",
+  nombre: "Fuente 1",
+  url: "https://example.com",
+  connector: "jsonApi" as const,
+  enabled: true,
+  lastRun: "2024-01-01T00:00:00Z",
+  lastStatus: "ok" as const,
+};
+
+function makeDeps(overrides: Partial<RouteDeps> = {}): RouteDeps {
+  return {
+    configRepo: {
+      get: vi.fn().mockResolvedValue(mockConfig),
+      put: vi.fn().mockResolvedValue(undefined),
+    },
+    sourceRepo: {
+      list: vi.fn().mockResolvedValue([mockSource]),
+      get: vi.fn().mockResolvedValue(mockSource),
+      put: vi.fn().mockResolvedValue(undefined),
+    },
+    itemRepo: {
+      listByCategory: vi.fn().mockResolvedValue([]),
+    },
+    invokeScraper: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+describe("admin-api router", () => {
+  describe("GET /config", () => {
+    it("returns 200 with config from configRepo.get()", async () => {
+      const deps = makeDeps();
+      const result = await route("GET", "/config", null, deps);
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual(mockConfig);
+      expect(deps.configRepo.get).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("PUT /config", () => {
+    it("returns 200 with parsed config when body is valid", async () => {
+      const deps = makeDeps();
+      const validBody = {
+        scrapeRateMin: 60,
+        bedrockModelId: "amazon.nova-lite-v1:0",
+        systemPrompt: "Updated prompt",
+        botTriggerMode: "all",
+      };
+      const result = await route("PUT", "/config", validBody, deps);
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual(validBody);
+      expect(deps.configRepo.put).toHaveBeenCalledWith(validBody);
+    });
+
+    it("returns 400 with issues when body is invalid", async () => {
+      const deps = makeDeps();
+      const invalidBody = {
+        scrapeRateMin: 2, // below min 5
+        bedrockModelId: "", // empty string
+        systemPrompt: "", // empty string
+        botTriggerMode: "invalid-mode", // not in enum
+      };
+      const result = await route("PUT", "/config", invalidBody, deps);
+      expect(result.status).toBe(400);
+      expect(result.body).toHaveProperty("error");
+      expect(result.body).toHaveProperty("issues");
+      expect(deps.configRepo.put).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when scrapeRateMin exceeds 1440", async () => {
+      const deps = makeDeps();
+      const invalidBody = {
+        scrapeRateMin: 1500,
+        bedrockModelId: "some-model",
+        systemPrompt: "Valid prompt",
+        botTriggerMode: "command",
+      };
+      const result = await route("PUT", "/config", invalidBody, deps);
+      expect(result.status).toBe(400);
+    });
+  });
+
+  describe("GET /sources", () => {
+    it("returns 200 with list from sourceRepo.list()", async () => {
+      const deps = makeDeps();
+      const result = await route("GET", "/sources", null, deps);
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual([mockSource]);
+      expect(deps.sourceRepo.list).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("PATCH /sources/{id}", () => {
+    it("returns 200 with updated source when source is found", async () => {
+      const deps = makeDeps();
+      const result = await route(
+        "PATCH",
+        "/sources/src-1",
+        { enabled: false },
+        deps,
+      );
+      expect(result.status).toBe(200);
+      expect(deps.sourceRepo.get).toHaveBeenCalledWith("src-1");
+      expect(deps.sourceRepo.put).toHaveBeenCalledWith({
+        ...mockSource,
+        enabled: false,
+      });
+      expect((result.body as typeof mockSource).enabled).toBe(false);
+    });
+
+    it("returns 404 when source is not found", async () => {
+      const deps = makeDeps({
+        sourceRepo: {
+          list: vi.fn().mockResolvedValue([]),
+          get: vi.fn().mockResolvedValue(null),
+          put: vi.fn().mockResolvedValue(undefined),
+        },
+      });
+      const result = await route(
+        "PATCH",
+        "/sources/nonexistent",
+        { enabled: true },
+        deps,
+      );
+      expect(result.status).toBe(404);
+      expect(result.body).toEqual({ error: "source not found" });
+      expect(deps.sourceRepo.put).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when body enabled is not boolean", async () => {
+      const deps = makeDeps();
+      const result = await route(
+        "PATCH",
+        "/sources/src-1",
+        { enabled: "yes" },
+        deps,
+      );
+      expect(result.status).toBe(400);
+    });
+  });
+
+  describe("POST /scrape", () => {
+    it("calls invokeScraper and returns 202 with {started:true}", async () => {
+      const deps = makeDeps();
+      const result = await route("POST", "/scrape", null, deps);
+      expect(result.status).toBe(202);
+      expect(result.body).toEqual({ started: true });
+      expect(deps.invokeScraper).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("GET /stats", () => {
+    it("returns 200 with counts per category and sources summary", async () => {
+      const itemsMock = [
+        {
+          id: "i1",
+          category: "reportes",
+          sourceId: "src-1",
+          externalId: "e1",
+          titulo: "T",
+          texto: "X",
+          raw: {},
+          contentHash: "h",
+          firstSeenAt: "2024-01-01",
+          lastSeenAt: "2024-01-01",
+        },
+        {
+          id: "i2",
+          category: "reportes",
+          sourceId: "src-1",
+          externalId: "e2",
+          titulo: "T2",
+          texto: "X2",
+          raw: {},
+          contentHash: "h2",
+          firstSeenAt: "2024-01-01",
+          lastSeenAt: "2024-01-01",
+        },
+      ];
+      const deps = makeDeps({
+        itemRepo: {
+          listByCategory: vi.fn().mockImplementation((cat) => {
+            if (cat === "reportes") return Promise.resolve(itemsMock);
+            return Promise.resolve([]);
+          }),
+        },
+      });
+
+      const result = await route("GET", "/stats", null, deps);
+      expect(result.status).toBe(200);
+      const body = result.body as {
+        counts: Record<string, number>;
+        sources: unknown[];
+      };
+      expect(body.counts).toMatchObject({
+        reportes: 2,
+        desaparecidos: 0,
+        acopios: 0,
+        edificios: 0,
+        solicitudes: 0,
+      });
+      expect(body.sources).toHaveLength(1);
+      expect(body.sources[0]).toEqual({
+        id: "src-1",
+        nombre: "Fuente 1",
+        enabled: true,
+        lastRun: "2024-01-01T00:00:00Z",
+        lastStatus: "ok",
+      });
+    });
+  });
+
+  describe("unknown routes", () => {
+    it("returns 404 for unknown path", async () => {
+      const deps = makeDeps();
+      const result = await route("GET", "/unknown", null, deps);
+      expect(result.status).toBe(404);
+      expect(result.body).toEqual({ error: "not found" });
+    });
+
+    it("returns 404 for wrong method on known path", async () => {
+      const deps = makeDeps();
+      const result = await route("DELETE", "/config", null, deps);
+      expect(result.status).toBe(404);
+      expect(result.body).toEqual({ error: "not found" });
+    });
+  });
+});

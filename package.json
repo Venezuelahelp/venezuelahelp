@@ -4,7 +4,8 @@
   "workspaces": [
     "backend",
     "infra",
-    "frontend-public"
+    "frontend-public",
+    "frontend-admin"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",

@@ -1,0 +1,132 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 720px;
+  padding: 24px 16px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink-strong);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* ── category list ── */
+.categoryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.categoryRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.categoryRow:last-child {
+  border-bottom: none;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.categoryLabel {
+  flex: 1;
+  font-size: 0.9375rem;
+  color: var(--ink);
+}
+
+.count {
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, monospace;
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
+/* ── source list ── */
+.sourceList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sourceRow:last-child {
+  border-bottom: none;
+}
+
+.sourceName {
+  flex: 1;
+  font-size: 0.9375rem;
+  color: var(--ink);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sourceStatus {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background-color: var(--surface);
+  color: var(--muted);
+}
+
+.sourceStatus[data-status="ok"] {
+  background-color: oklch(0.95 0.04 150);
+  color: oklch(0.38 0.1 150);
+}
+
+.sourceStatus[data-status="error"] {
+  background-color: oklch(0.96 0.03 25);
+  color: oklch(0.42 0.13 25);
+}
+
+.sourceRun {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .sourceRow {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sourceName {
+    flex-basis: 100%;
+  }
+}
