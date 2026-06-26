@@ -39,4 +39,16 @@ describe("ScraperStack", () => {
       RetentionInDays: 14,
     });
   });
+
+  it("grants the scraper bedrock invoke permission", () => {
+    template().hasResourceProperties("AWS::IAM::Policy", {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: Match.arrayWith(["bedrock:InvokeModel"]),
+          }),
+        ]),
+      },
+    });
+  });
 });

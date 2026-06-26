@@ -3,6 +3,7 @@ import { Construct } from "constructs";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
@@ -48,6 +49,13 @@ export class ScraperStack extends Stack {
 
     props.table.grantReadWriteData(fn);
     props.snapshotBucket.grantWrite(fn);
+
+    fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["bedrock:InvokeModel", "bedrock:Converse"],
+        resources: ["*"],
+      }),
+    );
 
     new events.Rule(this, "ScraperSchedule", {
       schedule: events.Schedule.rate(Duration.minutes(30)),
