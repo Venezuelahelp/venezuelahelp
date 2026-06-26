@@ -21,6 +21,10 @@ Lee siempre el spec y el plan de la fase activa antes de implementar.
 - **Frontend público** lee un `snapshot.json` cacheado en S3/CloudFront que el scraper regenera → el tráfico público no pega a Lambda/DynamoDB.
 - Servicios: Lambda, DynamoDB (single-table), S3 + CloudFront (×2 + snapshot), API Gateway HTTP API, Cognito (admin), EventBridge, SSM Parameter Store, Bedrock.
 
+> **El scrape es asíncrono.** `POST /scrape` (botón "Scrape ahora" del admin) invoca el Lambda del scraper con `InvocationType: Event` y devuelve **202 `{started:true}`** de inmediato; la extracción sigue en segundo plano (~1–2 min: baja HTML, extrae, llama a Bedrock por cada fuente IA que cambió). **No hay señal de "terminó"**. Por eso el admin muestra un aviso "Scrape iniciado…" al disparar y un botón "Actualizar" en el Dashboard para re-consultar conteos/estado cuando el usuario quiera. No esperar respuesta síncrona con los ítems.
+
+> **Conector IA y modelo de extracción.** Las fuentes `connector:"ai"` se extraen con **tool use** (salida estructurada de Bedrock) usando **Claude Haiku 4.5** (`AI_EXTRACT_MODEL` en `aiConnector.ts`), no el modelo de `CONFIG` (Nova Lite falla con 424 intermitente en tool use sobre páginas grandes). El bot sí usa el modelo barato de `CONFIG`. La extracción corre cada 6 h y solo si el contenido cambió (hash). `htmlToText` recorta a `<main>`/`<article>`/cuerpo para no mandar el chrome de navegación a Bedrock. Páginas muy-JS o con gating por IP (Cloudflare) quedan fuera de alcance (no hay navegador headless). <!-- /aprende 2026-06-26 -->
+
 ## Estructura del repo
 
 ```
