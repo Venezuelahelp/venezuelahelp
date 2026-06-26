@@ -1,0 +1,133 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+  padding: 24px 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink-strong);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.refreshButton {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  cursor: pointer;
+  background-color: var(--surface);
+  color: var(--ink-strong);
+  transition: background-color 120ms ease-out;
+  white-space: nowrap;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background-color: var(--border);
+}
+
+.refreshButton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.refreshButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.empty {
+  font-size: 0.9375rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.7fr 1.2fr 1.2fr 0.6fr;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.headRow {
+  background-color: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink-strong);
+  font-weight: 500;
+  overflow: hidden;
+}
+
+.username {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.cell {
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink-strong);
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refreshButton {
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 1.4fr 0.9fr 0.5fr;
+  }
+  .row > :nth-child(3),
+  .row > :nth-child(4) {
+    display: none;
+  }
+}

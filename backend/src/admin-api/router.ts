@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { ConfigRepo } from "@/shared/repos/configRepo";
 import type { SourceRepo } from "@/shared/repos/sourceRepo";
 import type { ItemRepo } from "@/shared/repos/itemRepo";
+import type { VisitRepo } from "@/shared/repos/visitRepo";
+import type { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import { assertPublicHttpUrl } from "@/connectors/ssrf";
 import { CATEGORIES } from "@/shared/types";
 
@@ -10,6 +12,8 @@ export interface RouteDeps {
   sourceRepo: Pick<SourceRepo, "list" | "get" | "put" | "delete">;
   itemRepo: Pick<ItemRepo, "listByCategory">;
   invokeScraper: () => Promise<void>;
+  visitRepo: Pick<VisitRepo, "analytics">;
+  tgUserRepo: Pick<TgUserRepo, "list">;
 }
 
 export interface RouteResult {
@@ -123,6 +127,32 @@ export async function route(
   if (method === "POST" && path === "/scrape") {
     await deps.invokeScraper();
     return { status: 202, body: { started: true } };
+  }
+
+  // GET /analytics — analítica agregada de visitantes web
+  if (method === "GET" && path === "/analytics") {
+    const data = await deps.visitRepo.analytics(new Date().toISOString());
+    return { status: 200, body: data };
+  }
+
+  // GET /tg-users — directorio de usuarios del bot de Telegram
+  if (method === "GET" && path === "/tg-users") {
+    const users = await deps.tgUserRepo.list();
+    return {
+      status: 200,
+      body: users.map((u) => ({
+        chatId: u.chatId,
+        username: u.username ?? undefined,
+        nombre: [u.firstName, u.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .slice(0, 80),
+        languageCode: u.languageCode ?? undefined,
+        firstSeenAt: u.firstSeenAt,
+        lastSeenAt: u.lastSeenAt,
+        msgCount: u.msgCount,
+      })),
+    };
   }
 
   // GET /stats

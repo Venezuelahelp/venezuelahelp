@@ -336,4 +336,38 @@ describe("createApi", () => {
       await expect(api.deleteSource("s1")).rejects.toThrow("HTTP 404");
     });
   });
+
+  describe("getAnalytics", () => {
+    it("calls GET /analytics and returns the parsed body", async () => {
+      const body = {
+        kpis: { today: 1, last7: 2, last30: 3 },
+        byCountry: [{ key: "VE", count: 3 }],
+        byBrowser: [],
+        byDevice: [],
+        recent: [],
+      };
+      const mockFetch = makeOkFetch(body);
+      const api = createApi(API_URL, makeGetToken(), { fetch: mockFetch });
+      const result = await api.getAnalytics();
+      expect(mockFetch).toHaveBeenCalledWith(
+        `${API_URL}/analytics`,
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(result).toEqual(body);
+    });
+  });
+
+  describe("getTgUsers", () => {
+    it("calls GET /tg-users and returns the parsed list", async () => {
+      const users = [{ chatId: 1, nombre: "Ana", msgCount: 2 }];
+      const mockFetch = makeOkFetch(users);
+      const api = createApi(API_URL, makeGetToken(), { fetch: mockFetch });
+      const result = await api.getTgUsers();
+      expect(mockFetch).toHaveBeenCalledWith(
+        `${API_URL}/tg-users`,
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(result).toEqual(users);
+    });
+  });
 });

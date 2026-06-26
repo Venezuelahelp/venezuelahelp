@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSnapshot } from "@/data/useSnapshot";
+import { sendBeacon } from "@/track";
 import { flatten, filterItems, countByCategory } from "@/data/filter";
 import type { Category } from "@/types";
 

@@ -145,6 +145,16 @@ export class AdminStack extends Stack {
       methods: [HttpMethod.GET],
       integration,
     });
+    api.addRoutes({
+      path: "/analytics",
+      methods: [HttpMethod.GET],
+      integration,
+    });
+    api.addRoutes({
+      path: "/tg-users",
+      methods: [HttpMethod.GET],
+      integration,
+    });
 
     // ── Admin SPA Hosting ─────────────────────────────────────────────────────
     const siteBucket = new s3.Bucket(this, "AdminSiteBucket", {

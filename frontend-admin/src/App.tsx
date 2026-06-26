@@ -3,6 +3,8 @@ import { Login } from "@/components/Login";
 import { Dashboard } from "@/components/Dashboard";
 import { Sources } from "@/components/Sources";
 import { Config } from "@/components/Config";
+import { Analytics } from "@/components/Analytics";
+import { Users } from "@/components/Users";
 import {
   loadRuntimeConfig as defaultLoadConfig,
   type RuntimeConfig,
@@ -13,11 +15,17 @@ import {
   signOutUser as defaultSignOutUser,
 } from "@/auth";
 import { createApi as defaultCreateApi } from "@/api";
-import type { Config as ConfigType, Source, Stats } from "@/types";
+import type {
+  Config as ConfigType,
+  Source,
+  Stats,
+  Analytics as AnalyticsData,
+  TgUser,
+} from "@/types";
 import styles from "./App.module.css";
 
 type ApiClient = ReturnType<typeof defaultCreateApi>;
-type Tab = "dashboard" | "sources" | "config";
+type Tab = "dashboard" | "analytics" | "users" | "sources" | "config";
 
 export interface AppDeps {
   loadRuntimeConfig?: () => Promise<RuntimeConfig>;
@@ -47,6 +55,8 @@ export default function App({ deps = {} }: AppProps) {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [stats, setStats] = useState<Stats | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [tgUsers, setTgUsers] = useState<TgUser[] | null>(null);
   const [sources, setSources] = useState<Source[] | null>(null);
   const [config, setConfig] = useState<ConfigType | null>(null);
   const [scraping, setScraping] = useState(false);
@@ -69,15 +79,19 @@ export default function App({ deps = {} }: AppProps) {
 
   async function loadData(api: ApiClient, isCancelled: () => boolean) {
     try {
-      const [s, src, cfg] = await Promise.all([
+      const [s, src, cfg, an, users] = await Promise.all([
         api.getStats(),
         api.getSources(),
         api.getConfig(),
+        api.getAnalytics(),
+        api.getTgUsers(),
       ]);
       if (isCancelled()) return;
       setStats(s);
       setSources(src);
       setConfig(cfg);
+      setAnalytics(an);
+      setTgUsers(users);
     } catch {
       if (!isCancelled()) setError("Error al cargar los datos.");
     }
@@ -123,6 +137,8 @@ export default function App({ deps = {} }: AppProps) {
     setStats(null);
     setSources(null);
     setConfig(null);
+    setAnalytics(null);
+    setTgUsers(null);
   }
 
   // Auto-dismiss the success notice so it doesn't linger.
@@ -171,6 +187,34 @@ export default function App({ deps = {} }: AppProps) {
       }
     } catch {
       if (mountedRef.current) setError("No se pudieron actualizar los datos.");
+    } finally {
+      if (mountedRef.current) setRefreshing(false);
+    }
+  }
+
+  async function handleRefreshAnalytics() {
+    if (!apiRef.current) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const an = await apiRef.current.getAnalytics();
+      if (mountedRef.current) setAnalytics(an);
+    } catch {
+      if (mountedRef.current) setError("No se pudo actualizar la analítica.");
+    } finally {
+      if (mountedRef.current) setRefreshing(false);
+    }
+  }
+
+  async function handleRefreshUsers() {
+    if (!apiRef.current) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const users = await apiRef.current.getTgUsers();
+      if (mountedRef.current) setTgUsers(users);
+    } catch {
+      if (mountedRef.current) setError("No se pudo actualizar los usuarios.");
     } finally {
       if (mountedRef.current) setRefreshing(false);
     }
@@ -251,6 +295,8 @@ export default function App({ deps = {} }: AppProps) {
 
   const TAB_LABELS: Record<Tab, string> = {
     dashboard: "Dashboard",
+    analytics: "Analítica",
+    users: "Usuarios",
     sources: "Fuentes",
     config: "Config",
   };
@@ -305,6 +351,32 @@ export default function App({ deps = {} }: AppProps) {
           ) : (
             <div className={styles.loading} role="status">
               Cargando datos…
+            </div>
+          ))}
+
+        {activeTab === "analytics" &&
+          (analytics ? (
+            <Analytics
+              data={analytics}
+              onRefresh={() => void handleRefreshAnalytics()}
+              refreshing={refreshing}
+            />
+          ) : (
+            <div className={styles.loading} role="status">
+              Cargando analítica…
+            </div>
+          ))}
+
+        {activeTab === "users" &&
+          (tgUsers ? (
+            <Users
+              users={tgUsers}
+              onRefresh={() => void handleRefreshUsers()}
+              refreshing={refreshing}
+            />
+          ) : (
+            <div className={styles.loading} role="status">
+              Cargando usuarios…
             </div>
           ))}
 

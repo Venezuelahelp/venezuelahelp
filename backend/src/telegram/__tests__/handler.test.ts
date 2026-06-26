@@ -32,6 +32,7 @@ function deps(over = {}) {
     },
     qaLogRepo: { append: vi.fn(async () => {}) },
     rateLimit: { hit: vi.fn(async () => ({ allowed: true, count: 1 })) },
+    tgUserRepo: { upsert: vi.fn(async () => {}) },
     loadSnapshot: vi.fn(async () => snap),
     askBedrock: vi.fn(async () => ({
       text: "Hay acopio en Chacao.",
@@ -176,5 +177,45 @@ describe("telegram handler", () => {
     const res = await handler(event("@vh_bot dónde hay agua"), d as any);
     expect(res.statusCode).toBe(200);
     expect(d.sendMessage).toHaveBeenCalled(); // fallback message
+  });
+
+  it("captures the Telegram user (upsert) with identity from the message", async () => {
+    const d = deps();
+    await handler(
+      event("@vh_bot dónde hay agua", {
+        from: {
+          id: 2,
+          username: "ana",
+          first_name: "Ana",
+          language_code: "es",
+        },
+      }),
+      d as any,
+    );
+    expect(d.tgUserRepo.upsert).toHaveBeenCalledOnce();
+    const arg = (d.tgUserRepo.upsert as any).mock.calls[0][0];
+    expect(arg).toMatchObject({
+      chatId: 9,
+      username: "ana",
+      firstName: "Ana",
+      languageCode: "es",
+    });
+  });
+
+  it("a failing user upsert does not break the bot reply", async () => {
+    const d = deps({
+      tgUserRepo: {
+        upsert: vi.fn(async () => {
+          throw new Error("ddb down");
+        }),
+      },
+    });
+    const res = await handler(event("@vh_bot dónde hay agua"), d as any);
+    expect(res.statusCode).toBe(200);
+    expect(d.sendMessage).toHaveBeenCalledWith(
+      "TOK",
+      9,
+      "Hay acopio en Chacao.",
+    );
   });
 });

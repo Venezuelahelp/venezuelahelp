@@ -34,6 +34,29 @@ function makeDeps(overrides: Partial<RouteDeps> = {}): RouteDeps {
       listByCategory: vi.fn().mockResolvedValue([]),
     },
     invokeScraper: vi.fn().mockResolvedValue(undefined),
+    visitRepo: {
+      analytics: vi.fn().mockResolvedValue({
+        kpis: { today: 1, last7: 2, last30: 3 },
+        byCountry: [{ key: "VE", count: 3 }],
+        byBrowser: [{ key: "Chrome", count: 3 }],
+        byDevice: [{ key: "mobile", count: 3 }],
+        recent: [],
+      }),
+    },
+    tgUserRepo: {
+      list: vi.fn().mockResolvedValue([
+        {
+          chatId: 7,
+          username: "ana",
+          firstName: "Ana",
+          lastName: "P",
+          languageCode: "es",
+          firstSeenAt: "2026-06-01T00:00:00Z",
+          lastSeenAt: "2026-06-26T00:00:00Z",
+          msgCount: 4,
+        },
+      ]),
+    },
     ...overrides,
   };
 }
@@ -319,6 +342,33 @@ describe("admin-api router", () => {
       } as any);
       expect(res.status).toBe(200);
       expect(sourceRepo.delete).toHaveBeenCalledWith("noticias-ve");
+    });
+  });
+
+  describe("GET /analytics", () => {
+    it("returns 200 with analytics from visitRepo.analytics()", async () => {
+      const deps = makeDeps();
+      const result = await route("GET", "/analytics", null, deps);
+      expect(result.status).toBe(200);
+      expect(deps.visitRepo.analytics).toHaveBeenCalledOnce();
+      expect(result.body).toHaveProperty("kpis");
+      expect((result.body as any).kpis.last30).toBe(3);
+    });
+  });
+
+  describe("GET /tg-users", () => {
+    it("returns 200 with a shaped user list (nombre joined)", async () => {
+      const deps = makeDeps();
+      const result = await route("GET", "/tg-users", null, deps);
+      expect(result.status).toBe(200);
+      expect(deps.tgUserRepo.list).toHaveBeenCalledOnce();
+      const body = result.body as any[];
+      expect(body[0]).toMatchObject({
+        chatId: 7,
+        username: "ana",
+        nombre: "Ana P",
+        msgCount: 4,
+      });
     });
   });
 

@@ -62,6 +62,14 @@ function buildMockApi() {
       ),
     scrapeNow: vi.fn().mockResolvedValue(undefined),
     getStats: vi.fn().mockResolvedValue(mockStats),
+    getAnalytics: vi.fn().mockResolvedValue({
+      kpis: { today: 0, last7: 0, last30: 0 },
+      byCountry: [],
+      byBrowser: [],
+      byDevice: [],
+      recent: [],
+    }),
+    getTgUsers: vi.fn().mockResolvedValue([]),
     createSource: vi.fn().mockResolvedValue({
       id: "new-1",
       nombre: "Nueva",

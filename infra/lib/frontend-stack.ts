@@ -13,10 +13,17 @@ import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53targets from "aws-cdk-lib/aws-route53-targets";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as logs from "aws-cdk-lib/aws-logs";
+import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
+import { HttpApi, HttpMethod, CfnStage } from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as path from "node:path";
 
 export interface FrontendStackProps extends StackProps {
   snapshotBucket: s3.Bucket;
+  table: dynamodb.Table;
   domainName?: string;
   certificate?: acm.ICertificate;
   hostedZone?: route53.IHostedZone;
@@ -57,6 +64,54 @@ export class FrontendStack extends Stack {
       },
     );
 
+    // ── Beacon de analítica de visitantes ───────────────────────────────────
+    // El front público hace POST /api/track al cargar. Va por CloudFront (que
+    // añade el header CloudFront-Viewer-Country) hacia esta HTTP API → Lambda →
+    // DynamoDB. No guarda IP. El sitio estático sigue cacheado aparte.
+    const trackFn = new NodejsFunction(this, "TrackFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: path.join(__dirname, "../../backend/src/track/handler.ts"),
+      handler: "handler",
+      timeout: Duration.seconds(10),
+      memorySize: 256,
+      logGroup: new logs.LogGroup(this, "TrackFnLogs", {
+        retention: logs.RetentionDays.TWO_WEEKS,
+        removalPolicy: RemovalPolicy.DESTROY,
+      }),
+      environment: { TABLE_NAME: props.table.tableName },
+      bundling: {
+        format: OutputFormat.ESM,
+        tsconfig: path.join(__dirname, "../../backend/tsconfig.json"),
+      },
+    });
+    props.table.grantWriteData(trackFn);
+
+    const trackApi = new HttpApi(this, "TrackApi");
+    trackApi.addRoutes({
+      path: "/api/track",
+      methods: [HttpMethod.POST],
+      integration: new HttpLambdaIntegration("TrackIntegration", trackFn),
+    });
+    // Throttle del stage por defecto: acota costo/abuso del endpoint público.
+    const trackStage = trackApi.defaultStage!.node.defaultChild as CfnStage;
+    trackStage.defaultRouteSettings = {
+      throttlingRateLimit: 50,
+      throttlingBurstLimit: 100,
+    };
+
+    const trackOrigin = new origins.HttpOrigin(
+      `${trackApi.apiId}.execute-api.${this.region}.amazonaws.com`,
+    );
+    // Reenvía al origen el país que añade CloudFront y el User-Agent.
+    const trackOrp = new cloudfront.OriginRequestPolicy(this, "TrackOrp", {
+      headerBehavior: cloudfront.OriginRequestHeaderBehavior.allowList(
+        "CloudFront-Viewer-Country",
+        "User-Agent",
+      ),
+      cookieBehavior: cloudfront.OriginRequestCookieBehavior.none(),
+      queryStringBehavior: cloudfront.OriginRequestQueryStringBehavior.none(),
+    });
+
     const distribution = new cloudfront.Distribution(this, "Distribution", {
       // Cheapest edge footprint (NA/EU). LATAM viewers still resolve fine via
       // the nearest enabled edge; the ~30% price bump of ALL isn't worth it.
@@ -79,6 +134,14 @@ export class FrontendStack extends Stack {
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: snapshotCachePolicy,
+        },
+        "api/track": {
+          origin: trackOrigin,
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: trackOrp,
         },
       },
       errorResponses: [

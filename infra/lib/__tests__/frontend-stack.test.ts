@@ -9,6 +9,7 @@ function template() {
   const data = new DataStack(app, "Data");
   const frontend = new FrontendStack(app, "Frontend", {
     snapshotBucket: data.snapshotBucket,
+    table: data.table,
   });
   return Template.fromStack(frontend);
 }
@@ -50,6 +51,48 @@ describe("FrontendStack", () => {
   it("uses the cheapest CloudFront price class (PriceClass_100)", () => {
     template().hasResourceProperties("AWS::CloudFront::Distribution", {
       DistributionConfig: Match.objectLike({ PriceClass: "PriceClass_100" }),
+    });
+  });
+
+  it("creates the beacon track Lambda (Node 20) with TABLE_NAME", () => {
+    template().hasResourceProperties("AWS::Lambda::Function", {
+      Runtime: "nodejs20.x",
+      Environment: { Variables: { TABLE_NAME: Match.anyValue() } },
+    });
+  });
+
+  it("creates the beacon HTTP API with a POST /api/track route", () => {
+    const t = template();
+    t.resourceCountIs("AWS::ApiGatewayV2::Api", 1);
+    t.hasResourceProperties("AWS::ApiGatewayV2::Route", {
+      RouteKey: "POST /api/track",
+    });
+  });
+
+  it("throttles the beacon stage's default route settings", () => {
+    template().hasResourceProperties("AWS::ApiGatewayV2::Stage", {
+      DefaultRouteSettings: Match.objectLike({
+        ThrottlingRateLimit: 50,
+        ThrottlingBurstLimit: 100,
+      }),
+    });
+  });
+
+  it("adds an api/track behavior with caching disabled and the viewer-country origin request policy", () => {
+    const t = template();
+    t.hasResourceProperties("AWS::CloudFront::Distribution", {
+      DistributionConfig: Match.objectLike({
+        CacheBehaviors: Match.arrayWith([
+          Match.objectLike({ PathPattern: "api/track" }),
+        ]),
+      }),
+    });
+    t.hasResourceProperties("AWS::CloudFront::OriginRequestPolicy", {
+      OriginRequestPolicyConfig: Match.objectLike({
+        HeadersConfig: Match.objectLike({
+          Headers: Match.arrayWith(["CloudFront-Viewer-Country"]),
+        }),
+      }),
     });
   });
 });

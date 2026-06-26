@@ -37,6 +37,7 @@ const domain = new DomainStack(app, "VenezuelaHelpDomainStack", {
 new FrontendStack(app, "VenezuelaHelpFrontendStack", {
   env,
   snapshotBucket: data.snapshotBucket,
+  table: data.table,
   domainName,
   certificate: domain.certificate,
   hostedZone: domain.hostedZone,

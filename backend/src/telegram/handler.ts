@@ -1,6 +1,7 @@
 import { ConfigRepo } from "@/shared/repos/configRepo";
 import { QaLogRepo } from "@/shared/repos/qaLogRepo";
 import { RateLimitRepo } from "@/shared/repos/rateLimitRepo";
+import { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import { logger } from "@/shared/logger";
 import { getTelegramToken, getWebhookSecret } from "@/telegram/secret";
 import { getMe, sendMessage as realSend } from "@/telegram/telegramApi";
@@ -44,6 +45,7 @@ interface Deps {
   configRepo: Pick<ConfigRepo, "get">;
   qaLogRepo: Pick<QaLogRepo, "append">;
   rateLimit: Pick<RateLimitRepo, "hit">;
+  tgUserRepo: Pick<TgUserRepo, "upsert">;
   loadSnapshot: typeof realLoad;
   askBedrock: typeof realAsk;
   sendMessage: typeof realSend;
@@ -66,6 +68,7 @@ export async function handler(
     configRepo: deps?.configRepo ?? new ConfigRepo(),
     qaLogRepo: deps?.qaLogRepo ?? new QaLogRepo(),
     rateLimit: deps?.rateLimit ?? new RateLimitRepo(),
+    tgUserRepo: deps?.tgUserRepo ?? new TgUserRepo(),
     loadSnapshot: deps?.loadSnapshot ?? realLoad,
     askBedrock: deps?.askBedrock ?? realAsk,
     sendMessage: deps?.sendMessage ?? realSend,
@@ -95,6 +98,24 @@ export async function handler(
     }
 
     if (msg.from?.is_bot) return ok();
+
+    // Registro de usuario (directorio del admin). Aislado: un fallo aquí NO
+    // debe romper la respuesta del bot.
+    try {
+      await d.tgUserRepo.upsert({
+        chatId: msg.chat.id,
+        username: msg.from?.username,
+        firstName: msg.from?.first_name,
+        lastName: msg.from?.last_name,
+        languageCode: msg.from?.language_code,
+        now: new Date().toISOString(),
+      });
+    } catch (e) {
+      logger.warn("no se pudo registrar el usuario de Telegram", {
+        chatId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
 
     token = await d.getToken();
     const botUsername = await d.getBotUsername(token);

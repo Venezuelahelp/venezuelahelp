@@ -4,6 +4,8 @@ import type { route as RouteType } from "@/admin-api/router";
 import { ConfigRepo } from "@/shared/repos/configRepo";
 import { SourceRepo } from "@/shared/repos/sourceRepo";
 import { ItemRepo } from "@/shared/repos/itemRepo";
+import { VisitRepo } from "@/shared/repos/visitRepo";
+import { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import { logger } from "@/shared/logger";
 
 const CORS = {
@@ -61,6 +63,8 @@ export async function handler(
     configRepo: new ConfigRepo(),
     sourceRepo: new SourceRepo(),
     itemRepo: new ItemRepo(),
+    visitRepo: new VisitRepo(),
+    tgUserRepo: new TgUserRepo(),
     invokeScraper: () =>
       lambdaClient
         .send(

@@ -2,6 +2,9 @@ export interface TgUser {
   id: number;
   is_bot?: boolean;
   username?: string;
+  first_name?: string;
+  last_name?: string;
+  language_code?: string;
 }
 
 export interface TgMessage {

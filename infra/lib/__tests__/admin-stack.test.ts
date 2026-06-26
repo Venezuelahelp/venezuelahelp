@@ -57,9 +57,9 @@ describe("AdminStack", () => {
     });
   });
 
-  it("creates exactly 8 routes, all protected with JWT", () => {
+  it("creates exactly 10 routes, all protected with JWT", () => {
     const t = template();
-    t.resourceCountIs("AWS::ApiGatewayV2::Route", 8);
+    t.resourceCountIs("AWS::ApiGatewayV2::Route", 10);
     const routes = t.findResources("AWS::ApiGatewayV2::Route");
     for (const [logicalId, resource] of Object.entries(routes)) {
       expect(

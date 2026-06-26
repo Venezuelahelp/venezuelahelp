@@ -1,4 +1,4 @@
-import type { Config, Source, Stats } from "@/types";
+import type { Config, Source, Stats, Analytics, TgUser } from "@/types";
 
 interface ApiDeps {
   fetch?: typeof fetch;
@@ -17,6 +17,8 @@ interface Api {
     extractHint?: string;
   }): Promise<Source>;
   deleteSource(id: string): Promise<void>;
+  getAnalytics(): Promise<Analytics>;
+  getTgUsers(): Promise<TgUser[]>;
 }
 
 export function createApi(
@@ -84,6 +86,14 @@ export function createApi(
 
     async deleteSource(id: string): Promise<void> {
       await request<unknown>(`/sources/${encodeURIComponent(id)}`, "DELETE");
+    },
+
+    getAnalytics(): Promise<Analytics> {
+      return request<Analytics>("/analytics", "GET");
+    },
+
+    getTgUsers(): Promise<TgUser[]> {
+      return request<TgUser[]>("/tg-users", "GET");
     },
   };
 }
