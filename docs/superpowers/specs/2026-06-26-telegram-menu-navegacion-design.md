@@ -132,6 +132,8 @@ m:animales        → mensaje "Próximamente"
 m:skiploc:<cat>   → "Ver sin ubicación" para <cat>
 ```
 
+> **Nota de implementación.** La versión final usa tokens **sin prefijo `m:`** (`home`, `ayuda`, `insumos`, …) — son inequívocos y caben de sobra en 64 bytes. Y "Ver sin ubicación" **no** es un `callback_data`: es un botón del _reply-keyboard_ que envía el texto `SKIP_LOCATION_TEXT` ("Ver sin ubicación"), porque un mismo mensaje no puede combinar reply-keyboard (`request_location`) con inline-keyboard. El handler interpreta ese texto y renderiza la categoría pendiente sin ubicación.
+
 ### Render de tarjetas (`cards.ts`)
 
 Cada ítem se renderiza como (máx. ~8 ítems por mensaje para no exceder límites de Telegram):
