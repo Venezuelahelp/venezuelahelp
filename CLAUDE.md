@@ -63,6 +63,7 @@ cd infra && npx cdk deploy --profile VenezuelaHelp   # despliega
 - **Conventional Commits con emoji**: `<emoji> <tipo>(<scope>): <descripción imperativa>`.
 - **Nunca commitear directo a `main`** — ramas `feat/`, `fix/`, `chore/`. Sin `git push --force` salvo en ramas propias.
 - Manejo de errores explícito (nada de swallow silencioso); un fallo por fuente no rompe a las demás.
+- **Solo `CLAUDE.md`, no `AGENTS.md`** en este repo (el dueño lo eliminó) — las notas de proyecto van únicamente a `CLAUDE.md`; no recrear `AGENTS.md`. <!-- /aprende 2026-06-26 -->
 
 ## AWS
 
