@@ -3,6 +3,7 @@ import { ItemRepo } from "@/shared/repos/itemRepo";
 import { getConnector as defaultGetConnector } from "@/connectors/registry";
 import { ensureSeedSources } from "@/scraper/seed";
 import { runAiSource as defaultRunAiSource } from "@/connectors/aiConnector";
+import { safeFetchText } from "@/connectors/ssrf";
 import { ConfigRepo } from "@/shared/repos/configRepo";
 import { askBedrock as defaultAskBedrock } from "@/telegram/bedrock";
 import type { Source } from "@/shared/types";
@@ -44,13 +45,7 @@ export async function runScrape(
   const getConnector = deps?.getConnector ?? defaultGetConnector;
   const configRepo = deps?.configRepo ?? new ConfigRepo();
   const runAi = deps?.runAiSource ?? defaultRunAiSource;
-  const fetchText =
-    deps?.fetchText ??
-    (async (url: string) => {
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(`GET ${url} ${r.status}`);
-      return r.text();
-    });
+  const fetchText = deps?.fetchText ?? ((url: string) => safeFetchText(url));
   const askBedrock = deps?.askBedrock ?? defaultAskBedrock;
 
   await seed(sourceRepo as SourceRepo);
