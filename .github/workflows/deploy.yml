@@ -78,13 +78,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
-      - name: CDK bootstrap
-        run: npx cdk bootstrap --require-approval never
-        working-directory: infra
-        env:
-          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
-          CDK_DEFAULT_REGION: us-east-1
-
       - name: CDK deploy
         run: npx cdk deploy --all --require-approval never
         working-directory: infra
