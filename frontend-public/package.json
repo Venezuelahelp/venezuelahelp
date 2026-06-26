@@ -10,7 +10,6 @@
     "snapshot:pull": "node scripts/pull-snapshot.mjs"
   },
   "dependencies": {
-    "@fontsource/great-vibes": "^5.2.8",
     "@fontsource/inter": "^5.0.0",
     "@phosphor-icons/react": "^2.1.10",
     "leaflet": "^1.9.4",
