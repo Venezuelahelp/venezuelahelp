@@ -4,6 +4,8 @@ import styles from "./Dashboard.module.css";
 
 interface DashboardProps {
   stats: Stats;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 function formatRun(iso?: string): string {
@@ -18,9 +20,23 @@ function formatRun(iso?: string): string {
   }
 }
 
-export function Dashboard({ stats }: DashboardProps) {
+export function Dashboard({ stats, onRefresh, refreshing }: DashboardProps) {
   return (
     <div className={styles.root}>
+      {onRefresh && (
+        <div className={styles.toolbar}>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing}
+            className={styles.refreshButton}
+          >
+            {refreshing ? "Actualizando…" : "Actualizar"}
+          </button>
+        </div>
+      )}
+
       <section className={styles.section}>
         <h2 className={styles.heading}>Conteos por categoría</h2>
         <ul className={styles.categoryList} role="list">

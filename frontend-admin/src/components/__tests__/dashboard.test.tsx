@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { vi } from "vitest";
 import { Dashboard } from "@/components/Dashboard";
 import type { Stats } from "@/types";
 
@@ -77,5 +78,23 @@ describe("Dashboard", () => {
     render(<Dashboard stats={mockStats} />);
     // src-2 and src-3 both have no lastRun → two "nunca" cells
     expect(screen.getAllByText("nunca")).toHaveLength(2);
+  });
+
+  it("calls onRefresh when the refresh button is clicked", () => {
+    const onRefresh = vi.fn();
+    render(<Dashboard stats={mockStats} onRefresh={onRefresh} />);
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+    expect(onRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("disables the refresh button and shows progress while refreshing", () => {
+    render(<Dashboard stats={mockStats} onRefresh={vi.fn()} refreshing />);
+    const btn = screen.getByRole("button", { name: "Actualizando…" });
+    expect(btn).toBeDisabled();
+  });
+
+  it("renders no refresh button when onRefresh is not provided", () => {
+    render(<Dashboard stats={mockStats} />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

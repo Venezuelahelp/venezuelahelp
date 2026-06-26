@@ -50,9 +50,11 @@ export default function App({ deps = {} }: AppProps) {
   const [sources, setSources] = useState<Source[] | null>(null);
   const [config, setConfig] = useState<ConfigType | null>(null);
   const [scraping, setScraping] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const apiRef = useRef<ApiClient | null>(null);
   const mountedRef = useRef(true);
@@ -123,15 +125,54 @@ export default function App({ deps = {} }: AppProps) {
     setConfig(null);
   }
 
+  // Auto-dismiss the success notice so it doesn't linger.
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => {
+      if (mountedRef.current) setNotice(null);
+    }, 9000);
+    return () => clearTimeout(t);
+  }, [notice]);
+
   async function handleScrape() {
     if (!apiRef.current) return;
     setScraping(true);
+    setNotice(null);
+    setError(null);
     try {
+      // The scraper runs asynchronously: the API returns 202 immediately and
+      // extraction continues in the background. There is no "finished" signal,
+      // so we confirm it started and point the user to the Dashboard refresh.
       await apiRef.current.scrapeNow();
+      if (mountedRef.current) {
+        setNotice(
+          "Scrape iniciado. Corre en segundo plano (~1–2 min); luego usá «Actualizar» en el Dashboard para ver los datos nuevos.",
+        );
+      }
     } catch {
       if (mountedRef.current) setError("No se pudo iniciar el scrape.");
     } finally {
       if (mountedRef.current) setScraping(false);
+    }
+  }
+
+  async function handleRefreshStats() {
+    if (!apiRef.current) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const [s, src] = await Promise.all([
+        apiRef.current.getStats(),
+        apiRef.current.getSources(),
+      ]);
+      if (mountedRef.current) {
+        setStats(s);
+        setSources(src);
+      }
+    } catch {
+      if (mountedRef.current) setError("No se pudieron actualizar los datos.");
+    } finally {
+      if (mountedRef.current) setRefreshing(false);
     }
   }
 
@@ -247,10 +288,20 @@ export default function App({ deps = {} }: AppProps) {
         </div>
       )}
 
+      {notice && (
+        <div role="status" aria-live="polite" className={styles.noticeBanner}>
+          {notice}
+        </div>
+      )}
+
       <main className={styles.main}>
         {activeTab === "dashboard" &&
           (stats ? (
-            <Dashboard stats={stats} />
+            <Dashboard
+              stats={stats}
+              onRefresh={() => void handleRefreshStats()}
+              refreshing={refreshing}
+            />
           ) : (
             <div className={styles.loading} role="status">
               Cargando datos…

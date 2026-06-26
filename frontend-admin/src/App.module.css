@@ -128,6 +128,14 @@
   border-bottom: 1px solid oklch(0.88 0.05 25);
 }
 
+.noticeBanner {
+  padding: 12px 24px;
+  font-size: 0.875rem;
+  color: oklch(0.38 0.1 150);
+  background-color: oklch(0.96 0.04 150);
+  border-bottom: 1px solid oklch(0.85 0.07 150);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .signOutButton,
   .navButton {
