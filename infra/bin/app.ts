@@ -3,6 +3,7 @@ import { DataStack } from "../lib/data-stack";
 import { ScraperStack } from "../lib/scraper-stack";
 import { BotStack } from "../lib/bot-stack";
 import { FrontendStack } from "../lib/frontend-stack";
+import { AdminStack } from "../lib/admin-stack";
 
 const app = new App();
 // Env explícito desde CDK_DEFAULT_ACCOUNT/REGION (poblado por el CLI o pasado
@@ -13,7 +14,7 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION ?? "us-east-1",
 };
 const data = new DataStack(app, "VenezuelaHelpDataStack", { env });
-new ScraperStack(app, "VenezuelaHelpScraperStack", {
+const scraper = new ScraperStack(app, "VenezuelaHelpScraperStack", {
   env,
   table: data.table,
   snapshotBucket: data.snapshotBucket,
@@ -27,4 +28,9 @@ new BotStack(app, "VenezuelaHelpBotStack", {
 new FrontendStack(app, "VenezuelaHelpFrontendStack", {
   env,
   snapshotBucket: data.snapshotBucket,
+});
+new AdminStack(app, "VenezuelaHelpAdminStack", {
+  env,
+  table: data.table,
+  scraperFn: scraper.scraperFn,
 });
