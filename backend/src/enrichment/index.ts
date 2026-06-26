@@ -25,12 +25,10 @@ export function enrichItems(
 
   for (const [clusterKey, list] of clusters) {
     const sourcesCount = new Set(list.map((i) => i.sourceId)).size;
-    // Solo marcamos duplicados cuando hay corroboración entre fuentes distintas.
-    // Si todo el cluster es de una sola fuente, esa fuente ya separó sus ítems
-    // por externalId: son hechos distintos, no duplicados → todos canónicos.
-    const corroborated = sourcesCount >= 2;
-    // Canónico del cluster: el más reciente; desempate por SK ascendente para
-    // que la elección sea estable entre corridas.
+    // Dentro de un cluster (mismo hecho, según la clave por categoría) el más
+    // reciente es el canónico y el resto son duplicados. Las claves por
+    // categoría ya evitan agrupar hechos distintos, así que esto marca los
+    // duplicados reales (la misma persona/edificio/texto repetido).
     const canonical = [...list].sort((a, b) => {
       const t = b.lastSeenAt.localeCompare(a.lastSeenAt);
       return t !== 0 ? t : sk(a).localeCompare(sk(b));
@@ -38,7 +36,7 @@ export function enrichItems(
     const canonicalSk = sk(canonical);
 
     for (const it of list) {
-      const isCanonical = !corroborated || sk(it) === canonicalSk;
+      const isCanonical = sk(it) === canonicalSk;
       const { trust, trustReasons } = scoreTrust(
         it,
         sourcesCount,

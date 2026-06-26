@@ -39,17 +39,17 @@ describe("jaccard", () => {
 });
 
 describe("clusterize", () => {
-  it("agrupa por geoCell+zona dos fuentes en el mismo edificio", () => {
+  it("agrupa edificios con el mismo título en la misma ubicación", () => {
     const a = item({
       sourceId: "s1",
       externalId: "1",
-      titulo: "Torre A",
+      titulo: "Torre Petunia I y II",
       ubicacion: { lat: 10.5, lng: -66.9, nombre: "Chacao" },
     });
     const b = item({
-      sourceId: "s2",
-      externalId: "9",
-      titulo: "Edificio en Chacao",
+      sourceId: "s1",
+      externalId: "2",
+      titulo: "Torre Petunia I y II",
       ubicacion: { lat: 10.501, lng: -66.901, nombre: "Chacao" },
     });
     const clusters = clusterize([a, b], CFG);
@@ -76,38 +76,42 @@ describe("clusterize", () => {
     expect(clusters.size).toBe(1);
   });
 
-  it("funde títulos similares por Jaccard cuando no hay geo ni persona", () => {
+  it("funde reportes con textos similares por Jaccard", () => {
     const a = item({
       category: "reportes",
       sourceId: "s1",
       externalId: "1",
-      titulo: "Colapso de puente en La Guaira reportado",
+      titulo: "RTVC Noticias",
+      texto: "Colapso de puente en La Guaira reportado esta tarde",
       ubicacion: undefined,
     });
     const b = item({
       category: "reportes",
       sourceId: "s2",
       externalId: "2",
-      titulo: "Reportan colapso del puente en La Guaira",
+      titulo: "Otro Medio",
+      texto: "Reportan colapso del puente en La Guaira esta tarde",
       ubicacion: undefined,
     });
     const clusters = clusterize([a, b], CFG);
     expect(clusters.size).toBe(1);
   });
 
-  it("no agrupa hechos distintos", () => {
+  it("NO agrupa reportes distintos del mismo emisor (título = medio)", () => {
     const a = item({
       category: "reportes",
       sourceId: "s1",
       externalId: "1",
-      titulo: "Sismo en Sucre magnitud cinco",
+      titulo: "Movimiento Ciudadano",
+      texto: "Habilitan refugio temporal en el municipio Baruta",
       ubicacion: undefined,
     });
     const b = item({
       category: "reportes",
-      sourceId: "s2",
+      sourceId: "s1",
       externalId: "2",
-      titulo: "Acopio de agua en Maracaibo abierto",
+      titulo: "Movimiento Ciudadano",
+      texto: "Suspenden clases en todo el estado Vargas mañana",
       ubicacion: undefined,
     });
     const clusters = clusterize([a, b], CFG);

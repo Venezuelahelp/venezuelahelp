@@ -15,7 +15,7 @@ function item(p: Partial<StoredItem>): StoredItem {
     category: "edificios",
     sourceId: "s1",
     externalId: "1",
-    titulo: "Torre",
+    titulo: "Torre Petunia",
     texto: "Texto suficientemente largo",
     ubicacion: { lat: 10.5, lng: -66.9, nombre: "Chacao" },
     raw: {},
@@ -48,6 +48,33 @@ describe("enrichItems", () => {
     expect(canon.dupOf).toBeUndefined();
   });
 
+  it("marca el duplicado real de un desaparecido repetido en la misma fuente", () => {
+    // Caso observado en producción: la misma persona listada 2 veces por la
+    // misma fuente → una ficha canónica y la otra duplicada.
+    const a = item({
+      category: "desaparecidos",
+      sourceId: "vtb",
+      externalId: "1",
+      titulo: "Luis Bartolomé Hernández Herrera",
+      ubicacion: undefined,
+      lastSeenAt: "2026-06-25T00:00:00Z",
+    });
+    const b = item({
+      category: "desaparecidos",
+      sourceId: "vtb",
+      externalId: "2",
+      titulo: "Luis Bartolomé Hernández Herrera",
+      ubicacion: undefined,
+      lastSeenAt: "2026-06-26T00:00:00Z",
+    });
+    const out = enrichItems([a, b], CFG);
+    expect(out.filter((i) => i.isCanonical)).toHaveLength(1);
+    const dup = out.find((i) => !i.isCanonical)!;
+    expect(dup.dupOf).toBe("vtb#2"); // canónico = el más reciente
+    // sourcesCount cuenta fuentes distintas: aquí 1, aunque haya 2 fichas.
+    expect(out.every((i) => i.sourcesCount === 1)).toBe(true);
+  });
+
   it("ítem único de una fuente → no_verificado y canónico de su cluster", () => {
     const out = enrichItems([item({ sourceId: "s1", externalId: "1" })], CFG);
     expect(out[0].sourcesCount).toBe(1);
@@ -55,36 +82,26 @@ describe("enrichItems", () => {
     expect(out[0].trust).toBe("no_verificado");
   });
 
-  it("NO marca duplicados entre ítems de la misma fuente (mismo cluster)", () => {
-    // Dos ítems de s1 que caen en el mismo cluster geo: la fuente ya los separó
-    // por externalId, así que son hechos distintos → ambos canónicos.
-    const a = item({ sourceId: "s1", externalId: "1" });
-    const b = item({ sourceId: "s1", externalId: "2" });
-    const out = enrichItems([a, b], CFG);
-    expect(out.every((i) => i.isCanonical)).toBe(true);
-    expect(out.every((i) => i.dupOf === undefined)).toBe(true);
-    expect(out.every((i) => i.sourcesCount === 1)).toBe(true);
-  });
-
-  it("no agrupa reportes con título genérico de una sola palabra", () => {
+  it("no agrupa reportes distintos del mismo emisor (título = medio)", () => {
     const a = item({
       category: "reportes",
       sourceId: "s1",
       externalId: "1",
-      titulo: "Caracas",
+      titulo: "Movimiento Ciudadano",
+      texto: "Habilitan refugio temporal en el municipio Baruta",
       ubicacion: undefined,
     });
     const b = item({
       category: "reportes",
-      sourceId: "s2",
+      sourceId: "s1",
       externalId: "2",
-      titulo: "Caracas",
+      titulo: "Movimiento Ciudadano",
+      texto: "Suspenden clases en todo el estado Vargas mañana",
       ubicacion: undefined,
     });
     const out = enrichItems([a, b], CFG);
-    // Títulos genéricos → claves únicas → clusters separados → sin corroboración.
     expect(out.every((i) => i.isCanonical)).toBe(true);
-    expect(out.every((i) => i.sourcesCount === 1)).toBe(true);
+    expect(out.every((i) => i.dupOf === undefined)).toBe(true);
   });
 
   it("no muta la entrada", () => {

@@ -55,47 +55,54 @@ export function jaccard(a: string[], b: string[]): number {
   return union === 0 ? 0 : inter / union;
 }
 
-// Categorías donde la ubicación física ES la identidad del ítem. En el resto
-// (reportes, solicitudes) dos ítems que comparten ciudad NO son el mismo hecho,
-// así que NO se agrupa por geo: se usa el título.
+// Categorías donde la ubicación física ES la identidad del ítem.
 const GEO_IDENTITY = new Set(["edificios", "acopios"]);
 
-// Una firma de título con menos de este nº de tokens significativos es demasiado
-// genérica para identificar un hecho (p. ej. solo "Caracas"): no debe agrupar.
-const MIN_TITLE_TOKENS = 2;
+// Partes significativas (≥3 letras) de un nombre de persona normalizado.
+function nameTokens(person: string): string[] {
+  return person.split(" ").filter((w) => w.length >= 3);
+}
 
 // Clave única por ítem: no agrupa con ningún otro.
 function uniqueKey(item: StoredItem): string {
   return `u:${item.sourceId}#${item.externalId}`;
 }
 
-// Clave de agrupación por título, o única si la firma es demasiado genérica.
-function titleKey(item: StoredItem): string {
-  const sig = titleSignature(item.titulo);
-  if (sig.length < MIN_TITLE_TOKENS) return uniqueKey(item);
-  return `t:${sig.join("-")}`;
-}
-
 // Clave base de agrupación, antes del refuerzo difuso. La señal de identidad
-// depende de la categoría.
+// depende de la categoría:
+//  - desaparecidos: el NOMBRE de la persona (su título).
+//  - edificios/acopios: la ubicación + título (la entidad es un lugar físico).
+//  - reportes/solicitudes: el TEXTO. El título suele ser el nombre del medio o
+//    de la cuenta (p. ej. "RTVC Noticias"), no el hecho, así que agrupar por
+//    título uniría noticias distintas del mismo emisor.
 export function baseKey(item: StoredItem, cfg: EnrichmentConfig): string {
+  const cell = item.ubicacion
+    ? geoCell(item.ubicacion.lat, item.ubicacion.lng, cfg.geoCellSize)
+    : "";
+
   if (item.category === "desaparecidos") {
     const person = normalizeText(item.titulo);
-    if (!person) return uniqueKey(item);
-    const cell = item.ubicacion
-      ? geoCell(item.ubicacion.lat, item.ubicacion.lng, cfg.geoCellSize)
-      : "";
+    // Un nombre con < 2 partes (vacío o una sola palabra) es demasiado ambiguo
+    // para afirmar que dos fichas son la misma persona.
+    if (nameTokens(person).length < 2) return uniqueKey(item);
     return `p:${person}|${cell}`;
   }
-  if (GEO_IDENTITY.has(item.category) && item.ubicacion) {
-    const cell = geoCell(
-      item.ubicacion.lat,
-      item.ubicacion.lng,
-      cfg.geoCellSize,
-    );
-    return `g:${cell}|${normalizeText(item.ubicacion.nombre ?? "")}`;
+
+  if (GEO_IDENTITY.has(item.category)) {
+    const sig = titleSignature(item.titulo);
+    if (sig.length >= 2) return `g:${cell}|${sig.join("-")}`;
+    // Título pobre: si hay ubicación con nombre de zona, agrupamos por zona;
+    // si no, queda aislado.
+    if (item.ubicacion)
+      return `g:${cell}|${normalizeText(item.ubicacion.nombre ?? "")}`;
+    return uniqueKey(item);
   }
-  return titleKey(item);
+
+  // reportes, solicitudes → firma del texto (con refuerzo Jaccard).
+  const sig = titleSignature(item.texto);
+  // Textos muy cortos/genéricos (< 3 tokens) no identifican un hecho.
+  if (sig.length < 3) return uniqueKey(item);
+  return `t:${sig.join("-")}`;
 }
 
 export function clusterize(
