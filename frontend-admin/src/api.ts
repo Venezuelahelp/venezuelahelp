@@ -83,7 +83,7 @@ export function createApi(
     },
 
     async deleteSource(id: string): Promise<void> {
-      await request<unknown>(`/sources/${id}`, "DELETE");
+      await request<unknown>(`/sources/${encodeURIComponent(id)}`, "DELETE");
     },
   };
 }

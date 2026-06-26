@@ -279,12 +279,39 @@ describe("App (integration)", () => {
       expect(api.createSource).toHaveBeenCalledWith({
         nombre: "Nueva Fuente",
         url: "https://nueva.com",
-        extractHint: "",
+        extractHint: undefined,
       });
     });
 
     await waitFor(() => {
       expect(api.getSources).toHaveBeenCalledTimes(2); // initial load + refresh
+    });
+  });
+
+  it("shows error banner when createSource rejects", async () => {
+    const { deps, api } = buildDeps(() => Promise.resolve("mock-token"));
+    api.createSource = vi.fn().mockRejectedValue(new Error("HTTP 400"));
+    const user = userEvent.setup();
+    render(<App deps={deps} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("navigation")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /Fuentes/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/nombre/i)).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText(/nombre/i), "Nueva Fuente");
+    await user.type(screen.getByLabelText(/url/i), "https://nueva.com");
+    await user.click(screen.getByRole("button", { name: /agregar fuente/i }));
+
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent("No se pudo agregar la fuente.");
     });
   });
 

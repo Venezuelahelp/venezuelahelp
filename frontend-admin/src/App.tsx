@@ -156,14 +156,16 @@ export default function App({ deps = {} }: AppProps) {
     url: string;
     extractHint?: string;
   }) {
-    if (!apiRef.current) return;
+    if (!apiRef.current)
+      return Promise.reject(new Error("API not initialized"));
     const api = apiRef.current;
     setCreating(true);
-    api
+    return api
       .createSource(body)
       .then(() => refreshSources())
-      .catch(() => {
+      .catch((e) => {
         if (mountedRef.current) setError("No se pudo agregar la fuente.");
+        throw e;
       })
       .finally(() => {
         if (mountedRef.current) setCreating(false);

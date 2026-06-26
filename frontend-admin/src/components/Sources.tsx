@@ -5,7 +5,7 @@ import styles from "./Sources.module.css";
 interface CreateBody {
   nombre: string;
   url: string;
-  extractHint: string;
+  extractHint?: string;
 }
 
 interface SourcesProps {
@@ -13,7 +13,7 @@ interface SourcesProps {
   onToggle: (id: string, enabled: boolean) => void;
   onScrape: () => void;
   scraping: boolean;
-  onCreate?: (body: CreateBody) => void;
+  onCreate?: (body: CreateBody) => Promise<void> | void;
   onDelete?: (id: string) => void;
   creating?: boolean;
 }
@@ -34,10 +34,20 @@ export function Sources({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!onCreate) return;
-    onCreate({ nombre, url, extractHint });
-    setNombre("");
-    setUrl("");
-    setExtractHint("");
+    const result = onCreate({
+      nombre,
+      url,
+      extractHint: extractHint || undefined,
+    });
+    Promise.resolve(result)
+      .then(() => {
+        setNombre("");
+        setUrl("");
+        setExtractHint("");
+      })
+      .catch(() => {
+        /* keep inputs so the user can retry */
+      });
   }
 
   function handleDelete(src: Source) {

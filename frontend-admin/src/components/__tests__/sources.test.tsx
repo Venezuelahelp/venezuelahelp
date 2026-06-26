@@ -165,7 +165,7 @@ describe("Sources", () => {
     expect(onCreate).toHaveBeenCalledWith({
       nombre: "Nueva Fuente",
       url: "https://nueva.com",
-      extractHint: "",
+      extractHint: undefined,
     });
   });
 
