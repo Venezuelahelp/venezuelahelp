@@ -22,6 +22,9 @@ export interface NormalizedItem {
   texto: string;
   ubicacion?: GeoPoint;
   status?: string;
+  // URL absoluta de la foto en la fuente original (hotlink). Opcional: muchas
+  // fuentes/ítems no traen imagen. No re-hospedamos (Fase 1).
+  imageUrl?: string;
   raw: unknown;
 }
 

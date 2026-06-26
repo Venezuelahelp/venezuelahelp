@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ItemList from "@/components/ItemList";
 import { Empty, ErrorState, Loading } from "@/components/States";
@@ -15,6 +15,7 @@ const items: Item[] = [
     texto: "Reporte de estructura dañada en la zona central de Caracas.",
     ubicacion: { lat: 10.5, lng: -66.9, nombre: "El Silencio, Caracas" },
     firstSeenAt: "2026-06-26T12:00:00Z",
+    imageUrl: "https://example.com/edificio.jpg",
   },
   {
     category: "desaparecidos",
@@ -65,6 +66,28 @@ describe("ItemList", () => {
     render(<ItemList items={items} />);
     expect(screen.getByText("El Silencio, Caracas")).toBeInTheDocument();
     expect(screen.getByText("Las Mercedes")).toBeInTheDocument();
+  });
+
+  it("renders a thumbnail image when the item has imageUrl", () => {
+    const { container } = render(<ItemList items={items} />);
+    const img = container.querySelector(
+      'img[src="https://example.com/edificio.jpg"]',
+    );
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("loading", "lazy");
+  });
+
+  it("renders no image when the item has no imageUrl", () => {
+    const { container } = render(<ItemList items={[items[1]]} />);
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("removes the thumbnail if the image fails to load", () => {
+    const { container } = render(<ItemList items={[items[0]]} />);
+    const img = container.querySelector("img");
+    expect(img).toBeInTheDocument();
+    fireEvent.error(img!);
+    expect(container.querySelector("img")).toBeNull();
   });
 
   it("does not crash when ubicacion is absent", () => {

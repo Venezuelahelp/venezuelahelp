@@ -54,6 +54,31 @@ describe("sismovenezuela connector", () => {
     expect(edi?.ubicacion?.lat).not.toBe(edi?.ubicacion?.lng);
   });
 
+  it("maps the first media_urls entry to imageUrl, omitting it when null", async () => {
+    const items = await sismovenezuela.fetchItems();
+    const withMedia = items.find(
+      (i) =>
+        i.category === "reportes" && i.externalId === String(reportsFeed[0].id),
+    );
+    expect(withMedia?.imageUrl).toBe(reportsFeed[0].media_urls?.[0]);
+    // segundo reporte: media_urls null → sin imageUrl
+    const noMedia = items.find(
+      (i) =>
+        i.category === "reportes" && i.externalId === String(reportsFeed[1].id),
+    );
+    expect(noMedia?.imageUrl).toBeUndefined();
+  });
+
+  it("maps building-damage photo_url to imageUrl when present", async () => {
+    const items = await sismovenezuela.fetchItems();
+    const f = buildingDamage.features[1];
+    const edi = items.find(
+      (i) =>
+        i.category === "edificios" && i.externalId === String(f.properties.id),
+    );
+    expect(edi?.imageUrl).toBe(f.properties.photo_url);
+  });
+
   it("isolates a failing endpoint (still returns items from the others)", async () => {
     mockByPath({
       "/api/relief-centers": reliefCenters,

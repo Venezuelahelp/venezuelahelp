@@ -1,5 +1,10 @@
 import { fetchJson } from "@/connectors/http";
-import { geo, truncate, type SourceConnector } from "@/connectors/types";
+import {
+  geo,
+  imageUrl,
+  truncate,
+  type SourceConnector,
+} from "@/connectors/types";
 import { logger } from "@/shared/logger";
 import type { Category, NormalizedItem } from "@/shared/types";
 
@@ -46,6 +51,7 @@ async function reports(): Promise<NormalizedItem[]> {
       texto: truncate([r.affected, r.needs].filter(Boolean).join(" · ")),
       ubicacion: geo(r.lat, r.lng, r.place),
       status: String(r.type),
+      imageUrl: imageUrl(BASE, r.photoUrl),
       raw: r,
     });
   }
@@ -65,6 +71,7 @@ async function desaparecidos(): Promise<NormalizedItem[]> {
       [m.age ? `Edad ${m.age}` : "", m.lastSeen].filter(Boolean).join(" · "),
     ),
     ubicacion: geo(m.lat, m.lng, m.lastSeen),
+    imageUrl: imageUrl(BASE, m.photoUrl),
     raw: m,
   }));
 }

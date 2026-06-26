@@ -19,6 +19,8 @@ export interface Item {
   texto: string;
   ubicacion?: Ubicacion;
   status?: string;
+  /** URL absoluta de la foto en la fuente original (hotlink, no re-hospedada). */
+  imageUrl?: string;
   /** ISO — primera vez que la plataforma agregó este ítem ("Registrado"). */
   firstSeenAt?: string;
   /** ISO — última vez que se vio en una fuente. */

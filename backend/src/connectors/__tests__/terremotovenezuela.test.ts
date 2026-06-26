@@ -35,6 +35,31 @@ describe("terremotovenezuela connector", () => {
     ).toBe(true);
   });
 
+  it("resolves report photoUrl to an absolute imageUrl, and omits it when null", async () => {
+    const items = await terremotovenezuela.fetchItems();
+    const withPhoto = items.find(
+      (i) => i.externalId === "b7651e6d-747e-4b52-bc6f-b916a8a6dcab",
+    );
+    expect(withPhoto?.imageUrl).toBe(
+      "https://terremotovenezuela.app/api/reports/b7651e6d-747e-4b52-bc6f-b916a8a6dcab/photo",
+    );
+    // report 476b... has photoUrl: null → no imageUrl field
+    const noPhoto = items.find(
+      (i) => i.externalId === "476b17c6-9fea-4ae0-a59b-494e88955894",
+    );
+    expect(noPhoto?.imageUrl).toBeUndefined();
+  });
+
+  it("resolves desaparecidos photoUrl to an absolute imageUrl", async () => {
+    const items = await terremotovenezuela.fetchItems();
+    const desap = items.find(
+      (i) => i.externalId === "e55b1b4b-13bc-4344-8715-1b888e8a539b",
+    );
+    expect(desap?.imageUrl).toBe(
+      "https://terremotovenezuela.app/api/missing/e55b1b4b-13bc-4344-8715-1b888e8a539b/photo",
+    );
+  });
+
   it("maps /api/missing/map markers to geolocated desaparecidos", async () => {
     const items = await terremotovenezuela.fetchItems();
     const desap = items.filter((i) => i.category === "desaparecidos");

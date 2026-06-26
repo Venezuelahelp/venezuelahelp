@@ -1,5 +1,10 @@
 import { fetchJson } from "@/connectors/http";
-import { geo, truncate, type SourceConnector } from "@/connectors/types";
+import {
+  geo,
+  imageUrl,
+  truncate,
+  type SourceConnector,
+} from "@/connectors/types";
 import { logger } from "@/shared/logger";
 import type { NormalizedItem } from "@/shared/types";
 
@@ -38,6 +43,7 @@ async function reportes(): Promise<NormalizedItem[]> {
     texto: truncate(r.text_content),
     ubicacion: geo(r.lat, r.lng, r.location_name),
     status: r.damage_level ? String(r.damage_level) : undefined,
+    imageUrl: imageUrl(BASE, r.media_urls?.[0]),
     raw: r,
   }));
 }
@@ -74,6 +80,7 @@ async function edificios(): Promise<NormalizedItem[]> {
       texto: truncate([p.damage_type, p.needs].filter(Boolean).join(" · ")),
       ubicacion: c ? geo(c[1], c[0], p.place as string) : undefined,
       status: p.affected ? String(p.affected) : undefined,
+      imageUrl: imageUrl(BASE, p.photo_url as string | null | undefined),
       raw: p,
     };
   });
