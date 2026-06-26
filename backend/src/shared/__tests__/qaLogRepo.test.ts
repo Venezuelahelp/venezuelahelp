@@ -36,6 +36,18 @@ describe("QaLogRepo", () => {
     });
   });
 
+  it("stamps a ttl so the log self-expires (privacy retention)", async () => {
+    ddbMock.on(PutCommand).resolves({});
+    await new QaLogRepo().append(entry);
+    const item = ddbMock.commandCalls(PutCommand)[0].args[0].input.Item as {
+      ttl: number;
+    };
+    const tsSec = Math.floor(Date.parse(entry.ts) / 1000);
+    const days = (item.ttl - tsSec) / 86400;
+    expect(days).toBeGreaterThan(29);
+    expect(days).toBeLessThan(31); // ~30 días de retención
+  });
+
   it("listByChat queries newest first with a limit", async () => {
     ddbMock
       .on(QueryCommand)
