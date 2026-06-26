@@ -23,6 +23,17 @@ describe("Users", () => {
     expect(screen.getByText("9")).toBeInTheDocument();
   });
 
+  it("renders the language name (not the raw code) and table headers", () => {
+    render(<Users users={users} />);
+    expect(screen.getByText("Español")).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Usuario" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Última vez" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows an empty state when there are no users", () => {
     render(<Users users={[]} />);
     expect(

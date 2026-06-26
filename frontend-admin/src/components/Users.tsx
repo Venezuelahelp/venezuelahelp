@@ -10,11 +10,25 @@ interface UsersProps {
 function formatTs(iso: string): string {
   try {
     return new Date(iso).toLocaleString("es-VE", {
-      dateStyle: "short",
-      timeStyle: "short",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch {
     return iso;
+  }
+}
+
+// "es" → "Español". Capitaliza la primera letra (Intl devuelve minúscula).
+function languageName(code?: string): string {
+  if (!code) return "—";
+  try {
+    const dn = new Intl.DisplayNames(["es"], { type: "language" });
+    const name = dn.of(code) ?? code;
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  } catch {
+    return code;
   }
 }
 
@@ -22,7 +36,12 @@ export function Users({ users, onRefresh, refreshing }: UsersProps) {
   return (
     <div className={styles.root}>
       <div className={styles.header}>
-        <h2 className={styles.heading}>Usuarios de Telegram</h2>
+        <div className={styles.headLeft}>
+          <h2 className={styles.heading}>Usuarios de Telegram</h2>
+          {users.length > 0 && (
+            <span className={styles.count}>{users.length}</span>
+          )}
+        </div>
         {onRefresh && (
           <button
             type="button"
@@ -39,29 +58,40 @@ export function Users({ users, onRefresh, refreshing }: UsersProps) {
       {users.length === 0 ? (
         <p className={styles.empty}>Aún no hay usuarios registrados.</p>
       ) : (
-        <ul className={styles.list} role="list">
-          <li className={`${styles.row} ${styles.headRow}`} aria-hidden="true">
-            <span>Usuario</span>
-            <span>Idioma</span>
-            <span>Primera vez</span>
-            <span>Última vez</span>
-            <span className={styles.num}>Msgs</span>
-          </li>
-          {users.map((u) => (
-            <li key={u.chatId} className={styles.row}>
-              <span className={styles.name}>
-                {u.nombre || "—"}
-                {u.username && (
-                  <span className={styles.username}>@{u.username}</span>
-                )}
-              </span>
-              <span className={styles.cell}>{u.languageCode ?? "—"}</span>
-              <span className={styles.cell}>{formatTs(u.firstSeenAt)}</span>
-              <span className={styles.cell}>{formatTs(u.lastSeenAt)}</span>
-              <span className={styles.num}>{u.msgCount}</span>
-            </li>
-          ))}
-        </ul>
+        // Altura acotada + scroll propio: la lista no alarga la página.
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th scope="col">Usuario</th>
+                <th scope="col">Idioma</th>
+                <th scope="col">Primera vez</th>
+                <th scope="col">Última vez</th>
+                <th scope="col" className={styles.numCol}>
+                  Msgs
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.chatId}>
+                  <td>
+                    <div className={styles.name}>{u.nombre || "—"}</div>
+                    {u.username && (
+                      <div className={styles.username}>@{u.username}</div>
+                    )}
+                  </td>
+                  <td className={styles.cell}>
+                    {languageName(u.languageCode)}
+                  </td>
+                  <td className={styles.cellWhen}>{formatTs(u.firstSeenAt)}</td>
+                  <td className={styles.cellWhen}>{formatTs(u.lastSeenAt)}</td>
+                  <td className={styles.num}>{u.msgCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
