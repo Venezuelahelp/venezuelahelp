@@ -6,7 +6,9 @@ import type { Config, EnrichmentConfig } from "@/shared/types";
 const DEFAULT_ENRICHMENT: EnrichmentConfig = {
   geocerca: { latMin: 0.6, latMax: 12.2, lngMin: -73.4, lngMax: -59.8 },
   blocklist: ["xxx", "test troll", "lorem ipsum"],
-  jaccardThreshold: 0.6,
+  // 0.7: umbral más estricto para la fusión por texto en reportes/solicitudes
+  // (reduce duplicados difusos; ajustado tras observar la 1ª pasada en prod).
+  jaccardThreshold: 0.7,
   geoCellSize: 0.01,
   minTextLen: 10,
 };

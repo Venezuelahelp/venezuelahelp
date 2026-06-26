@@ -61,7 +61,7 @@ describe("ConfigRepo", () => {
   it("incluye defaults de enrichment cuando no hay Item", async () => {
     ddbMock.on(GetCommand).resolves({ Item: undefined });
     const cfg = await new ConfigRepo().get();
-    expect(cfg.enrichment.jaccardThreshold).toBe(0.6);
+    expect(cfg.enrichment.jaccardThreshold).toBe(0.7);
     expect(cfg.enrichment.geoCellSize).toBe(0.01);
     expect(cfg.enrichment.geocerca).toMatchObject({
       latMin: 0.6,
