@@ -30,97 +30,146 @@ Detección determinística del "mismo hecho", sin base vectorial y a costo ~$0 d
 
 Se descarta para v1 un LLM de agrupación por lote en cada scrape (rompe la restricción "casi gratis"); queda documentado como evolución futura si hay presupuesto.
 
-## Arquitectura — paso de enriquecimiento post-upsert
+## Arquitectura — enriquecimiento dentro de `buildSnapshot`
 
-Clusterizar requiere ver **todos los ítems de una categoría a la vez**, por lo que corre **después** de que todas las fuentes escribieron, dentro del mismo Lambda del scraper.
+**Hallazgo que define el diseño:** los dos consumidores que necesitan las marcas
+—frontend público y bot de Telegram— leen **el mismo `snapshot.json`** de S3
+(`telegram/snapshot.ts` hace `GetObject` de `snapshot.json`, no consulta DynamoDB).
+El admin solo **cuenta** ítems (`admin-api/router.ts`), no los lista con marcas.
+
+Por lo tanto el enriquecimiento se calcula **al construir el snapshot**, que ya
+carga todos los ítems por categoría. Las marcas viajan dentro del `snapshot.json`.
+**No se persisten en DynamoDB** (sería YAGNI: ningún consumidor las leería desde
+la tabla). El scraper ya encadena `runScrape()` → `buildSnapshot()` en el mismo
+Lambda (`scraper/handler.ts`), así que no hace falta ningún paso ni Lambda nuevo.
 
 ```
-runScrape():
-  1. ensureSeedSources()
-  2. para cada fuente: fetchItems → itemRepo.upsert()      // sin cambios
-  3. ★ enrichCategories():                                  // NUEVO
-        para cada categoría:
-          items = itemRepo.listByCategory(cat)              // ya existe
-          clusters = clusterize(items)                      // A + B
-          para cada item:
-            marcas = computeEnrichment(item, cluster, reglas, config)
-            si cambiaron las marcas → itemRepo.updateDerived(item, marcas)  // PUT condicional
-  4. buildSnapshot()                                        // sale con las marcas incluidas
+buildSnapshot(now):
+  config = configRepo.get()                       // incluye parámetros de enrichment
+  para cada categoría:
+    items = itemRepo.listByCategory(cat)           // ya existe
+    enriched = enrichItems(items, config)          // ★ NUEVO: marca cada ítem
+    categories[cat] = enriched.map(toPublic)       // toPublic ya quita `raw`
+  PutObject(snapshot.json)                          // ahora con marcas
 ```
 
-**Las marcas se persisten en el `StoredItem`, no solo en el snapshot.** Razón: el **bot de Telegram lee directo de DynamoDB** (retrieval por palabra clave), no del snapshot. Persistir en el ítem garantiza **una sola fuente de verdad** para los tres consumidores: snapshot público, bot y admin.
-
-**Módulo aislado `backend/src/enrichment/`** con responsabilidad única: recibe ítems → devuelve marcas. No toca DynamoDB ni red (eso lo hace el orchestrator). Testeable en aislamiento.
+**Módulo aislado `backend/src/enrichment/`** con responsabilidad única y **funciones
+puras** (reciben ítems + config → devuelven ítems marcados; sin DynamoDB, sin red,
+sin reloj). Testeable en aislamiento con tablas de entrada/salida.
 
 ### Trade-offs asumidos
 
-- **Reescrituras:** un scrape puede reescribir ítems cuyas marcas cambiaron (p. ej. llegó una 2ª fuente → sube `sourcesCount`). Se acota con PUT condicional: solo si las marcas realmente cambiaron. Despreciable en PAY_PER_REQUEST al volumen actual (cientos de ítems/categoría).
-- **Sin GSI:** clusterización en memoria por categoría (n chico). No se agregan índices. Coherente con la arquitectura single-table actual.
+- **Recálculo en cada snapshot:** el enriquecimiento se recalcula cada vez que se
+  regenera el snapshot. Es determinístico y O(n)–O(n²) por categoría con n de
+  cientos → trivial en CPU. Se evita así toda complejidad de persistencia,
+  reescritura condicional e idempotencia en DynamoDB.
+- **Sin GSI ni campos nuevos en la tabla:** clusterización en memoria por
+  categoría. Coherente con la arquitectura single-table actual.
 
 ## Modelo de datos
 
-Bloque de campos **derivados** agregado a `StoredItem` (calculados por el enriquecimiento, nunca por la fuente). No cambia PK/SK ni la idempotencia actual. Todos opcionales hasta el primer enriquecimiento → aditivo y retrocompatible.
+Las marcas se agregan **al ítem del snapshot** (no a `StoredItem` en DynamoDB).
+El snapshot público hoy expone `Omit<StoredItem, "raw">`; se extiende con un bloque
+de campos derivados:
 
 ```typescript
 interface ItemEnrichment {
   clusterKey: string; // clave canónica del "mismo hecho"
   isCanonical: boolean; // true = representante del cluster; false = duplicado
-  dupOf?: string; // si !isCanonical → SK del ítem canónico del cluster
+  dupOf?: string; // si !isCanonical → SK ("sourceId#externalId") del canónico
   sourcesCount: number; // nº de fuentes DISTINTAS en el cluster (corroboración)
   trust: "verificado" | "corroborado" | "no_verificado" | "sospechoso";
   trustReasons: string[]; // explica el badge y ayuda al admin
-  enrichedAt: string; // ISO; frescura
 }
+
+// El ítem del snapshot pasa a ser: Omit<StoredItem,"raw"> & ItemEnrichment
 ```
 
 ### Cálculo de `clusterKey` (por categoría, determinístico)
 
-- **Geo presente** → `geohash(lat, lng, precisión ~1.2 km)` + `slug(nombre_zona)`.
-- **Persona (desaparecidos)** → `slug(nombre normalizado: NFD, sin tildes, sin dobles espacios)` + `geohash` de "visto por última vez" si existe.
-- **Sin geo ni persona** → firma de tokens del título (top-N palabras significativas, sin stopwords, ordenadas). Refuerzo B: firmas con Jaccard ≥ umbral se funden al mismo `clusterKey`.
-- **Canónico del cluster** = mayor `sourcesCount` → desempate por `lastSeenAt` más reciente. Los demás: `isCanonical=false`, `dupOf = SK(canónico)`.
+- **Geo presente** → `geoCell(lat, lng)` (rejilla ~1.2 km, redondeo de coordenadas,
+  sin dependencia externa) + `slug(nombre_zona)`.
+- **Persona (categoría `desaparecidos`)** → `slug(nombre normalizado: NFD, sin
+tildes, sin dobles espacios)` tomado del título + `geoCell` de la ubicación si existe.
+- **Sin geo ni persona** → firma de tokens del título (top-N palabras
+  significativas, sin stopwords, ordenadas). Refuerzo B: firmas con Jaccard ≥
+  umbral se funden al mismo `clusterKey`.
+- **Canónico del cluster** = mayor `sourcesCount` → desempate por `lastSeenAt` más
+  reciente → desempate final por SK (orden estable). Los demás: `isCanonical=false`,
+  `dupOf = SK(canónico)`. `sourcesCount` = nº de `sourceId` distintos en el cluster.
 
 ### Cálculo de `trust` (reglas en orden)
 
-1. **`sospechoso`** si falla plausibilidad dura (con razón en `trustReasons`): geo fuera de la geocerca de Venezuela; `titulo`/`texto` vacíos o < N chars; match de blocklist de troleo/spam; fechas absurdas.
+1. **`sospechoso`** si falla plausibilidad dura (con razón en `trustReasons`): geo
+   fuera de la geocerca de Venezuela; `titulo` vacío o `texto` < `minTextLen`; match
+   de blocklist de troleo/spam.
 2. **`corroborado`** si `sourcesCount ≥ 2`.
 3. **`no_verificado`** si `sourcesCount == 1` y pasa plausibilidad. ← default honesto.
-4. **`verificado`** reservado para fuentes oficiales (campo opcional `source.trustLevel: "official"` en la metadata de la fuente; hoy ninguna lo es; queda listo para Protección Civil/bomberos a futuro).
+4. **`verificado`** reservado para fuentes oficiales (campo opcional
+   `source.trustLevel: "official"`; hoy ninguna lo es; queda listo para Protección
+   Civil/bomberos a futuro). En v1 no hay fuentes oficiales → nunca se emite, pero
+   la rama existe.
 
-### Configuración en `CONFIG#GLOBAL` (editable sin deploy)
+### Configuración (en `Config`, editable sin deploy)
 
-- `blocklist`: términos de troleo/spam.
-- `geocerca`: bounding box de Venezuela (lat/lng min/max).
-- `jaccardThreshold`: umbral del refuerzo B (default sensato, p. ej. 0.6).
-- `geohashPrecision`: precisión de la celda (default ~1.2 km).
-- `minTextLen`: longitud mínima de texto para no marcar sospechoso.
+Se extiende `Config` (`CONFIG#GLOBAL` en DynamoDB) con un bloque `enrichment` y sus
+defaults en `DEFAULT_CONFIG`. Editable vía el repo de config sin redeploy:
+
+- `geocerca`: bounding box de Venezuela `{ latMin, latMax, lngMin, lngMax }`.
+  Default: `{ latMin: 0.6, latMax: 12.2, lngMin: -73.4, lngMax: -59.8 }`.
+- `blocklist`: términos de troleo/spam (lista de strings, default acotado).
+- `jaccardThreshold`: umbral del refuerzo B. Default `0.6`.
+- `geoCellSize`: tamaño de celda en grados. Default `0.01` (~1.1 km en latitud).
+- `minTextLen`: longitud mínima de `texto`. Default `10`.
 
 ## Consumidores
 
-- **Snapshot público:** incluye `trust`, `trustReasons`, `sourcesCount`, `isCanonical`, `dupOf`. El front muestra badge de confianza y atenúa/colapsa `isCanonical=false`.
-- **Bot Telegram:** en el retrieval prioriza `isCanonical` y `corroborado`; excluye `sospechoso`; añade "fuentes: N" al prompt para responder con la cautela adecuada.
-- **Admin:** ve todo; filtra por `trust=sospechoso` y por duplicados para auditar. El campo `raw` existente sigue disponible para inspección.
+- **Snapshot público:** cada ítem incluye `trust`, `trustReasons`, `sourcesCount`,
+  `isCanonical`, `dupOf`. El front muestra badge de confianza y atenúa/colapsa
+  `isCanonical=false`. (El cambio de UI del front queda fuera de este plan backend;
+  los campos quedan disponibles en el JSON.)
+- **Bot Telegram:** en el retrieval prioriza `isCanonical` y `corroborado`; excluye
+  `sospechoso`; añade "fuentes: N" al contexto para responder con la cautela debida.
+- **Admin:** sin cambios en v1 (solo cuenta). Puede leer el snapshot si necesita
+  inspeccionar marcas.
 
 ## Testing (TDD, vitest)
 
 Módulo puro → tablas de entrada/salida sin mocks.
 
-- **`clusterize()`**: mismo geohash+zona → mismo `clusterKey`; persona con/sin tilde → mismo cluster (NFD); Jaccard funde títulos similares; ítems distintos no colisionan; selección de canónico (más fuentes → más reciente).
-- **`scoreTrust()`**: 1 fuente → `no_verificado`; 2+ fuentes distintas → `corroborado`; geo fuera de VE → `sospechoso` con razón; blocklist → `sospechoso`; fuente oficial → `verificado`. Tabla de casos borde.
-- **`enrichCategories()`** (con `aws-sdk-client-mock`): solo `updateDerived` en ítems cuyas marcas cambiaron; idempotente (2ª corrida sin cambios → 0 escrituras).
-- **Snapshot/bot**: tests existentes extendidos — el snapshot incluye los campos nuevos; el retrieval del bot prioriza canónicos/corroborados y excluye sospechosos.
-- **Regresión**: suite actual de `itemRepo`/orchestrator/snapshot verde (campos aditivos y opcionales).
+- **`geoCell()`**: dos coordenadas en la misma celda → misma clave; coordenadas
+  separadas > tamaño de celda → claves distintas.
+- **`clusterize()`** (dentro de `enrichItems`): mismo geoCell+zona → mismo cluster;
+  persona con/sin tilde → mismo cluster (NFD); Jaccard funde títulos similares;
+  ítems distintos no colisionan; canónico = más fuentes → más reciente; `sourcesCount`
+  cuenta `sourceId` distintos.
+- **`scoreTrust()`**: 1 fuente → `no_verificado`; 2+ fuentes distintas →
+  `corroborado`; geo fuera de VE → `sospechoso` con razón; texto corto → `sospechoso`;
+  blocklist → `sospechoso`. Tabla de casos borde.
+- **`enrichItems()`**: integra cluster+trust sobre una lista; preserva los campos
+  originales del ítem; no muta la entrada.
+- **Snapshot**: test extendido — el snapshot incluye los campos nuevos por ítem y
+  lee la config.
+- **Bot retrieval**: prioriza canónicos/corroborados y excluye sospechosos.
+- **Bot prompt**: el contexto incluye la nota de fuentes/confianza.
+- **Regresión**: suite actual de `itemRepo`/orchestrator/snapshot/retrieval verde
+  (campos aditivos y opcionales; `itemRepo` no cambia).
 
 ## Fuera de alcance (v1)
 
 - Fusión/merge de ítems en uno canónico (se eligió "solo marcar").
 - Ocultar bajo umbral o cola de moderación humana (se eligió "marcar").
 - LLM de agrupación o verificación semántica en la ingesta.
-- GSI o índices nuevos en DynamoDB.
+- GSI, campos nuevos en la tabla, o persistir marcas en DynamoDB.
 - Verificación de veracidad contra una fuente autoritativa externa.
+- Cambios de UI en el frontend público (los campos quedan en el JSON; consumirlos
+  visualmente es un trabajo de front aparte).
+- UI de admin para editar los parámetros de enrichment (se editan vía el repo de
+  config; el endpoint/forma de edición existente se reutiliza si aplica).
 
 ## Evolución futura (documentada, no implementada)
 
 - LLM de agrupación por lote para clusters que A+B no capturan (si hay presupuesto).
 - Fuentes oficiales con `trustLevel: "official"` → `verificado`.
+- Persistir marcas en `StoredItem` si el admin necesita auditar/filtrar desde DynamoDB.
 - Fusión opcional configurable si el "solo marcar" no basta en producción.
