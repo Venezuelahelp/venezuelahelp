@@ -1,0 +1,277 @@
+import { describe, it, expect } from "vitest";
+import { normalize, flatten, filterItems, countByCategory } from "../filter";
+import type { Category, Item, Snapshot } from "@/types";
+
+describe("filter functions", () => {
+  describe("normalize", () => {
+    it("should lowercase the string", () => {
+      expect(normalize("HELLO")).toBe("hello");
+    });
+
+    it("should strip accents", () => {
+      expect(normalize("café")).toBe("cafe");
+      expect(normalize("Desaparecidos")).toBe("desaparecidos");
+      expect(normalize("año")).toBe("ano");
+      expect(normalize("ESPAÑA")).toBe("espana");
+    });
+
+    it("should collapse whitespace", () => {
+      expect(normalize("hello   world")).toBe("hello world");
+      expect(normalize("  leading")).toBe("leading");
+      expect(normalize("trailing  ")).toBe("trailing");
+    });
+
+    it("should handle combined accents (NFD decomposition)", () => {
+      const withCombiningMarks = "é"; // é using combining acute accent
+      expect(normalize(withCombiningMarks)).toBe("e");
+    });
+
+    it("should handle accents comprehensively", () => {
+      expect(normalize("áéíóúàèìòù")).toBe("aeiouaeiou");
+      expect(normalize("ÁÉÍÓÚÀÈÌÒÙ")).toBe("aeiouaeiou");
+    });
+  });
+
+  describe("flatten", () => {
+    it("should concatenate all items in category order", () => {
+      const snap: Snapshot = {
+        generatedAt: "2026-06-26T00:00:00Z",
+        categories: {
+          reportes: [
+            {
+              category: "reportes",
+              sourceId: "s1",
+              externalId: "e1",
+              titulo: "Reporte 1",
+              texto: "Contenido",
+            },
+          ],
+          desaparecidos: [
+            {
+              category: "desaparecidos",
+              sourceId: "s2",
+              externalId: "e2",
+              titulo: "Persona 1",
+              texto: "Buscando",
+            },
+          ],
+          acopios: [],
+          edificios: [
+            {
+              category: "edificios",
+              sourceId: "s3",
+              externalId: "e3",
+              titulo: "Edificio dañado",
+              texto: "Piso 5",
+            },
+          ],
+          solicitudes: [],
+        },
+      };
+
+      const result = flatten(snap);
+
+      expect(result).toHaveLength(3);
+      expect(result[0].category).toBe("reportes");
+      expect(result[1].category).toBe("desaparecidos");
+      expect(result[2].category).toBe("edificios");
+    });
+
+    it("should return empty array for empty snapshot", () => {
+      const snap: Snapshot = {
+        generatedAt: "2026-06-26T00:00:00Z",
+        categories: {
+          reportes: [],
+          desaparecidos: [],
+          acopios: [],
+          edificios: [],
+          solicitudes: [],
+        },
+      };
+
+      expect(flatten(snap)).toHaveLength(0);
+    });
+  });
+
+  describe("filterItems", () => {
+    const items: Item[] = [
+      {
+        category: "reportes",
+        sourceId: "s1",
+        externalId: "e1",
+        titulo: "Incendio en Altamira",
+        texto: "Gran incendio reportado",
+        ubicacion: { lat: 10.5, lng: -66.8, nombre: "Caracas" },
+      },
+      {
+        category: "desaparecidos",
+        sourceId: "s2",
+        externalId: "e2",
+        titulo: "Buscando a María González",
+        texto: "Desaparecida desde hace 3 días",
+        ubicacion: { lat: 10.4, lng: -66.9, nombre: "Miranda" },
+      },
+      {
+        category: "acopios",
+        sourceId: "s3",
+        externalId: "e3",
+        titulo: "Acopio de comida",
+        texto: "Aceptamos alimentos no perecederos",
+        ubicacion: { lat: 10.45, lng: -66.85 },
+      },
+      {
+        category: "reportes",
+        sourceId: "s4",
+        externalId: "e4",
+        titulo: "Saqueos en tienda",
+        texto: "Múltiples saqueos reportados",
+        ubicacion: { lat: 10.48, lng: -66.82, nombre: "Chacao" },
+      },
+    ];
+
+    it("should return all items when query is empty and active is empty", () => {
+      const result = filterItems(items, "", new Set());
+      expect(result).toHaveLength(4);
+    });
+
+    it("should filter by query with accent-insensitive substring match", () => {
+      const result = filterItems(items, "Incendio", new Set());
+      expect(result).toHaveLength(1);
+      expect(result[0].titulo).toBe("Incendio en Altamira");
+    });
+
+    it("should match query ignoring accents", () => {
+      const result = filterItems(items, "Maria", new Set()); // Without accent
+      expect(result).toHaveLength(1);
+      expect(result[0].titulo).toContain("María");
+    });
+
+    it("should search in titulo, texto, and ubicacion.nombre", () => {
+      const resultTitulo = filterItems(items, "Incendio", new Set());
+      expect(resultTitulo).toHaveLength(1);
+
+      const resultTexto = filterItems(items, "perecederos", new Set());
+      expect(resultTexto).toHaveLength(1);
+      expect(resultTexto[0].category).toBe("acopios");
+
+      const resultUbicacion = filterItems(items, "Miranda", new Set());
+      expect(resultUbicacion).toHaveLength(1);
+      expect(resultUbicacion[0].titulo).toContain("María");
+    });
+
+    it("should filter by active categories", () => {
+      const active = new Set<Category>(["reportes"]);
+      const result = filterItems(items, "", active);
+      expect(result).toHaveLength(2);
+      expect(result.every((item) => item.category === "reportes")).toBe(true);
+    });
+
+    it("should filter by multiple active categories", () => {
+      const active = new Set<Category>(["reportes", "acopios"]);
+      const result = filterItems(items, "", active);
+      expect(result).toHaveLength(3);
+      expect(
+        result.every(
+          (item) => item.category === "reportes" || item.category === "acopios",
+        ),
+      ).toBe(true);
+    });
+
+    it("should apply both query and category filters", () => {
+      const active = new Set<Category>(["reportes"]);
+      const result = filterItems(items, "Saqueos", active);
+      expect(result).toHaveLength(1);
+      expect(result[0].titulo).toBe("Saqueos en tienda");
+    });
+
+    it("should return empty array when query doesn't match any items", () => {
+      const result = filterItems(items, "nonexistent", new Set());
+      expect(result).toHaveLength(0);
+    });
+
+    it("should be case-insensitive in query", () => {
+      const resultLower = filterItems(items, "incendio", new Set());
+      const resultUpper = filterItems(items, "INCENDIO", new Set());
+      expect(resultLower).toHaveLength(resultUpper.length);
+    });
+
+    it("should handle empty items array", () => {
+      const result = filterItems([], "query", new Set());
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe("countByCategory", () => {
+    it("should count items by category", () => {
+      const items: Item[] = [
+        {
+          category: "reportes",
+          sourceId: "s1",
+          externalId: "e1",
+          titulo: "Report 1",
+          texto: "text",
+        },
+        {
+          category: "reportes",
+          sourceId: "s2",
+          externalId: "e2",
+          titulo: "Report 2",
+          texto: "text",
+        },
+        {
+          category: "desaparecidos",
+          sourceId: "s3",
+          externalId: "e3",
+          titulo: "Person 1",
+          texto: "text",
+        },
+        {
+          category: "acopios",
+          sourceId: "s4",
+          externalId: "e4",
+          titulo: "Acopio 1",
+          texto: "text",
+        },
+      ];
+
+      const counts = countByCategory(items);
+
+      expect(counts.reportes).toBe(2);
+      expect(counts.desaparecidos).toBe(1);
+      expect(counts.acopios).toBe(1);
+      expect(counts.edificios).toBe(0);
+      expect(counts.solicitudes).toBe(0);
+    });
+
+    it("should initialize all categories to 0", () => {
+      const items: Item[] = [
+        {
+          category: "reportes",
+          sourceId: "s1",
+          externalId: "e1",
+          titulo: "Report",
+          texto: "text",
+        },
+      ];
+
+      const counts = countByCategory(items);
+
+      expect(Object.keys(counts)).toHaveLength(5);
+      expect(counts.reportes).toBe(1);
+      expect(counts.desaparecidos).toBe(0);
+      expect(counts.acopios).toBe(0);
+      expect(counts.edificios).toBe(0);
+      expect(counts.solicitudes).toBe(0);
+    });
+
+    it("should handle empty items array", () => {
+      const counts = countByCategory([]);
+
+      expect(counts.reportes).toBe(0);
+      expect(counts.desaparecidos).toBe(0);
+      expect(counts.acopios).toBe(0);
+      expect(counts.edificios).toBe(0);
+      expect(counts.solicitudes).toBe(0);
+    });
+  });
+});
