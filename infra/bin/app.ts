@@ -6,6 +6,7 @@ import { FrontendStack } from "../lib/frontend-stack";
 import { AdminStack } from "../lib/admin-stack";
 import { BudgetStack } from "../lib/budget-stack";
 import { DomainStack } from "../lib/domain-stack";
+import { CicdStack } from "../lib/cicd-stack";
 
 const app = new App();
 // Env explícito desde CDK_DEFAULT_ACCOUNT/REGION (poblado por el CLI o pasado
@@ -17,6 +18,7 @@ const env = {
 };
 const domainName = app.node.getContext("domainName") as string;
 const hostedZoneId = app.node.getContext("hostedZoneId") as string;
+const githubRepo = app.node.getContext("githubRepo") as string;
 const data = new DataStack(app, "VenezuelaHelpDataStack", { env });
 const scraper = new ScraperStack(app, "VenezuelaHelpScraperStack", {
   env,
@@ -57,3 +59,7 @@ new BudgetStack(app, "VenezuelaHelpBudgetStack", {
   alertEmail: process.env.ALERT_EMAIL ?? "mserranolm@gmail.com",
   monthlyLimitUsd: Number(process.env.BUDGET_LIMIT_USD ?? 10),
 });
+// OIDC provider + IAM role so GitHub Actions can deploy without stored credentials.
+// Deploy once manually: cdk deploy VenezuelaHelpCicdStack --profile VenezuelaHelp
+// Then add the DeployRoleArn output as GitHub Secret AWS_ROLE_ARN.
+new CicdStack(app, "VenezuelaHelpCicdStack", { env, githubRepo });
