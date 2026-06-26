@@ -4,14 +4,47 @@ import { geo, truncate } from "@/connectors/types";
 import { logger } from "@/shared/logger";
 import type { NormalizedItem, Source } from "@/shared/types";
 
-const MAX_CHARS = 12000;
+// 30K chars (~7.5K tokens) cabe holgado en el contexto de Nova Lite y cuesta
+// centésimas de centavo por extracción; un tope más alto evita que el chrome
+// residual desplace al contenido real del cuerpo.
+const MAX_CHARS = 30000;
 const MAX_ITEMS = 50;
 const STALE_MS = 6 * 60 * 60 * 1000;
 
-export function htmlToText(html: string, maxChars = MAX_CHARS): string {
-  const t = html
+// Bloques de "chrome" (navegación, encabezado, pie, barras laterales, scripts):
+// se eliminan con su contenido para no gastar el presupuesto de caracteres en
+// menús en vez del texto del artículo.
+function stripChrome(html: string): string {
+  return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+    .replace(/<header[\s\S]*?<\/header>/gi, " ")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+    .replace(/<aside[\s\S]*?<\/aside>/gi, " ")
+    .replace(/<form[\s\S]*?<\/form>/gi, " ");
+}
+
+// Muchas páginas (Wikipedia, portales de noticias) sirven el cuerpo dentro de
+// <main>/<article> o de un contenedor conocido, precedido por un menú largo.
+// Si existe esa región, recortamos a ella para que Bedrock vea el contenido y
+// no la navegación de cabecera.
+function mainContent(html: string): string {
+  const candidates = [
+    /<main\b[^>]*>([\s\S]*?)<\/main>/i,
+    /<article\b[^>]*>([\s\S]*?)<\/article>/i,
+    /<div[^>]*id=["']mw-content-text["'][^>]*>([\s\S]*)<\/div>/i,
+  ];
+  for (const re of candidates) {
+    const m = html.match(re);
+    if (m && m[1].trim().length > 40) return m[1];
+  }
+  return html;
+}
+
+export function htmlToText(html: string, maxChars = MAX_CHARS): string {
+  const t = stripChrome(mainContent(html))
     .replace(/<[^>]+>/g, " ")
     .replace(/&[a-z]+;/gi, " ")
     // Neutraliza los guillemets para que el contenido no pueda falsificar los
@@ -134,6 +167,13 @@ export async function runAiSource(
 }> {
   const html = await deps.fetchText(source.url);
   const text = htmlToText(html);
+  logger.info("aiConnector DIAG", {
+    sourceId: source.id,
+    htmlLen: html.length,
+    textLen: text.length,
+    hasYears: text.includes("años"),
+    sample: text.slice(0, 220),
+  });
   const hash = sha256(text);
   const lastMs = source.lastExtractAt ? Date.parse(source.lastExtractAt) : 0;
   const fresh = Date.parse(now) - lastMs < STALE_MS;

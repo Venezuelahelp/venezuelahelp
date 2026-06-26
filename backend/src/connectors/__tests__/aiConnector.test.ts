@@ -20,6 +20,24 @@ describe("htmlToText", () => {
     expect(out).not.toContain("«");
     expect(out).not.toContain("»");
   });
+  it("drops nav/header/footer/aside chrome so only real content remains", () => {
+    const html =
+      "<nav>Inicio Donaciones Crear cuenta</nav>" +
+      "<header>Menú Buscar</header>" +
+      "<p>Reporte de daños en Cumaná</p>" +
+      "<aside>Enlaces relacionados</aside>" +
+      "<footer>Pie de página</footer>";
+    const out = htmlToText(html);
+    expect(out).toBe("Reporte de daños en Cumaná");
+  });
+  it("prefers the <main> region, ignoring leading navigation chrome", () => {
+    const html =
+      "<div id='vector-main-menu'>Donaciones Crear una cuenta Herramientas</div>" +
+      "<main><h1>Terremoto</h1><p>Edificio colapsado en Cariaco</p></main>";
+    const out = htmlToText(html);
+    expect(out).toContain("Edificio colapsado en Cariaco");
+    expect(out).not.toContain("Donaciones");
+  });
 });
 
 const askOk = (json: string) => vi.fn(async () => ({ text: json }));
