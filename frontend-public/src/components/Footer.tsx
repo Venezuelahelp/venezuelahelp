@@ -1,7 +1,15 @@
-import { ArrowUpRight } from "@phosphor-icons/react";
+import {
+  ArrowUpRight,
+  WhatsappLogo,
+  EnvelopeSimple,
+} from "@phosphor-icons/react";
 import { useResolveSource } from "@/data/sources";
 import { formatDateTime } from "@/data/datetime";
 import styles from "./Footer.module.css";
+
+const WHATSAPP_URL = "https://wa.me/34645050484";
+const PHONE_DISPLAY = "+34 645 05 04 84";
+const EMAIL = "mserranolm@gmail.com";
 
 interface FooterProps {
   sources: { sourceId: string; count: number }[];
@@ -37,7 +45,10 @@ export default function Footer({ sources, generatedAt }: FooterProps) {
                 ) : (
                   <span className={styles.name}>{src.nombre}</span>
                 )}
-                <span className={styles.count} aria-label={`${count} elementos`}>
+                <span
+                  className={styles.count}
+                  aria-label={`${count} elementos`}
+                >
                   {count}
                 </span>
               </li>
@@ -48,6 +59,38 @@ export default function Footer({ sources, generatedAt }: FooterProps) {
         {updated && (
           <p className={styles.updated}>Datos actualizados: {updated}</p>
         )}
+
+        <section className={styles.contact} aria-labelledby="footer-contacto">
+          <div className={styles.contactText}>
+            <h2 id="footer-contacto" className={styles.contactTitle}>
+              ¿Tienes una fuente o quieres colaborar?
+            </h2>
+            <p className={styles.contactSub}>
+              Si gestionas un sitio con información del terremoto o quieres
+              integrar tus datos, escríbeme.
+            </p>
+          </div>
+          <div className={styles.contactActions}>
+            <a
+              className={styles.contactPrimary}
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Escribir por WhatsApp al ${PHONE_DISPLAY}`}
+            >
+              <WhatsappLogo aria-hidden="true" size={17} weight="fill" />
+              {PHONE_DISPLAY}
+            </a>
+            <a
+              className={styles.contactGhost}
+              href={`mailto:${EMAIL}`}
+              aria-label={`Enviar correo a ${EMAIL}`}
+            >
+              <EnvelopeSimple aria-hidden="true" size={17} weight="bold" />
+              {EMAIL}
+            </a>
+          </div>
+        </section>
 
         <p className={styles.disclaimer}>
           VenezuelaHelp agrega información de emergencia desde fuentes abiertas.
