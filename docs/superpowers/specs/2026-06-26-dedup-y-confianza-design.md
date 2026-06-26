@@ -100,22 +100,29 @@ donde la entidad **es** un lugar físico:
   → clave **única** por ítem (`u:<sourceId>#<externalId>`): no agrupa con nadie.
   Evita colapsar cientos de reportes distintos que comparten una ciudad.
 
-**Marcado de duplicados — solo con corroboración cross-source.** Un ítem se marca
-`isCanonical=false` (duplicado) **únicamente si su cluster contiene ítems de ≥2
-`sourceId` distintos** (`sourcesCount ≥ 2`). Si todo el cluster es de una sola
-fuente, esa fuente ya los separó por `externalId`: se consideran hechos distintos
-y **todos quedan `isCanonical=true`**, sin `dupOf`. Esto evita el falso positivo de
-marcar como duplicados ítems legítimamente distintos de la misma fuente.
+**Marcado de duplicados — intra-cluster.** Dentro de cada cluster (mismo hecho,
+según la clave por categoría) el `lastSeenAt` más reciente es el canónico y el
+resto se marcan `isCanonical=false` con `dupOf = SK(canónico)`. Las claves por
+categoría — y la regla de "título genérico → clave única" — son las que evitan
+agrupar hechos distintos; por eso el marcado puede ser intra-fuente (la misma
+fuente que repite una ficha de desaparecido es un duplicado real que se quiere
+detectar). `sourcesCount` = nº de `sourceId` distintos en el cluster; desempate
+del canónico por SK (orden estable).
 
-- **Canónico del cluster** (cuando `sourcesCount ≥ 2`) = `lastSeenAt` más reciente
-  → desempate final por SK (orden estable). Los demás: `isCanonical=false`,
-  `dupOf = SK(canónico)`. `sourcesCount` = nº de `sourceId` distintos en el cluster.
+> **Nota de validación (smoke en producción).** Los duplicados reales observados
+> son mayormente intra-fuente con identidad idéntica (la misma persona/edificio
+> repetidos). La corroboración cross-source da 0 con claves exactas porque las
+> fuentes formatean nombres/textos distinto; el fuzzy-matching de nombres entre
+> fuentes queda como evolución futura (riesgo de falsos). La clave por **texto**
+> en `reportes` fue clave para no marcar como duplicadas las múltiples noticias
+> distintas que comparten el nombre de la cuenta emisora en el `titulo`.
 
 ### Cálculo de `trust` (reglas en orden)
 
 1. **`sospechoso`** si falla plausibilidad dura (con razón en `trustReasons`): geo
-   fuera de la geocerca de Venezuela; `titulo` vacío o `texto` < `minTextLen`; match
-   de blocklist de troleo/spam.
+   fuera de la geocerca de Venezuela; match de blocklist de troleo/spam; o **sin
+   contenido útil** (`titulo` vacío Y `texto` < `minTextLen` a la vez). Un título
+   válido con descripción breve NO es sospechoso: poca información no es falsedad.
 2. **`corroborado`** si `sourcesCount ≥ 2`.
 3. **`no_verificado`** si `sourcesCount == 1` y pasa plausibilidad. ← default honesto.
 4. **`verificado`** reservado para fuentes oficiales (campo opcional
