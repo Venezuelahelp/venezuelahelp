@@ -162,6 +162,9 @@ export function retrieve(
     [];
   for (const items of Object.values(snap.categories)) {
     for (const item of items) {
+      // Los ítems marcados como no confiables por el enrichment no se ofrecen
+      // al modelo: evita que el bot cite reportes falsos o de troleo.
+      if (item.trust === "sospechoso") continue;
       const score = scoreFields(item, rankKws);
       const target = targetCats.has(item.category);
       // Un ítem sin ninguna coincidencia léxica solo se considera si pertenece
@@ -177,7 +180,13 @@ export function retrieve(
   // se ordena por score y, a igualdad, por recencia (orden estable del snapshot).
   scored.sort((a, b) => {
     if (targetCats.size > 0 && a.target !== b.target) return a.target ? -1 : 1;
-    return b.score - a.score;
+    if (b.score !== a.score) return b.score - a.score;
+    // A igualdad de score, preferir el canónico del cluster sobre sus duplicados
+    // y, luego, lo más corroborado (mayor nº de fuentes).
+    const ca = a.item.isCanonical ? 1 : 0;
+    const cb = b.item.isCanonical ? 1 : 0;
+    if (ca !== cb) return cb - ca;
+    return (b.item.sourcesCount ?? 0) - (a.item.sourcesCount ?? 0);
   });
   return selectWithQuota(scored, k).map((s) => s.item);
 }

@@ -231,3 +231,71 @@ describe("retrieve — ranking por término discriminante dentro de la categorí
     expect(res[0].externalId).toBe("guaira");
   });
 });
+
+describe("retrieve — enrichment", () => {
+  it("excluye ítems sospechosos del retrieval", () => {
+    const s = {
+      generatedAt: "t",
+      categories: {
+        reportes: [
+          {
+            category: "reportes",
+            sourceId: "s1",
+            externalId: "1",
+            titulo: "sismo guaira",
+            texto: "x",
+            trust: "sospechoso",
+            isCanonical: true,
+            sourcesCount: 1,
+          },
+          {
+            category: "reportes",
+            sourceId: "s2",
+            externalId: "2",
+            titulo: "sismo guaira",
+            texto: "x",
+            trust: "corroborado",
+            isCanonical: true,
+            sourcesCount: 2,
+          },
+        ],
+      },
+    } as unknown as Snapshot;
+    const res = retrieve("sismo guaira", s, 15);
+    expect(res.every((i) => i.trust !== "sospechoso")).toBe(true);
+    expect(res).toHaveLength(1);
+  });
+
+  it("prioriza el canónico frente al duplicado a igual score", () => {
+    const s = {
+      generatedAt: "t",
+      categories: {
+        edificios: [
+          {
+            category: "edificios",
+            sourceId: "s1",
+            externalId: "1",
+            titulo: "torre chacao",
+            texto: "x",
+            trust: "corroborado",
+            isCanonical: false,
+            dupOf: "s2#2",
+            sourcesCount: 2,
+          },
+          {
+            category: "edificios",
+            sourceId: "s2",
+            externalId: "2",
+            titulo: "torre chacao",
+            texto: "x",
+            trust: "corroborado",
+            isCanonical: true,
+            sourcesCount: 2,
+          },
+        ],
+      },
+    } as unknown as Snapshot;
+    const res = retrieve("torre chacao", s, 1);
+    expect(res[0].isCanonical).toBe(true);
+  });
+});

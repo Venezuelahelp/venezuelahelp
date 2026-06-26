@@ -30,6 +30,12 @@ export interface PublicItem {
   texto: string;
   ubicacion?: { lat: number; lng: number; nombre?: string };
   status?: string;
+  // Marcas de enrichment (opcionales: snapshots viejos no las traen).
+  trust?: "verificado" | "corroborado" | "no_verificado" | "sospechoso";
+  isCanonical?: boolean;
+  dupOf?: string;
+  sourcesCount?: number;
+  trustReasons?: string[];
 }
 
 export interface Snapshot {
