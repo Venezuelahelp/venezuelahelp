@@ -19,6 +19,11 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<Set<Category>>(new Set());
 
+  // Beacon de analítica: una vez por carga, al montar. Fire-and-forget.
+  useEffect(() => {
+    sendBeacon();
+  }, []);
+
   function onToggle(cat: Category) {
     setActive((prev) => {
       const next = new Set(prev);
