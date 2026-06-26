@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { shouldRespond, extractQuestion } from "@/telegram/trigger";
+import {
+  shouldRespond,
+  extractQuestion,
+  isStartCommand,
+} from "@/telegram/trigger";
 import type { TgMessage } from "@/telegram/types";
 
 const base = (text: string, extra: Partial<TgMessage> = {}): TgMessage => ({
@@ -48,6 +52,23 @@ describe("shouldRespond", () => {
   it("all mode: responds to any non-empty text", () => {
     expect(shouldRespond(base("cualquier cosa"), "vh_bot", "all")).toBe(true);
     expect(shouldRespond(base(""), "vh_bot", "all")).toBe(false);
+  });
+});
+
+describe("isStartCommand", () => {
+  it("detects /start", () => {
+    expect(isStartCommand(base("/start"))).toBe(true);
+  });
+  it("detects /start@bot", () => {
+    expect(isStartCommand(base("/start@vh_bot"))).toBe(true);
+  });
+  it("detects /start with a deep-link payload", () => {
+    expect(isStartCommand(base("/start abc123"))).toBe(true);
+  });
+  it("ignores normal text and other commands", () => {
+    expect(isStartCommand(base("hola"))).toBe(false);
+    expect(isStartCommand(base("/pregunta dónde hay agua"))).toBe(false);
+    expect(isStartCommand(base("cuándo empezar"))).toBe(false);
   });
 });
 

@@ -89,6 +89,31 @@ describe("telegram handler", () => {
     );
   });
 
+  it("on /start, sends a welcome message and skips retrieval/bedrock", async () => {
+    const d = deps();
+    const res = await handler(
+      event("/start", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    expect(res.statusCode).toBe(200);
+    expect(d.loadSnapshot).not.toHaveBeenCalled();
+    expect(d.askBedrock).not.toHaveBeenCalled();
+    expect(d.sendMessage).toHaveBeenCalledTimes(1);
+    const [, , text] = (d.sendMessage as any).mock.calls[0];
+    expect(text).toContain("VenezuelaHelp");
+    expect(text.toLowerCase()).toContain("ejemplo");
+  });
+
+  it("on /start with a deep-link payload, still welcomes", async () => {
+    const d = deps();
+    await handler(
+      event("/start ref123", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    expect(d.askBedrock).not.toHaveBeenCalled();
+    expect(d.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects webhook when secret mismatch (returns 200, no reply)", async () => {
     const d = deps({
       getWebhookSecret: vi.fn(async () => "topsecret"),

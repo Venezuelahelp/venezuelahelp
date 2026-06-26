@@ -1,6 +1,13 @@
 import type { TgMessage, TriggerMode } from "@/telegram/types";
 
 const CMD = /^\/(pregunta|p)(@\w+)?\b/i;
+const START = /^\/start(@\w+)?\b/i;
+
+// El deep link `t.me/<bot>?start=<payload>` envía "/start" (con payload opcional).
+// La primera interacción no es una pregunta: hay que dar la bienvenida.
+export function isStartCommand(msg: TgMessage): boolean {
+  return START.test((msg.text ?? "").trim());
+}
 
 function isMentioned(msg: TgMessage, botUsername: string): boolean {
   return (msg.text ?? "")

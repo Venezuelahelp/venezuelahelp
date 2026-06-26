@@ -7,13 +7,30 @@ import { loadSnapshot as realLoad } from "@/telegram/snapshot";
 import { askBedrock as realAsk } from "@/telegram/bedrock";
 import { retrieve } from "@/telegram/retrieval";
 import { buildUserText } from "@/telegram/prompt";
-import { shouldRespond, extractQuestion } from "@/telegram/trigger";
+import {
+  shouldRespond,
+  extractQuestion,
+  isStartCommand,
+} from "@/telegram/trigger";
 import type { TgUpdate } from "@/telegram/types";
 
 const FALLBACK =
   "Disculpa, estoy con mucha demanda ahora mismo. Intenta de nuevo en un momento.";
 const NO_DATA =
   "No tengo ese dato en la información del terremoto que tengo disponible.";
+const WELCOME = [
+  "👋 ¡Hola! Soy el asistente de VenezuelaHelp.",
+  "",
+  "Reúno información pública sobre el terremoto de Venezuela (25 de junio de 2026) y respondo tus preguntas sobre reportes, personas desaparecidas, centros de acopio, estado de edificios y solicitudes de ayuda.",
+  "",
+  "Solo escríbeme tu pregunta en lenguaje natural. Por ejemplo:",
+  "• ¿Dónde hay centros de acopio en Chacao?",
+  "• ¿Cuántas personas desaparecidas hay reportadas?",
+  "• ¿Qué edificios resultaron afectados en Caracas?",
+  "• ¿Cómo puedo solicitar ayuda?",
+  "",
+  "Te respondo con la información disponible y cito la fuente. Si no tengo el dato, te lo diré.",
+].join("\n");
 
 let botUsernameCache: string | null = null;
 
@@ -72,6 +89,13 @@ export async function handler(
     const botUsername = await d.getBotUsername(token);
     const config = await d.configRepo.get();
     if (!shouldRespond(msg, botUsername, config.botTriggerMode)) return ok();
+
+    // La primera interacción (deep link / botón "Iniciar") o /start no es una
+    // pregunta: damos la bienvenida y explicamos cómo funciona el bot.
+    if (isStartCommand(msg)) {
+      await d.sendMessage(token, chatId, WELCOME);
+      return ok();
+    }
 
     const question = extractQuestion(msg, botUsername);
     const snap = await d.loadSnapshot();
