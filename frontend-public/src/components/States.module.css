@@ -1,0 +1,115 @@
+/* States — Loading skeleton, Empty, ErrorState */
+
+/* --------------- Skeleton pulse --------------- */
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.loadingRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.skeletonRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.skeletonRow:last-child {
+  border-bottom: none;
+}
+
+.skeletonBadge {
+  width: 72px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.skeletonTitle {
+  width: 60%;
+  height: 16px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.skeletonText {
+  width: 85%;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonRow {
+    animation: none;
+  }
+}
+
+/* --------------- Empty --------------- */
+
+.emptyRoot {
+  padding: 32px 0;
+  text-align: center;
+}
+
+.emptyMessage {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* --------------- ErrorState --------------- */
+
+.errorRoot {
+  padding: 32px 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.errorMessage {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.retryBtn {
+  padding: 8px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.retryBtn:hover {
+  background: var(--primary-tint);
+  border-color: var(--primary);
+}
+
+.retryBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

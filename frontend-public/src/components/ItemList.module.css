@@ -1,0 +1,85 @@
+/* ItemList — row layout, stagger entrance, DESIGN.md compliant */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Each row: visible by default, animated on load */
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+
+  /* Stagger: base 60ms + 40ms × index, capped via --stagger-i */
+  animation: rowIn 260ms ease-out both;
+  animation-delay: calc(60ms + var(--stagger-i, 0) * 40ms);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+/* Reduced motion: show content instantly, no transform */
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.titulo {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--ink-strong);
+  line-height: 1.4;
+}
+
+.texto {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink);
+  line-height: 1.6;
+
+  /* Truncate to 3 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ubicacion {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.source {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  align-self: flex-start;
+}
