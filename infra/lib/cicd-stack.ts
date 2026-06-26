@@ -31,19 +31,16 @@ export class CicdStack extends Stack {
           },
         },
       ),
-      // Scoped to the exact AWS services this project uses.
+      // 9 managed policies — stays within the IAM default quota of 10 per role.
+      // Route53, ACM, SQS, Budgets, Cognito moved to inline to avoid the limit.
       managedPolicies: [
         managed("AWSCloudFormationFullAccess"),
         managed("AmazonS3FullAccess"),
         managed("AWSLambda_FullAccess"),
         managed("CloudFrontFullAccess"),
-        managed("AmazonRoute53FullAccess"),
-        managed("AWSCertificateManagerFullAccess"),
         managed("AmazonDynamoDBFullAccess"),
-        managed("AmazonSQSFullAccess"),
         managed("AmazonAPIGatewayAdministrator"),
         managed("AmazonEventBridgeFullAccess"),
-        managed("AWSBudgetsFullAccess"),
         managed("AmazonSSMFullAccess"),
         managed("CloudWatchLogsFullAccess"),
       ],
@@ -65,7 +62,6 @@ export class CicdStack extends Stack {
           "iam:GetPolicyVersion", "iam:CreatePolicyVersion",
           "iam:DeletePolicyVersion", "iam:ListPolicyVersions",
           "iam:TagPolicy", "iam:UntagPolicy",
-          // OIDC provider management (for CicdStack itself)
           "iam:CreateOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider",
           "iam:GetOpenIDConnectProvider", "iam:UpdateOpenIDConnectProvider",
           "iam:ListOpenIDConnectProviders", "iam:TagOpenIDConnectProvider",
@@ -75,13 +71,21 @@ export class CicdStack extends Stack {
       }),
     );
 
-    // Cognito: no AWS-managed full-access policy exists; inline covers CRUD.
-    // STS: CDK CLI calls GetCallerIdentity before synthesising.
-    // EC2 Describe: CDK uses this for context lookups (AZs, VPCs).
+    // Services moved inline to stay under the 10-managed-policy quota.
+    // STS GetCallerIdentity: CDK CLI calls this before synthesising.
+    // EC2 Describe*: CDK uses this for context lookups (AZs, VPCs).
     role.addToPolicy(
       new iam.PolicyStatement({
-        sid: "OtherServicesCdkNeeds",
-        actions: ["cognito-idp:*", "sts:GetCallerIdentity", "ec2:Describe*"],
+        sid: "InlinedServices",
+        actions: [
+          "route53:*",
+          "acm:*",
+          "sqs:*",
+          "budgets:*",
+          "cognito-idp:*",
+          "sts:GetCallerIdentity",
+          "ec2:Describe*",
+        ],
         resources: ["*"],
       }),
     );
