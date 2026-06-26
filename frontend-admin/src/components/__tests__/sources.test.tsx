@@ -124,4 +124,173 @@ describe("Sources", () => {
       screen.getByRole("button", { name: /scraping/i }),
     ).toBeInTheDocument();
   });
+
+  // ── Add / delete source tests ──────────────────────────────────────────────
+
+  it("renders a form to add a source with nombre and url inputs", () => {
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+        creating={false}
+      />,
+    );
+    expect(screen.getByLabelText(/nombre/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/url/i)).toBeInTheDocument();
+  });
+
+  it("submitting the form calls onCreate with nombre, url and extractHint", async () => {
+    const onCreate = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={onCreate}
+        onDelete={vi.fn()}
+        creating={false}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/nombre/i), "Nueva Fuente");
+    await user.type(screen.getByLabelText(/url/i), "https://nueva.com");
+    await user.click(screen.getByRole("button", { name: /agregar fuente/i }));
+
+    expect(onCreate).toHaveBeenCalledWith({
+      nombre: "Nueva Fuente",
+      url: "https://nueva.com",
+      extractHint: "",
+    });
+  });
+
+  it("clears form fields after successful submit", async () => {
+    const user = userEvent.setup();
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+        creating={false}
+      />,
+    );
+
+    const nombreInput = screen.getByLabelText(/nombre/i);
+    const urlInput = screen.getByLabelText(/url/i);
+
+    await user.type(nombreInput, "Nueva Fuente");
+    await user.type(urlInput, "https://nueva.com");
+    await user.click(screen.getByRole("button", { name: /agregar fuente/i }));
+
+    expect(nombreInput).toHaveValue("");
+    expect(urlInput).toHaveValue("");
+  });
+
+  it("disables the submit button and shows busy label while creating", () => {
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+        creating={true}
+      />,
+    );
+    const btn = screen.getByRole("button", { name: /agregando/i });
+    expect(btn).toBeDisabled();
+  });
+
+  it("each source row has an Eliminar button", () => {
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+        creating={false}
+      />,
+    );
+    const deleteButtons = screen.getAllByRole("button", { name: /eliminar/i });
+    expect(deleteButtons).toHaveLength(2);
+  });
+
+  it("clicking Eliminar and confirming calls onDelete with the source id", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const onDelete = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onDelete={onDelete}
+        creating={false}
+      />,
+    );
+
+    const deleteButtons = screen.getAllByRole("button", { name: /eliminar/i });
+    await user.click(deleteButtons[0]); // src-1: Fuente Alpha
+
+    expect(onDelete).toHaveBeenCalledWith("src-1");
+  });
+
+  it("does not call onDelete when confirm is cancelled", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const onDelete = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onDelete={onDelete}
+        creating={false}
+      />,
+    );
+
+    const deleteButtons = screen.getAllByRole("button", { name: /eliminar/i });
+    await user.click(deleteButtons[0]);
+
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it("shows IA badge when source connector is ai", () => {
+    const aiSources = [
+      {
+        id: "src-ai",
+        nombre: "Fuente IA",
+        url: "https://ai.com",
+        connector: "ai",
+        enabled: true,
+      },
+    ];
+    render(
+      <Sources
+        sources={aiSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onDelete={vi.fn()}
+        creating={false}
+      />,
+    );
+    expect(screen.getByText("IA")).toBeInTheDocument();
+  });
 });

@@ -13,6 +13,7 @@ export interface Source {
   enabled: boolean;
   lastRun?: string;
   lastStatus?: string;
+  extractHint?: string;
 }
 
 export interface Stats {

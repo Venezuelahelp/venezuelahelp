@@ -62,6 +62,14 @@ function buildMockApi() {
       ),
     scrapeNow: vi.fn().mockResolvedValue(undefined),
     getStats: vi.fn().mockResolvedValue(mockStats),
+    createSource: vi.fn().mockResolvedValue({
+      id: "new-1",
+      nombre: "Nueva",
+      url: "https://nueva.com",
+      connector: "rss",
+      enabled: true,
+    } as Source),
+    deleteSource: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -245,6 +253,67 @@ describe("App (integration)", () => {
       const alert = screen.getByRole("alert");
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent("No se pudo guardar la configuración.");
+    });
+  });
+
+  it("creating a source in Fuentes tab calls api.createSource and refreshes sources", async () => {
+    const { deps, api } = buildDeps(() => Promise.resolve("mock-token"));
+    const user = userEvent.setup();
+    render(<App deps={deps} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("navigation")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /Fuentes/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/nombre/i)).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText(/nombre/i), "Nueva Fuente");
+    await user.type(screen.getByLabelText(/url/i), "https://nueva.com");
+    await user.click(screen.getByRole("button", { name: /agregar fuente/i }));
+
+    await waitFor(() => {
+      expect(api.createSource).toHaveBeenCalledWith({
+        nombre: "Nueva Fuente",
+        url: "https://nueva.com",
+        extractHint: "",
+      });
+    });
+
+    await waitFor(() => {
+      expect(api.getSources).toHaveBeenCalledTimes(2); // initial load + refresh
+    });
+  });
+
+  it("deleting a source in Fuentes tab calls api.deleteSource and refreshes sources", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { deps, api } = buildDeps(() => Promise.resolve("mock-token"));
+    const user = userEvent.setup();
+    render(<App deps={deps} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("navigation")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /Fuentes/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /eliminar/i }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /eliminar/i }));
+
+    await waitFor(() => {
+      expect(api.deleteSource).toHaveBeenCalledWith("s1");
+    });
+
+    await waitFor(() => {
+      expect(api.getSources).toHaveBeenCalledTimes(2); // initial load + refresh
     });
   });
 

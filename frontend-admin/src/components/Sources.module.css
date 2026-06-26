@@ -117,7 +117,144 @@
   max-width: 240px;
 }
 
+/* ── Add source form ─────────────────────────────────────────────────────── */
+.addForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: var(--surface);
+}
+
+.formHeading {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: var(--ink-strong);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fieldInput {
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background-color: var(--bg);
+  transition: border-color 120ms ease-out;
+}
+
+.fieldInput::placeholder {
+  color: var(--muted);
+}
+
+.fieldInput:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.fieldInput:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.addButton {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  cursor: pointer;
+  background-color: var(--primary);
+  color: var(--on-primary);
+  transition: background-color 120ms ease-out;
+}
+
+.addButton:hover:not(:disabled) {
+  background-color: var(--primary-strong);
+}
+
+.addButton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.addButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── IA badge ────────────────────────────────────────────────────────────── */
+.iaBadge {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  background-color: var(--primary-tint);
+  border: 1px solid oklch(0.88 0.04 250);
+}
+
+/* ── Delete button ───────────────────────────────────────────────────────── */
+.deleteButton {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  color: oklch(0.48 0.13 30);
+  background-color: transparent;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out;
+}
+
+.deleteButton:hover {
+  background-color: oklch(0.97 0.01 30);
+  border-color: oklch(0.6 0.12 30);
+}
+
+.deleteButton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
+  .fieldRow {
+    grid-template-columns: 1fr;
+  }
+
   .sourceRow {
     flex-wrap: wrap;
   }
@@ -131,7 +268,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .scrapeButton,
-  .sourceRow {
+  .sourceRow,
+  .addButton,
+  .deleteButton,
+  .fieldInput {
     transition: none;
   }
 }

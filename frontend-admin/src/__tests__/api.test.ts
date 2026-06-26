@@ -229,4 +229,111 @@ describe("createApi", () => {
       await expect(api.getStats()).rejects.toThrow("HTTP 401");
     });
   });
+
+  describe("createSource", () => {
+    it("calls POST /sources with bearer token and JSON body", async () => {
+      const newSource = {
+        id: "new-1",
+        nombre: "Nueva",
+        url: "https://nueva.com",
+        connector: "rss",
+        enabled: true,
+      };
+      const mockFetch = makeOkFetch(newSource);
+      const api = createApi(API_URL, makeGetToken(), { fetch: mockFetch });
+
+      await api.createSource({ nombre: "Nueva", url: "https://nueva.com" });
+
+      expect(mockFetch).toHaveBeenCalledWith(`${API_URL}/sources`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ nombre: "Nueva", url: "https://nueva.com" }),
+      });
+    });
+
+    it("returns the created Source", async () => {
+      const newSource = {
+        id: "new-1",
+        nombre: "Nueva",
+        url: "https://nueva.com",
+        connector: "rss",
+        enabled: true,
+      };
+      const api = createApi(API_URL, makeGetToken(), {
+        fetch: makeOkFetch(newSource),
+      });
+
+      const result = await api.createSource({
+        nombre: "Nueva",
+        url: "https://nueva.com",
+      });
+      expect(result).toEqual(newSource);
+    });
+
+    it("includes extractHint in body when provided", async () => {
+      const mockFetch = makeOkFetch({ id: "new-1" });
+      const api = createApi(API_URL, makeGetToken(), { fetch: mockFetch });
+
+      await api.createSource({
+        nombre: "Nueva",
+        url: "https://nueva.com",
+        extractHint: "noticias recientes",
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        `${API_URL}/sources`,
+        expect.objectContaining({
+          body: JSON.stringify({
+            nombre: "Nueva",
+            url: "https://nueva.com",
+            extractHint: "noticias recientes",
+          }),
+        }),
+      );
+    });
+
+    it("throws on non-ok", async () => {
+      const api = createApi(API_URL, makeGetToken(), {
+        fetch: makeErrorFetch(400),
+      });
+      await expect(
+        api.createSource({ nombre: "Nueva", url: "https://nueva.com" }),
+      ).rejects.toThrow("HTTP 400");
+    });
+  });
+
+  describe("deleteSource", () => {
+    it("calls DELETE /sources/:id with bearer token", async () => {
+      const mockFetch = makeOkFetch({ deleted: "s1" });
+      const api = createApi(API_URL, makeGetToken(), { fetch: mockFetch });
+
+      await api.deleteSource("s1");
+
+      expect(mockFetch).toHaveBeenCalledWith(`${API_URL}/sources/s1`, {
+        method: "DELETE",
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          "content-type": "application/json",
+        },
+      });
+    });
+
+    it("returns void on success", async () => {
+      const api = createApi(API_URL, makeGetToken(), {
+        fetch: makeOkFetch({ deleted: "s1" }),
+      });
+      const result = await api.deleteSource("s1");
+      expect(result).toBeUndefined();
+    });
+
+    it("throws on non-ok", async () => {
+      const api = createApi(API_URL, makeGetToken(), {
+        fetch: makeErrorFetch(404),
+      });
+      await expect(api.deleteSource("s1")).rejects.toThrow("HTTP 404");
+    });
+  });
 });

@@ -11,6 +11,12 @@ interface Api {
   patchSource(id: string, enabled: boolean): Promise<Source>;
   scrapeNow(): Promise<void>;
   getStats(): Promise<Stats>;
+  createSource(body: {
+    nombre: string;
+    url: string;
+    extractHint?: string;
+  }): Promise<Source>;
+  deleteSource(id: string): Promise<void>;
 }
 
 export function createApi(
@@ -66,6 +72,18 @@ export function createApi(
 
     getStats(): Promise<Stats> {
       return request<Stats>("/stats", "GET");
+    },
+
+    createSource(body: {
+      nombre: string;
+      url: string;
+      extractHint?: string;
+    }): Promise<Source> {
+      return request<Source>("/sources", "POST", body);
+    },
+
+    async deleteSource(id: string): Promise<void> {
+      await request<unknown>(`/sources/${id}`, "DELETE");
     },
   };
 }

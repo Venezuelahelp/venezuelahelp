@@ -51,6 +51,7 @@ export default function App({ deps = {} }: AppProps) {
   const [config, setConfig] = useState<ConfigType | null>(null);
   const [scraping, setScraping] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const apiRef = useRef<ApiClient | null>(null);
@@ -134,15 +135,50 @@ export default function App({ deps = {} }: AppProps) {
     }
   }
 
+  async function refreshSources() {
+    if (!apiRef.current) return;
+    const updated = await apiRef.current.getSources();
+    if (mountedRef.current) setSources(updated);
+  }
+
   async function handleToggleSource(id: string, enabled: boolean) {
     if (!apiRef.current) return;
     try {
       await apiRef.current.patchSource(id, enabled);
-      const updated = await apiRef.current.getSources();
-      if (mountedRef.current) setSources(updated);
+      await refreshSources();
     } catch {
       if (mountedRef.current) setError("No se pudo actualizar la fuente.");
     }
+  }
+
+  function handleCreateSource(body: {
+    nombre: string;
+    url: string;
+    extractHint?: string;
+  }) {
+    if (!apiRef.current) return;
+    const api = apiRef.current;
+    setCreating(true);
+    api
+      .createSource(body)
+      .then(() => refreshSources())
+      .catch(() => {
+        if (mountedRef.current) setError("No se pudo agregar la fuente.");
+      })
+      .finally(() => {
+        if (mountedRef.current) setCreating(false);
+      });
+  }
+
+  function handleDeleteSource(id: string) {
+    if (!apiRef.current) return;
+    const api = apiRef.current;
+    api
+      .deleteSource(id)
+      .then(() => refreshSources())
+      .catch(() => {
+        if (mountedRef.current) setError("No se pudo eliminar la fuente.");
+      });
   }
 
   async function handleSaveConfig(next: ConfigType) {
@@ -226,6 +262,9 @@ export default function App({ deps = {} }: AppProps) {
               onToggle={(id, enabled) => void handleToggleSource(id, enabled)}
               onScrape={() => void handleScrape()}
               scraping={scraping}
+              onCreate={handleCreateSource}
+              onDelete={handleDeleteSource}
+              creating={creating}
             />
           ) : (
             <div className={styles.loading} role="status">
