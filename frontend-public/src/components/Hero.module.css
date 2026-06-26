@@ -1,0 +1,66 @@
+.hero {
+  background: var(--bg);
+  padding: 48px 16px 40px;
+}
+
+.inner {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title {
+  /* --t-hero from DESIGN.md */
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  color: var(--ink-strong);
+  line-height: 1.15;
+  margin: 0;
+}
+
+.body {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: 65ch;
+  margin: 0;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 12px 24px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: 10px; /* ≤12px per DESIGN.md */
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 140ms ease-out;
+}
+
+.cta:hover {
+  background: var(--primary-strong);
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.updated {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta {
+    transition: none;
+  }
+}
