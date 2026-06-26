@@ -13,10 +13,20 @@ const CORS = {
 } as const;
 
 export interface HandlerEvent {
-  requestContext: { http: { method: string } };
+  requestContext: {
+    http: { method: string };
+    authorizer?: { jwt?: { claims?: Record<string, unknown> } };
+  };
   rawPath: string;
   pathParameters?: Record<string, string>;
   body?: string;
+}
+
+const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function actorFrom(event: HandlerEvent): string {
+  const claims = event.requestContext.authorizer?.jwt?.claims;
+  return (claims?.email as string) ?? (claims?.sub as string) ?? "desconocido";
 }
 
 export interface HandlerDeps {
@@ -64,6 +74,16 @@ export async function handler(
 
   try {
     const result = await routeFn(method, event.rawPath, parsedBody, routeDeps);
+    // Audit trail: registra cada mutación admin (quién, qué, resultado) en
+    // CloudWatch. Las lecturas (GET) no se auditan.
+    if (MUTATING.has(method)) {
+      logger.info("admin audit", {
+        actor: actorFrom(event),
+        method,
+        path: event.rawPath,
+        status: result.status,
+      });
+    }
     return {
       statusCode: result.status,
       headers: { ...CORS, "content-type": "application/json" },

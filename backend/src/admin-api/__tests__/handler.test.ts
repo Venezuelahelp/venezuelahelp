@@ -79,6 +79,46 @@ describe("handler", () => {
     );
   });
 
+  it("audit-logs mutating requests with the authenticated actor", async () => {
+    const { logger } = await import("@/shared/logger");
+    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
+    const handler = await load();
+    const event = {
+      requestContext: {
+        http: { method: "PUT" },
+        authorizer: { jwt: { claims: { sub: "u-1", email: "admin@x.com" } } },
+      },
+      rawPath: "/config",
+      body: JSON.stringify({ scrapeRateMin: 60 }),
+    };
+
+    await handler(event, { route: stubRoute });
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      "admin audit",
+      expect.objectContaining({
+        actor: "admin@x.com",
+        method: "PUT",
+        path: "/config",
+        status: 200,
+      }),
+    );
+  });
+
+  it("does not audit-log read-only GET requests", async () => {
+    const { logger } = await import("@/shared/logger");
+    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
+    const handler = await load();
+    const event = {
+      requestContext: { http: { method: "GET" } },
+      rawPath: "/config",
+    };
+
+    await handler(event, { route: stubRoute });
+
+    expect(infoSpy).not.toHaveBeenCalledWith("admin audit", expect.anything());
+  });
+
   it("returns 204 with only CORS headers on OPTIONS", async () => {
     const handler = await load();
     const event = {
