@@ -39,49 +39,54 @@ export default function App() {
 
         {error && !loading && <ErrorState onRetry={() => location.reload()} />}
 
-        {data && !loading && !error && (
-          <>
-            <Hero generatedAt={data.generatedAt} />
+        {data &&
+          !loading &&
+          !error &&
+          (() => {
+            const items = flatten(data);
+            const filtered = filterItems(items, query, active);
+            return (
+              <>
+                <Hero generatedAt={data.generatedAt} />
 
-            <div className={styles.container}>
-              <SummaryBar
-                counts={countByCategory(flatten(data))}
-                active={active}
-                onToggle={onToggle}
-              />
+                <div className={styles.container}>
+                  <SummaryBar
+                    counts={countByCategory(items)}
+                    active={active}
+                    onToggle={onToggle}
+                  />
 
-              <FilterBar
-                query={query}
-                onQuery={setQuery}
-                active={active}
-                onToggle={onToggle}
-              />
+                  <FilterBar
+                    query={query}
+                    onQuery={setQuery}
+                    active={active}
+                    onToggle={onToggle}
+                  />
 
-              {(() => {
-                const filtered = filterItems(flatten(data), query, active);
-                if (filtered.length === 0) {
-                  return <Empty query={query} />;
-                }
-                return (
-                  <div className={styles.results}>
-                    <section
-                      className={styles.mapSection}
-                      aria-label="Mapa de ubicaciones"
-                    >
-                      <MapView items={filtered} />
-                    </section>
-                    <section
-                      className={styles.listSection}
-                      aria-label="Lista de elementos"
-                    >
-                      <ItemList items={filtered} />
-                    </section>
-                  </div>
-                );
-              })()}
-            </div>
-          </>
-        )}
+                  {filtered.length === 0 ? (
+                    <Empty query={query} />
+                  ) : (
+                    /* List first in DOM (a11y); CSS `order` keeps the visual
+                     layout: list-first on mobile, list-left/map-right desktop. */
+                    <div className={styles.results}>
+                      <section
+                        className={styles.listSection}
+                        aria-label="Lista de elementos"
+                      >
+                        <ItemList items={filtered} />
+                      </section>
+                      <section
+                        className={styles.mapSection}
+                        aria-label="Mapa de ubicaciones"
+                      >
+                        <MapView items={filtered} />
+                      </section>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
       </main>
     </div>
   );
