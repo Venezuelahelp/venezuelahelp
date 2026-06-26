@@ -2,10 +2,12 @@ import { SourceRepo } from "@/shared/repos/sourceRepo";
 import { ItemRepo } from "@/shared/repos/itemRepo";
 import { getConnector as defaultGetConnector } from "@/connectors/registry";
 import { ensureSeedSources } from "@/scraper/seed";
-import { runAiSource as defaultRunAiSource } from "@/connectors/aiConnector";
+import {
+  runAiSource as defaultRunAiSource,
+  AI_EXTRACT_MODEL,
+} from "@/connectors/aiConnector";
 import { safeFetchText } from "@/connectors/ssrf";
-import { ConfigRepo } from "@/shared/repos/configRepo";
-import { askBedrock as defaultAskBedrock } from "@/telegram/bedrock";
+import { askBedrockTool as defaultExtract } from "@/telegram/bedrock";
 import type { Source } from "@/shared/types";
 
 export interface SourceResult {
@@ -22,10 +24,9 @@ interface Deps {
   itemRepo: Pick<ItemRepo, "upsert">;
   seed: (repo: SourceRepo) => Promise<void>;
   getConnector: typeof defaultGetConnector;
-  configRepo: Pick<ConfigRepo, "get">;
   runAiSource: typeof defaultRunAiSource;
   fetchText: (url: string) => Promise<string>;
-  askBedrock: typeof defaultAskBedrock;
+  extract: typeof defaultExtract;
 }
 
 // Bounded concurrency for upserts: each upsert is a Get + conditional Put
@@ -43,19 +44,11 @@ export async function runScrape(
   const itemRepo = (deps?.itemRepo as Deps["itemRepo"]) ?? new ItemRepo();
   const seed = deps?.seed ?? ensureSeedSources;
   const getConnector = deps?.getConnector ?? defaultGetConnector;
-  const configRepo = deps?.configRepo ?? new ConfigRepo();
   const runAi = deps?.runAiSource ?? defaultRunAiSource;
   const fetchText = deps?.fetchText ?? ((url: string) => safeFetchText(url));
-  const askBedrock = deps?.askBedrock ?? defaultAskBedrock;
+  const extract = deps?.extract ?? defaultExtract;
 
   await seed(sourceRepo as SourceRepo);
-  // Config is read lazily — only when the first AI source is encountered,
-  // avoiding a DynamoDB round-trip when no AI sources are enabled.
-  let config: Awaited<ReturnType<typeof configRepo.get>> | undefined;
-  const getConfig = async () => {
-    if (!config) config = await configRepo.get();
-    return config;
-  };
   const sources = await sourceRepo.listEnabled();
   const results: SourceResult[] = [];
 
@@ -71,10 +64,9 @@ export async function runScrape(
     try {
       let items;
       if (source.connector === "ai") {
-        const cfg = await getConfig();
-        const r = await runAi(source, now, cfg.bedrockModelId, {
+        const r = await runAi(source, now, AI_EXTRACT_MODEL, {
           fetchText,
-          askBedrock,
+          extract,
         });
         next.lastContentHash = r.nextHash;
         if (r.nextExtractAt) next.lastExtractAt = r.nextExtractAt;

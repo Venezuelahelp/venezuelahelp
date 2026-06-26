@@ -58,17 +58,9 @@ describe("runScrape", () => {
       itemRepo,
       seed: vi.fn(async () => {}),
       getConnector: () => undefined,
-      configRepo: {
-        get: vi.fn(async () => ({
-          scrapeRateMin: 30,
-          bedrockModelId: "m",
-          systemPrompt: "s",
-          botTriggerMode: "mention" as const,
-        })),
-      },
       runAiSource,
       fetchText: vi.fn(),
-      askBedrock: vi.fn(),
+      extract: vi.fn(),
     };
     const res = await runScrape("2026-06-26T00:00:00Z", deps as any);
     expect(runAiSource).toHaveBeenCalled();
