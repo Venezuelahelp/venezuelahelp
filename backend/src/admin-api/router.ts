@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ConfigRepo } from "@/shared/repos/configRepo";
 import type { SourceRepo } from "@/shared/repos/sourceRepo";
 import type { ItemRepo } from "@/shared/repos/itemRepo";
+import { assertPublicHttpUrl } from "@/connectors/ssrf";
 import { CATEGORIES } from "@/shared/types";
 
 export interface RouteDeps {
@@ -29,7 +30,22 @@ const patchSourceSchema = z.object({
 
 const newSourceSchema = z.object({
   nombre: z.string().min(1).max(80),
-  url: z.string().url(),
+  // Además de ser una URL válida, rechaza esquemas no http(s) y hosts
+  // privados/loopback/metadata (SSRF) ya en el alta de la fuente.
+  url: z
+    .string()
+    .url()
+    .refine(
+      (u) => {
+        try {
+          assertPublicHttpUrl(u);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "URL no permitida (host privado o esquema inválido)" },
+    ),
   extractHint: z.string().max(500).optional(),
 });
 

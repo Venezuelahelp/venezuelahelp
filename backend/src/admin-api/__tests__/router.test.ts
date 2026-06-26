@@ -253,6 +253,23 @@ describe("admin-api router", () => {
       });
     });
 
+    it("POST /sources appends -2 when the slug already exists", async () => {
+      const sourceRepo = {
+        list: vi.fn(),
+        get: vi.fn(async (id: string) => (id === "noticias-ve" ? { id } : null)),
+        put: vi.fn(async () => {}),
+        delete: vi.fn(),
+      };
+      const res = await route(
+        "POST",
+        "/sources",
+        { nombre: "Noticias VE", url: "https://news.example/ve" },
+        { sourceRepo } as any,
+      );
+      expect(res.status).toBe(201);
+      expect(sourceRepo.put.mock.calls[0][0].id).toBe("noticias-ve-2");
+    });
+
     it("POST /sources rejects an invalid url with 400", async () => {
       const sourceRepo = {
         get: vi.fn(),
@@ -267,6 +284,23 @@ describe("admin-api router", () => {
         { sourceRepo } as any,
       );
       expect(res.status).toBe(400);
+    });
+
+    it("POST /sources rejects an SSRF url (private/metadata host) with 400", async () => {
+      const sourceRepo = {
+        get: vi.fn(),
+        put: vi.fn(),
+        list: vi.fn(),
+        delete: vi.fn(),
+      };
+      const res = await route(
+        "POST",
+        "/sources",
+        { nombre: "x", url: "http://169.254.169.254/latest/meta-data/" },
+        { sourceRepo } as any,
+      );
+      expect(res.status).toBe(400);
+      expect(sourceRepo.put).not.toHaveBeenCalled();
     });
   });
 
