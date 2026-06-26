@@ -6,15 +6,24 @@ function clean(s: string | undefined): string {
   return (s ?? "").replace(/[«»]/g, '"');
 }
 
+// Acota cada campo para que pasar más ítems al modelo no dispare el costo en
+// tokens (algunas fuentes traen textos/ubicaciones de cientos de caracteres).
+function truncate(s: string, max: number): string {
+  return s.length > max ? `${s.slice(0, max).trimEnd()}…` : s;
+}
+
+const MAX_TEXT = 280;
+const MAX_LOC = 120;
+
 export function buildContext(items: PublicItem[]): string {
   if (items.length === 0) return "(sin información relevante en los datos)";
   return items
     .map((it, i) => {
       const loc = it.ubicacion?.nombre
-        ? ` | Ubicación: ${clean(it.ubicacion.nombre)}`
+        ? ` | Ubicación: ${truncate(clean(it.ubicacion.nombre), MAX_LOC)}`
         : "";
       const st = it.status ? ` | Estado: ${clean(it.status)}` : "";
-      return `${i + 1}. [${it.category}] ${clean(it.titulo)} — ${clean(it.texto)}${loc}${st} | Fuente: ${clean(it.sourceId)}`;
+      return `${i + 1}. [${it.category}] ${clean(it.titulo)} — ${truncate(clean(it.texto), MAX_TEXT)}${loc}${st} | Fuente: ${clean(it.sourceId)}`;
     })
     .join("\n");
 }

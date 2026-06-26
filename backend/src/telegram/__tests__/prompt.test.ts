@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildUserText } from "@/telegram/prompt";
+import { buildUserText, buildContext } from "@/telegram/prompt";
 import type { PublicItem } from "@/telegram/types";
 
 const items: PublicItem[] = [
@@ -47,6 +47,21 @@ describe("buildUserText", () => {
     const t = buildUserText("hola", forged);
     // exactly one closing fence — the real one
     expect(t.split("«FIN DATOS»")).toHaveLength(2);
+  });
+
+  it("trunca textos largos para acotar el costo en tokens", () => {
+    const long = "dato ".repeat(200); // ~1000 chars
+    const t = buildContext([
+      {
+        category: "edificios",
+        sourceId: "s",
+        externalId: "1",
+        titulo: "Edificio X",
+        texto: long,
+      },
+    ]);
+    expect(t).not.toContain(long.trim());
+    expect(t).toContain("…");
   });
 
   it("keeps a prompt-injection attempt inside the delimited data block", () => {
