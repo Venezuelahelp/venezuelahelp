@@ -68,3 +68,14 @@ cd infra && npx cdk deploy --profile VenezuelaHelp   # despliega
 
 - Perfil SSO: **`VenezuelaHelp`** (cuenta `720115910277`, región `us-east-1`, rol Admin).
 - Tabla DynamoDB: `VenezuelaHelp`. DLQ scraper: `venezuelahelp-scraper-dlq`. Token de Telegram en SSM SecureString (Fase 3).
+
+### Deploy (CDK) <!-- /aprende 2026-06-26 -->
+
+- El SDK de Node de CDK no resuelve bien las credenciales SSO; **exportarlas** antes de desplegar:
+  ```bash
+  cd infra
+  eval "$(aws configure export-credentials --profile VenezuelaHelp --format env)"
+  CDK_DEFAULT_ACCOUNT=720115910277 CDK_DEFAULT_REGION=us-east-1 npx cdk deploy <Stack> --require-approval never
+  ```
+- **Construir cada frontend antes del `cdk synth`/`deploy`** (el `BucketDeployment` usa `Source.asset(.../dist)`): `npm run build --workspace @venezuelahelp/frontend-public` (y `frontend-admin`).
+- Stacks (todos llevan prefijo `VenezuelaHelp`): `VenezuelaHelpDataStack`, `VenezuelaHelpScraperStack`, `VenezuelaHelpBotStack`, `VenezuelaHelpFrontendStack`, `VenezuelaHelpAdminStack`. Usa el nombre completo en `cdk deploy` — `cdk deploy BotStack` falla con "No stacks match the name(s)". <!-- /aprende 2026-06-26 -->
