@@ -72,4 +72,30 @@ describe("AdminStack", () => {
     expect(keys.some((k) => k.startsWith("UserPoolId"))).toBe(true);
     expect(keys.some((k) => k.startsWith("UserPoolClientId"))).toBe(true);
   });
+
+  it("creates a CloudFront Distribution for the admin SPA", () => {
+    template().resourceCountIs("AWS::CloudFront::Distribution", 1);
+  });
+
+  it("creates a private S3 bucket for the admin site", () => {
+    template().hasResourceProperties("AWS::S3::Bucket", {
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: true,
+        BlockPublicPolicy: true,
+        IgnorePublicAcls: true,
+        RestrictPublicBuckets: true,
+      },
+    });
+  });
+
+  it("creates a BucketDeployment to deploy admin SPA and config.json", () => {
+    template().resourceCountIs("Custom::CDKBucketDeployment", 1);
+  });
+
+  it("outputs AdminUrl", () => {
+    const t = template();
+    const outputs = t.findOutputs("*");
+    const keys = Object.keys(outputs);
+    expect(keys.some((k) => k.startsWith("AdminUrl"))).toBe(true);
+  });
 });
