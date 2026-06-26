@@ -32,13 +32,25 @@ describe("Analytics", () => {
     expect(screen.getByText("137")).toBeInTheDocument();
   });
 
-  it("renders dimension breakdowns and a recent visit", () => {
+  it("renders country names in the breakdown and the country code in the table", () => {
     render(<Analytics data={data} />);
-    expect(screen.getByText("US")).toBeInTheDocument();
+    // "Por país" muestra el nombre del país; la tabla reciente, el código.
+    expect(screen.getByText("Venezuela")).toBeInTheDocument();
+    expect(screen.getByText("Estados Unidos")).toBeInTheDocument();
+    expect(screen.getByText("VE")).toBeInTheDocument(); // código en la tabla
     expect(screen.getByText("/mapa")).toBeInTheDocument();
-    // "VE"/"Chrome" aparecen en el desglose y en la visita reciente.
-    expect(screen.getAllByText("VE").length).toBeGreaterThanOrEqual(2);
+    // "Chrome" aparece en el desglose por navegador y en la fila reciente.
     expect(screen.getAllByText("Chrome").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders the recent visits as a bounded table with column headers", () => {
+    render(<Analytics data={data} />);
+    expect(
+      screen.getByRole("columnheader", { name: "País" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Página" }),
+    ).toBeInTheDocument();
   });
 
   it("shows empty states when there is no data", () => {
