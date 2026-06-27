@@ -10,8 +10,12 @@ import {
   answerCallbackQuery as realAnswer,
 } from "@/telegram/telegramApi";
 import { loadSnapshot as realLoad } from "@/telegram/snapshot";
-import { askBedrock as realAsk } from "@/telegram/bedrock";
+import {
+  askBedrock as realAsk,
+  askBedrockToolRouter as realRoute,
+} from "@/telegram/bedrock";
 import { retrieve, countAnswer, isHelpRequest } from "@/telegram/retrieval";
+import { answerWithTools } from "@/telegram/agent";
 import { buildUserText } from "@/telegram/prompt";
 import {
   shouldRespond,
@@ -64,6 +68,7 @@ interface Deps {
   >;
   loadSnapshot: typeof realLoad;
   askBedrock: typeof realAsk;
+  routeTools: typeof realRoute;
   sendMessage: typeof realSend;
   answerCallbackQuery: typeof realAnswer;
 }
@@ -109,6 +114,7 @@ export async function handler(
     menuState: deps?.menuState ?? new MenuStateRepo(),
     loadSnapshot: deps?.loadSnapshot ?? realLoad,
     askBedrock: deps?.askBedrock ?? realAsk,
+    routeTools: deps?.routeTools ?? realRoute,
     sendMessage: deps?.sendMessage ?? realSend,
     answerCallbackQuery: deps?.answerCallbackQuery ?? realAnswer,
   };
@@ -218,51 +224,57 @@ export async function handler(
     const question = extractQuestion(msg, botUsername);
     const snap = await d.loadSnapshot();
 
-    // Intents deterministas antes del RAG (el LLM no puede contar el total ni
-    // sabe "cómo pedir ayuda"; lo resolvemos sin Bedrock).
+    // "Cómo pedir ayuda": guía fija (pre-check barato y fiable).
+    if (isHelpRequest(question)) {
+      await d.sendMessage(token, chatId, HELP_GUIDE);
+      await logQa(d, chatId, question, HELP_GUIDE, [], config.bedrockModelId, 0, 0);
+      return ok();
+    }
+
+    // Agente: el modelo enruta la pregunta a una herramienta (contar/listar/
+    // buscar) que opera sobre el snapshot COMPLETO. Si el tool-use falla
+    // (p. ej. el modelo no lo soporta de forma fiable), degradamos al RAG.
+    try {
+      const r = await answerWithTools(question, snap, config, {
+        routeTools: d.routeTools,
+        askBedrock: d.askBedrock,
+      });
+      await d.sendMessage(token, chatId, r.reply);
+      await logQa(
+        d,
+        chatId,
+        question,
+        r.reply,
+        r.itemsUsed,
+        config.bedrockModelId,
+        r.tokensIn,
+        r.tokensOut,
+      );
+      return ok();
+    } catch (e) {
+      logger.warn("agente tool-use falló; usando RAG clásico", {
+        chatId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+
+    // Fallback determinista: conteo si aplica, si no el RAG clásico.
     const count = countAnswer(question, snap);
     if (count) {
       await d.sendMessage(token, chatId, count);
       await logQa(d, chatId, question, count, [], config.bedrockModelId, 0, 0);
       return ok();
     }
-    if (isHelpRequest(question)) {
-      await d.sendMessage(token, chatId, HELP_GUIDE);
-      await logQa(
-        d,
-        chatId,
-        question,
-        HELP_GUIDE,
-        [],
-        config.bedrockModelId,
-        0,
-        0,
-      );
-      return ok();
-    }
-
     const items = retrieve(question, snap);
-
     if (items.length === 0) {
       await d.sendMessage(token, chatId, NO_DATA);
-      await logQa(
-        d,
-        chatId,
-        question,
-        NO_DATA,
-        [],
-        config.bedrockModelId,
-        0,
-        0,
-      );
+      await logQa(d, chatId, question, NO_DATA, [], config.bedrockModelId, 0, 0);
       return ok();
     }
-
-    const userText = buildUserText(question, items);
     const ans = await d.askBedrock(
       config.bedrockModelId,
       config.systemPrompt,
-      userText,
+      buildUserText(question, items),
     );
     const reply = ans.text.trim() || NO_DATA;
     await d.sendMessage(token, chatId, reply);

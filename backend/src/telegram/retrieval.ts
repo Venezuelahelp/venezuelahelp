@@ -134,7 +134,7 @@ export function inferCategories(question: string): Set<string> {
 }
 
 // Etiquetas legibles por categoría para las respuestas de conteo del bot.
-const CAT_LABEL: Record<string, string> = {
+export const CAT_LABEL: Record<string, string> = {
   reportes: "reportes",
   desaparecidos: "personas desaparecidas",
   acopios: "centros de acopio",
@@ -143,13 +143,19 @@ const CAT_LABEL: Record<string, string> = {
   hospitales: "hospitales",
 };
 
-function plural(n: number, sing: string, plu: string): string {
+export function plural(n: number, sing: string, plu: string): string {
   return `${n.toLocaleString("es")} ${n === 1 ? sing : plu}`;
 }
 
-function categoryStat(items: PublicItem[]): { count: number; sources: number } {
-  // Se cuentan los ítems usables (igual que el RAG, que excluye los sospechosos).
-  const valid = items.filter((i) => i.trust !== "sospechoso");
+export function categoryStat(items: PublicItem[]): {
+  count: number;
+  sources: number;
+} {
+  // Cuenta solo ítems usables: excluye sospechosos y duplicados (no canónicos),
+  // para no inflar el total contando la misma entidad varias veces.
+  const valid = items.filter(
+    (i) => i.trust !== "sospechoso" && i.isCanonical !== false,
+  );
   return {
     count: valid.length,
     sources: new Set(valid.map((i) => i.sourceId)).size,

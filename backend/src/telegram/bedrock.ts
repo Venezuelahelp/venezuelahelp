@@ -84,3 +84,47 @@ export async function askBedrockTool(
     tokensOut: res.usage?.outputTokens ?? 0,
   };
 }
+
+// Router de herramientas: el modelo recibe VARIAS tools y elige una (toolChoice
+// "any" → siempre llama a alguna). Devuelve el nombre elegido + sus argumentos.
+// Lo usa el agente para enrutar la pregunta a contar/listar/buscar.
+export async function askBedrockToolRouter(
+  modelId: string,
+  system: string,
+  userText: string,
+  tools: ToolSpec[],
+  deps?: Partial<Deps>,
+): Promise<{
+  name: string | null;
+  input: unknown;
+  tokensIn: number;
+  tokensOut: number;
+}> {
+  const br = (deps?.client as Deps["client"]) ?? client;
+  const res = await br.send(
+    new ConverseCommand({
+      modelId,
+      system: [{ text: system }],
+      messages: [{ role: "user", content: [{ text: userText }] }],
+      inferenceConfig: { maxTokens: 256, temperature: 0 },
+      toolConfig: {
+        tools: tools.map((t) => ({
+          toolSpec: {
+            name: t.name,
+            description: t.description,
+            inputSchema: { json: t.inputSchema } as ToolInputSchema,
+          },
+        })),
+        toolChoice: { any: {} },
+      },
+    }),
+  );
+  const content = res.output?.message?.content ?? [];
+  const toolUse = content.find((c) => "toolUse" in c)?.toolUse;
+  return {
+    name: toolUse?.name ?? null,
+    input: toolUse?.input ?? null,
+    tokensIn: res.usage?.inputTokens ?? 0,
+    tokensOut: res.usage?.outputTokens ?? 0,
+  };
+}

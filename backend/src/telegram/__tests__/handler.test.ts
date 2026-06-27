@@ -40,6 +40,13 @@ function deps(over = {}) {
       tokensIn: 10,
       tokensOut: 5,
     })),
+    // Por defecto el router elige "buscar" → mantiene el flujo RAG clásico.
+    routeTools: vi.fn(async () => ({
+      name: "buscar",
+      input: {},
+      tokensIn: 1,
+      tokensOut: 1,
+    })),
     sendMessage: vi.fn(async () => {}),
     answerCallbackQuery: vi.fn(async () => {}),
     menuState: {
@@ -361,7 +368,15 @@ describe("telegram handler", () => {
         ],
       },
     };
-    const d = deps({ loadSnapshot: vi.fn(async () => countSnap) });
+    const d = deps({
+      loadSnapshot: vi.fn(async () => countSnap),
+      routeTools: vi.fn(async () => ({
+        name: "contar",
+        input: { category: "desaparecidos" },
+        tokensIn: 1,
+        tokensOut: 1,
+      })),
+    });
     await handler(
       event("Personas desaparecidas número", {
         chat: { id: 9, type: "private" },
@@ -372,6 +387,41 @@ describe("telegram handler", () => {
     const reply = (d.sendMessage as any).mock.calls[0][2] as string;
     expect(reply).toContain("2");
     expect(reply).toContain("personas desaparecidas");
+  });
+
+  it("lista ítems sobre todo el snapshot (issue: listar) sin Bedrock", async () => {
+    const listSnap: Snapshot = {
+      generatedAt: "t",
+      categories: {
+        desaparecidos: Array.from({ length: 25 }, (_, i) => ({
+          category: "desaparecidos",
+          sourceId: "x",
+          externalId: String(i),
+          titulo: `Persona ${i}`,
+          texto: "",
+        })),
+      },
+    };
+    const d = deps({
+      loadSnapshot: vi.fn(async () => listSnap),
+      routeTools: vi.fn(async () => ({
+        name: "listar",
+        input: { category: "desaparecidos", limite: 20 },
+        tokensIn: 1,
+        tokensOut: 1,
+      })),
+    });
+    await handler(
+      event("dame los nombres de los desaparecidos", {
+        chat: { id: 9, type: "private" },
+      }),
+      d as any,
+    );
+    expect(d.askBedrock).not.toHaveBeenCalled();
+    const reply = (d.sendMessage as any).mock.calls[0][2] as string;
+    expect(reply).toContain("📋");
+    expect(reply).toContain("Persona 0");
+    expect(reply).toContain("de 25"); // total real, no la muestra
   });
 
   it("guía al usuario para pedir ayuda (issue #15) sin llamar a Bedrock", async () => {
