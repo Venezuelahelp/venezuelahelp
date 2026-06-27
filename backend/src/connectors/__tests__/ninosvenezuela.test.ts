@@ -38,6 +38,11 @@ describe("ninosvenezuela connector", () => {
     expect(liam.texto).toContain("Hospital de la Guaira");
   });
 
+  it("includes the child's cédula in texto when present", async () => {
+    const [, maria] = await ninosvenezuela.fetchItems();
+    expect(maria.texto).toContain("C.I. 30123456");
+  });
+
   it("maps foto_url to imageUrl and omits it when null", async () => {
     const [liam, maria] = await ninosvenezuela.fetchItems();
     expect(liam.imageUrl).toContain("/storage/v1/object/public/");
@@ -54,8 +59,9 @@ describe("ninosvenezuela connector", () => {
     const headers = lastInit?.headers as Record<string, string> | undefined;
     expect(headers?.apikey).toBeTruthy();
     const url = (vi.mocked(fetch).mock.calls[0][0] as string) ?? "";
-    // Las columnas sensibles no se piden a la API.
-    for (const col of ["cedula", "telefono", "quien_registra", "notas_medicas"]) {
+    // Datos del REGISTRANTE y notas médicas no se piden a la API (la cédula del
+    // NIÑO sí se expone).
+    for (const col of ["cedula_registra", "telefono", "quien_registra", "notas_medicas"]) {
       expect(url).not.toContain(col);
     }
   });

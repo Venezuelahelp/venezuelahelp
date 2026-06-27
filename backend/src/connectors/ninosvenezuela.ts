@@ -13,14 +13,16 @@ const BASE = "https://ninosvenezuela.org";
 const SUPABASE_URL = "https://hzyjnuksgbdnvtejidlr.supabase.co";
 const ANON_KEY = "sb_publishable_k-S69KCq0yGhBnRqMxiAcA_yP62UH9c";
 
-// Solo se piden columnas no sensibles, aptas para reunificación. Se EXCLUYEN a
-// propósito: `cedula` del niño, datos de quien registra (`quien_registra`,
-// `cedula_registra`, `telefono_registra`), teléfonos de contacto y notas
-// médicas. Así esos campos ni siquiera entran al `raw` que se guarda.
+// Campos del NIÑO que se exponen para reunificación: incluye foto y cédula del
+// menor (decisión del operador). Se siguen EXCLUYENDO los datos de quien
+// registra (`quien_registra`, `cedula_registra`, `telefono_registra`), los
+// teléfonos de contacto y las notas médicas — esos son de la persona que
+// reporta, no del niño, y ni siquiera entran al `raw`.
 const COLUMNS = [
   "id",
   "nombre",
   "apellido",
+  "cedula",
   "edad",
   "sexo",
   "condicion",
@@ -37,6 +39,7 @@ interface NinoRow {
   id: string;
   nombre?: string | null;
   apellido?: string | null;
+  cedula?: string | null;
   edad?: string | null;
   sexo?: string | null;
   condicion?: string | null;
@@ -79,6 +82,7 @@ export const ninosvenezuela: SourceConnector = {
       const lugar = join([r.refugio, r.municipio, r.estado_vzla], ", ");
       const texto = join(
         [
+          r.cedula ? `C.I. ${r.cedula}` : "",
           r.edad ? `${r.edad} años` : "",
           r.sexo,
           r.estado_familiar,

@@ -19,6 +19,7 @@
     "created_at": "2026-06-27T10:00:00+00:00",
     "nombre": "María",
     "apellido": "Pérez",
+    "cedula": "30123456",
     "edad": "7",
     "sexo": "Femenino",
     "condicion": "Estable",
