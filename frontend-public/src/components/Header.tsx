@@ -20,20 +20,15 @@ export default function Header() {
     <header className={styles.header}>
       <div className={styles.inner}>
         <a href="#/" className={styles.wordmark} aria-label="VenezuelaHelp">
-          <span className={styles.mark} aria-hidden="true">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 12 h3 l2 -7 l4 14 l3 -10 l2 5 h6" />
-            </svg>
-          </span>
+          <img
+            src="/logo.png"
+            className={styles.logo}
+            width={42}
+            height={40}
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+          />
           <span className={styles.name}>
             Venezuela<b>Help</b>
           </span>

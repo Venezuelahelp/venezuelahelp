@@ -25,16 +25,11 @@
   flex-shrink: 0;
 }
 
-.mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
+.logo {
+  height: 40px;
+  width: auto;
   flex: none;
-  display: grid;
-  place-items: center;
-  color: var(--on-primary);
-  background: linear-gradient(180deg, var(--primary), var(--primary-strong));
-  box-shadow: var(--shadow-sm);
+  display: block;
 }
 
 .name {
@@ -170,9 +165,8 @@
     font-size: 1.05rem;
   }
 
-  .mark {
-    width: 30px;
-    height: 30px;
+  .logo {
+    height: 34px;
   }
 
   .cta {
