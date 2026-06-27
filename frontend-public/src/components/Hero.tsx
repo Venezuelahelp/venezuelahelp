@@ -9,17 +9,11 @@ const TELEGRAM_URL = "https://t.me/VenezuelaHelpInfoBot";
 
 interface HeroProps {
   total: number;
-  sourceCount: number;
   counts: Record<Category, number>;
   generatedAt?: string;
 }
 
-export default function Hero({
-  total,
-  sourceCount,
-  counts,
-  generatedAt,
-}: HeroProps) {
+export default function Hero({ total, counts, generatedAt }: HeroProps) {
   const updated = formatDateTime(generatedAt);
   // Escala las barras respecto a la categoría más numerosa (no al total): así
   // la categoría líder llena la barra y las pequeñas siguen siendo visibles.
@@ -58,22 +52,6 @@ export default function Hero({
               <a href="#resultados" className={styles.ctaGhost}>
                 Ver la información
               </a>
-            </div>
-
-            <div className={styles.meta}>
-              <span>
-                <b>{total}</b> registros
-              </span>
-              <span className={styles.dot} aria-hidden="true" />
-              <span>
-                <b>{sourceCount}</b> fuentes monitoreadas
-              </span>
-              {updated && (
-                <>
-                  <span className={styles.dot} aria-hidden="true" />
-                  <span>{updated}</span>
-                </>
-              )}
             </div>
           </div>
 

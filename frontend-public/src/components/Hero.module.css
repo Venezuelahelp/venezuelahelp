@@ -145,28 +145,6 @@
   outline-offset: 2px;
 }
 
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  margin-top: 22px;
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.meta b {
-  color: var(--ink-strong);
-  font-weight: 700;
-}
-
-.dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--border-strong);
-}
-
 /* ── Tarjeta de resumen por categoría (desktop only) ─────────── */
 
 .panel {

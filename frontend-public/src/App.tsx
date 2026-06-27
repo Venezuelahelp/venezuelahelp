@@ -147,7 +147,6 @@ export default function App() {
                   <SourcesContext.Provider value={data.sources}>
                     <Hero
                       total={items.length}
-                      sourceCount={displaySources.length}
                       counts={catCounts}
                       generatedAt={data.generatedAt}
                     />
