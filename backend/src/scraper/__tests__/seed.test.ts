@@ -9,7 +9,20 @@ describe("ensureSeedSources", () => {
     const put = vi.spyOn(repo, "put").mockResolvedValue();
     await ensureSeedSources(repo);
     const ids = put.mock.calls.map((c) => c[0].id).sort();
-    expect(ids).toEqual(["sismovenezuela", "terremotovenezuela"]);
+    expect(ids).toEqual([
+      "ninosvenezuela",
+      "sismovenezuela",
+      "terremotovenezuela",
+    ]);
+  });
+
+  it("seeds ninosvenezuela enabled", async () => {
+    const repo = new SourceRepo();
+    vi.spyOn(repo, "get").mockResolvedValue(null);
+    const put = vi.spyOn(repo, "put").mockResolvedValue();
+    await ensureSeedSources(repo);
+    const ninos = put.mock.calls.map((c) => c[0]).find((s) => s.id === "ninosvenezuela");
+    expect(ninos?.enabled).toBe(true);
   });
 
   it("does not overwrite an existing source", async () => {
@@ -28,6 +41,9 @@ describe("ensureSeedSources", () => {
     });
     const put = vi.spyOn(repo, "put").mockResolvedValue();
     await ensureSeedSources(repo);
-    expect(put.mock.calls.map((c) => c[0].id)).toEqual(["terremotovenezuela"]);
+    expect(put.mock.calls.map((c) => c[0].id).sort()).toEqual([
+      "ninosvenezuela",
+      "terremotovenezuela",
+    ]);
   });
 });

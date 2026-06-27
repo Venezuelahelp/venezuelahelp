@@ -1,0 +1,33 @@
+[
+  {
+    "id": "bc1fa470-9ac6-44f9-a50c-f6f9528c5dff",
+    "created_at": "2026-06-27T13:09:49.47275+00:00",
+    "nombre": "Liam ",
+    "apellido": null,
+    "edad": "3",
+    "sexo": "Masculino",
+    "condicion": "Buena",
+    "estado_familiar": "Sin familia localizada",
+    "senas_particulares": null,
+    "refugio": "Hospital de la Guaira ",
+    "estado_vzla": "La Guaira",
+    "municipio": "La Guaira",
+    "foto_url": "https://hzyjnuksgbdnvtejidlr.supabase.co/storage/v1/object/public/fotos-registro/ninos/ejemplo.jpg"
+  },
+  {
+    "id": "a2c0f9d1-1111-2222-3333-444455556666",
+    "created_at": "2026-06-27T10:00:00+00:00",
+    "nombre": "María",
+    "apellido": "Pérez",
+    "cedula": "30123456",
+    "edad": "7",
+    "sexo": "Femenino",
+    "condicion": "Estable",
+    "estado_familiar": "Familia localizada",
+    "senas_particulares": "Cicatriz en el brazo",
+    "refugio": "Refugio Maiquetía",
+    "estado_vzla": "La Guaira",
+    "municipio": "Vargas",
+    "foto_url": null
+  }
+]

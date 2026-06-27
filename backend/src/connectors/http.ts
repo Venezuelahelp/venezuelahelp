@@ -1,4 +1,8 @@
-export async function fetchJson<T>(url: string, timeoutMs = 15000): Promise<T> {
+export async function fetchJson<T>(
+  url: string,
+  timeoutMs = 15000,
+  headers: Record<string, string> = {},
+): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -7,6 +11,7 @@ export async function fetchJson<T>(url: string, timeoutMs = 15000): Promise<T> {
       headers: {
         accept: "application/json",
         "user-agent": "VenezuelaHelp/1.0",
+        ...headers,
       },
     });
     if (!res.ok) {

@@ -16,6 +16,17 @@ const SEED: Source[] = [
     connector: "jsonApi",
     enabled: true,
   },
+  {
+    // Registro público de niños rescatados (categoría desaparecidos). Backend
+    // Supabase; lectura anónima. El conector expone los datos del niño (incl.
+    // foto y cédula) y excluye los datos de quien registra, teléfonos y notas
+    // médicas. Recomendado: coordinar con el operador y pedir API key propia.
+    id: "ninosvenezuela",
+    nombre: "Niños Venezuela",
+    url: "https://ninosvenezuela.org/",
+    connector: "jsonApi",
+    enabled: true,
+  },
 ];
 
 export async function ensureSeedSources(
