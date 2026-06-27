@@ -20,28 +20,15 @@
 .wordmark {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
   text-decoration: none;
   flex-shrink: 0;
 }
 
 .logo {
-  height: 40px;
+  height: 46px;
   width: auto;
   flex: none;
   display: block;
-}
-
-.name {
-  font-size: 1.18rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--ink-strong);
-}
-
-.name b {
-  color: var(--primary);
-  font-weight: 800;
 }
 
 .wordmark:focus-visible {
@@ -161,12 +148,8 @@
     padding: 10px 16px;
   }
 
-  .name {
-    font-size: 1.05rem;
-  }
-
   .logo {
-    height: 34px;
+    height: 40px;
   }
 
   .cta {

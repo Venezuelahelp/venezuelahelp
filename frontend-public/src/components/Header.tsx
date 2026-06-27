@@ -23,15 +23,12 @@ export default function Header() {
           <img
             src="/logo.png"
             className={styles.logo}
-            width={42}
-            height={40}
+            width={48}
+            height={46}
             alt=""
             aria-hidden="true"
             decoding="async"
           />
-          <span className={styles.name}>
-            Venezuela<b>Help</b>
-          </span>
         </a>
 
         {/* Desktop nav — only secondary links; hidden on mobile */}
