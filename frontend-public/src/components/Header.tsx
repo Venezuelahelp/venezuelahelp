@@ -16,6 +16,16 @@ export default function Header() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // "Fuentes" lleva al footer. Hacemos scroll suave por id en vez de cambiar el
+  // hash (el router de App resetea el scroll al tope en cada hashchange).
+  function scrollToFuentes(e: React.MouseEvent) {
+    const el = document.getElementById("fuentes");
+    if (!el) return; // p.ej. en la página "¿Quiénes somos?" deja el href normal
+    e.preventDefault();
+    setOpen(false);
+    el.scrollIntoView({ behavior: "smooth" });
+  }
+
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -35,6 +45,13 @@ export default function Header() {
         <nav className={styles.nav} aria-label="Principal">
           <a href="#/quienes-somos" className={styles.navLink}>
             ¿Quiénes somos?
+          </a>
+          <a
+            href="#fuentes"
+            className={styles.navLink}
+            onClick={scrollToFuentes}
+          >
+            Fuentes
           </a>
         </nav>
 
@@ -74,6 +91,13 @@ export default function Header() {
             onClick={() => setOpen(false)}
           >
             ¿Quiénes somos?
+          </a>
+          <a
+            href="#fuentes"
+            className={styles.menuLink}
+            onClick={scrollToFuentes}
+          >
+            Fuentes
           </a>
         </div>
       )}

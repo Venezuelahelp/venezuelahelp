@@ -114,6 +114,7 @@ export default function App() {
               !error &&
               (() => {
                 const items = flatten(data);
+                const catCounts = countByCategory(items);
                 const filtered = filterItems(items, query, active);
                 const located = filtered.filter((it) => it.ubicacion != null);
                 // Hero y Footer reflejan el directorio de fuentes del snapshot
@@ -139,6 +140,7 @@ export default function App() {
                     <Hero
                       total={items.length}
                       sourceCount={displaySources.length}
+                      counts={catCounts}
                       generatedAt={data.generatedAt}
                     />
 
@@ -153,7 +155,7 @@ export default function App() {
                           onQuery={setQuery}
                           active={active}
                           onToggle={onToggle}
-                          counts={countByCategory(items)}
+                          counts={catCounts}
                           resultCount={filtered.length}
                           total={items.length}
                           onClear={onClear}

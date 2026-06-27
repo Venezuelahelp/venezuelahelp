@@ -20,7 +20,7 @@ export default function Footer({ sources, generatedAt }: FooterProps) {
   const resolve = useResolveSource();
   const updated = formatDateTime(generatedAt);
   return (
-    <footer className={styles.footer}>
+    <footer className={styles.footer} id="fuentes">
       <div className={styles.inner}>
         <h2 className={styles.title}>Fuentes monitoreadas</h2>
         <p className={styles.sub}>

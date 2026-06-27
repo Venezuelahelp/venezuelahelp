@@ -1,11 +1,26 @@
 // src/components/__tests__/hero.test.tsx
 import { render, screen } from "@testing-library/react";
 import Hero from "@/components/Hero";
+import type { Category } from "@/types";
+
+// Suman 6 = total; ninguna categoría vale 3 (sourceCount) para no colisionar.
+const COUNTS: Record<Category, number> = {
+  reportes: 4,
+  desaparecidos: 1,
+  acopios: 1,
+  edificios: 0,
+  solicitudes: 0,
+};
 
 describe("Hero", () => {
   it("renders the editorial headline", () => {
     render(
-      <Hero total={6} sourceCount={3} generatedAt="2026-06-26T18:00:00Z" />,
+      <Hero
+        total={6}
+        sourceCount={3}
+        counts={COUNTS}
+        generatedAt="2026-06-26T18:00:00Z"
+      />,
     );
     expect(
       screen.getByRole("heading", { level: 1, name: /terremoto/i }),
@@ -14,7 +29,12 @@ describe("Hero", () => {
 
   it("links to the Telegram bot safely", () => {
     render(
-      <Hero total={6} sourceCount={3} generatedAt="2026-06-26T18:00:00Z" />,
+      <Hero
+        total={6}
+        sourceCount={3}
+        counts={COUNTS}
+        generatedAt="2026-06-26T18:00:00Z"
+      />,
     );
     const link = screen.getByRole("link", { name: /telegram/i });
     expect(link).toHaveAttribute("href", "https://t.me/VenezuelaHelpInfoBot");
@@ -24,14 +44,36 @@ describe("Hero", () => {
 
   it("shows the record count, source count and date in the meta line", () => {
     render(
-      <Hero total={6} sourceCount={3} generatedAt="2026-06-26T18:00:00Z" />,
+      <Hero
+        total={6}
+        sourceCount={3}
+        counts={COUNTS}
+        generatedAt="2026-06-26T18:00:00Z"
+      />,
     );
-    expect(screen.getByText("6")).toBeInTheDocument();
+    // El total aparece en la meta y en la tarjeta de resumen.
+    expect(screen.getAllByText("6").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText(/2026/)).toBeInTheDocument();
+    expect(screen.getAllByText(/2026/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders a per-category breakdown in the summary panel", () => {
+    render(
+      <Hero
+        total={6}
+        sourceCount={3}
+        counts={COUNTS}
+        generatedAt="2026-06-26T18:00:00Z"
+      />,
+    );
+    expect(screen.getByLabelText(/resumen por categoría/i)).toBeInTheDocument();
+    expect(screen.getByText("Reportes")).toBeInTheDocument();
+    expect(screen.getByText("Edificios dañados")).toBeInTheDocument();
   });
 
   it("omits the date gracefully when generatedAt is missing", () => {
-    expect(() => render(<Hero total={0} sourceCount={0} />)).not.toThrow();
+    expect(() =>
+      render(<Hero total={0} sourceCount={0} counts={COUNTS} />),
+    ).not.toThrow();
   });
 });

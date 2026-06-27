@@ -2,6 +2,7 @@
   margin-top: 40px;
   border-top: 1px solid var(--border);
   background: var(--surface-2);
+  scroll-margin-top: 80px; /* el header sticky no tapa el título al saltar aquí */
 }
 
 .inner {
