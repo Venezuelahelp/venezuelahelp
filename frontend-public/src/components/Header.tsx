@@ -43,6 +43,9 @@ export default function Header() {
 
         {/* Desktop nav — only secondary links; hidden on mobile */}
         <nav className={styles.nav} aria-label="Principal">
+          <a href="#/interpretes" className={styles.navLink}>
+            Intérpretes
+          </a>
           <a href="#/quienes-somos" className={styles.navLink}>
             ¿Quiénes somos?
           </a>
@@ -85,6 +88,13 @@ export default function Header() {
       {/* Mobile dropdown — Telegram CTA already visible above, so only nav links here */}
       {open && (
         <div className={styles.menuPanel}>
+          <a
+            href="#/interpretes"
+            className={styles.menuLink}
+            onClick={() => setOpen(false)}
+          >
+            Intérpretes
+          </a>
           <a
             href="#/quienes-somos"
             className={styles.menuLink}

@@ -20,6 +20,7 @@ import ViewToggle, { type View } from "@/components/ViewToggle";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
 import AboutPage from "@/components/AboutPage";
+import Interpreters from "@/components/Interpreters";
 import Splash from "@/components/Splash";
 import { Loading, Empty, ErrorState } from "@/components/States";
 
@@ -100,6 +101,7 @@ export default function App() {
   }
 
   const isAbout = route === "#/quienes-somos";
+  const isInterpreters = route === "#/interpretes";
 
   return (
     <div className={styles.page}>
@@ -109,6 +111,8 @@ export default function App() {
       <main className={styles.main}>
         {isAbout ? (
           <AboutPage />
+        ) : isInterpreters ? (
+          <Interpreters />
         ) : (
           <>
             {loading && <Loading />}
