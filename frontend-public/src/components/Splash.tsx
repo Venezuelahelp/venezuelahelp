@@ -5,7 +5,7 @@ interface Props {
   onDone: () => void;
 }
 
-const HOLD_MS = 3000; // logo en grande sobre fondo blanco
+const HOLD_MS = 1500; // logo en grande sobre fondo blanco
 const MORPH_MS = 850; // duración de la transición al header
 
 // Intro: muestra el logo en grande 3s y luego, con una animación FLIP, lo lleva
