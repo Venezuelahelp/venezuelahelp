@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useSnapshot } from "@/data/useSnapshot";
+import { useHideOnScroll } from "@/hooks/useHideOnScroll";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { sendBeacon } from "@/track";
 import {
   flatten,
@@ -39,6 +41,9 @@ export default function App() {
   const listTopRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const HEADER_H = 80;
+  // El auto-ocultar de la barra solo en mobile (desktop tiene espacio de sobra).
+  const isMobile = useMediaQuery("(max-width: 639px)", false);
+  const controlsHidden = useHideOnScroll(controlsRef, isMobile, HEADER_H);
 
   // Fire the analytics beacon once per page load (never blocks render).
   useEffect(() => {
@@ -144,7 +149,9 @@ export default function App() {
 
                     <div className={styles.container}>
                       <div
-                        className={styles.controls}
+                        className={`${styles.controls} ${
+                          controlsHidden ? styles.controlsHidden : ""
+                        }`}
                         id="resultados"
                         ref={controlsRef}
                       >

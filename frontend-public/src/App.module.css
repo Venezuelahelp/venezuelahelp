@@ -42,6 +42,20 @@
   margin-inline: -16px;
   padding-inline: 16px;
   border-bottom: 1px solid var(--border);
+  /* Hide-on-scroll: al bajar se desliza arriba (tras el header); al subir vuelve. */
+  transition: transform 0.25s ease;
+  will-change: transform;
+}
+
+/* Oculta los controles deslizándolos hacia arriba, tucked detrás del header. */
+.controlsHidden {
+  transform: translateY(calc(-100% - var(--header-h)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controls {
+    transition: none;
+  }
 }
 
 @media (min-width: 640px) {
@@ -81,6 +95,11 @@
   border: 1px solid var(--border);
   height: 70vh;
   min-height: 420px;
+  /* Aísla los z-index internos de Leaflet (paneles ~200–700) para que el mapa
+     no se pinte por encima de la barra de controles sticky (z-index 10). */
+  isolation: isolate;
+  position: relative;
+  z-index: 0;
 }
 
 .mapLoading {
