@@ -20,6 +20,7 @@ import ViewToggle, { type View } from "@/components/ViewToggle";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
 import AboutPage from "@/components/AboutPage";
+import Splash from "@/components/Splash";
 import { Loading, Empty, ErrorState } from "@/components/States";
 
 import styles from "./App.module.css";
@@ -44,6 +45,7 @@ export default function App() {
   // El auto-ocultar de la barra solo en mobile (desktop tiene espacio de sobra).
   const isMobile = useMediaQuery("(max-width: 639px)", false);
   const controlsHidden = useHideOnScroll(controlsRef, isMobile, HEADER_H);
+  const [showSplash, setShowSplash] = useState(true);
 
   // Fire the analytics beacon once per page load (never blocks render).
   useEffect(() => {
@@ -101,6 +103,7 @@ export default function App() {
 
   return (
     <div className={styles.page}>
+      {showSplash && <Splash onDone={() => setShowSplash(false)} />}
       <Header />
 
       <main className={styles.main}>
