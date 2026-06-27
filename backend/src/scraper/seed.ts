@@ -16,6 +16,17 @@ const SEED: Source[] = [
     connector: "jsonApi",
     enabled: true,
   },
+  {
+    // Registro público de niños rescatados (categoría desaparecidos). Backend
+    // Supabase; lectura anónima. Se siembra DESHABILITADO a propósito: ingerir
+    // PII de menores debe coordinarse antes con el operador del sitio. Activar
+    // con el toggle del admin una vez acordado.
+    id: "ninosvenezuela",
+    nombre: "Niños Venezuela",
+    url: "https://ninosvenezuela.org/",
+    connector: "jsonApi",
+    enabled: false,
+  },
 ];
 
 export async function ensureSeedSources(
