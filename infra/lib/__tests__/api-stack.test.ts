@@ -27,6 +27,14 @@ describe("ApiStack", () => {
     }
   });
 
+  it("gives the data Lambda 1024MB (parses the full snapshot; 256MB → OOM)", () => {
+    const fns = template().findResources("AWS::Lambda::Function");
+    const dataFn = Object.entries(fns).find(([id]) =>
+      id.startsWith("DataApiFn"),
+    );
+    expect(dataFn?.[1].Properties?.MemorySize).toBe(1024);
+  });
+
   it("wires a Lambda authorizer over the x-api-key header", () => {
     template().hasResourceProperties("AWS::ApiGatewayV2::Authorizer", {
       AuthorizerType: "REQUEST",

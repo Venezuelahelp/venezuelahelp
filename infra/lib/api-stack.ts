@@ -59,7 +59,9 @@ export class ApiStack extends Stack {
       entry: path.join(__dirname, "../../backend/src/data-api/handler.ts"),
       handler: "handler",
       timeout: Duration.seconds(30),
-      memorySize: 256,
+      // Carga y parsea el snapshot completo en memoria (~38MB JSON, 48k+ ítems);
+      // con 256MB daba Runtime.OutOfMemory. 1024MB como el bot/scraper.
+      memorySize: 1024,
       logGroup: logGroup(this, "DataApiFnLogs"),
       environment: { SNAPSHOT_URL: snapshotUrl },
       bundling,
