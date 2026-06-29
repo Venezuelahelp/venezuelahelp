@@ -1,10 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { gunzipSync } from "node:zlib";
 import { mockClient } from "aws-sdk-client-mock";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { buildSnapshot } from "@/public-snapshot/snapshot";
 import type { Config } from "@/shared/types";
 
 const s3Mock = mockClient(S3Client);
+
+// El snapshot se escribe gzip; lo descomprimimos para inspeccionarlo.
+function parsePutBody(): any {
+  const body = s3Mock.commandCalls(PutObjectCommand)[0].args[0].input
+    .Body as Uint8Array;
+  return JSON.parse(gunzipSync(Buffer.from(body)).toString("utf-8"));
+}
 beforeEach(() => {
   s3Mock.reset();
   process.env.SNAPSHOT_BUCKET = "bucket-x";
@@ -56,9 +64,7 @@ describe("buildSnapshot", () => {
     });
     expect(res.key).toBe("snapshot.json");
     expect(res.count).toBe(1);
-    const body = JSON.parse(
-      s3Mock.commandCalls(PutObjectCommand)[0].args[0].input.Body as string,
-    );
+    const body = parsePutBody();
     expect(body.categories.reportes[0]).not.toHaveProperty("raw");
     expect(body.categories.reportes[0].titulo).toBe("t");
     expect(body.generatedAt).toBe("2026-06-25T00:00:00Z");
@@ -101,9 +107,7 @@ describe("buildSnapshot", () => {
       configRepo: configRepo as never,
       sourceRepo: srcRepo as never,
     });
-    const body = JSON.parse(
-      s3Mock.commandCalls(PutObjectCommand)[0].args[0].input.Body as string,
-    );
+    const body = parsePutBody();
     expect(body.sources.sismovenezuela).toEqual({
       nombre: "SismoVenezuela",
       url: "https://www.sismovenezuela.com/",
@@ -151,9 +155,7 @@ describe("buildSnapshot", () => {
       configRepo: configRepo as never,
       sourceRepo: sourceRepo as never,
     });
-    const body = JSON.parse(
-      s3Mock.commandCalls(PutObjectCommand)[0].args[0].input.Body as string,
-    );
+    const body = parsePutBody();
     const edif = body.categories.edificios;
     expect(edif).toHaveLength(2);
     expect(
