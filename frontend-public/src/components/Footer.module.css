@@ -194,3 +194,18 @@
   color: var(--muted);
   line-height: 1.55;
 }
+
+.apiLink {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.apiLink a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.apiLink a:hover {
+  color: var(--primary-strong);
+}

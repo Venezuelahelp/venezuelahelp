@@ -1,0 +1,223 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 900px;
+  padding: 24px 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink-strong);
+  margin: 8px 0 0;
+  letter-spacing: -0.01em;
+}
+
+.refreshButton {
+  padding: 8px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  cursor: pointer;
+  background-color: var(--surface);
+  color: var(--ink-strong);
+  white-space: nowrap;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background-color: var(--border);
+}
+
+.refreshButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.empty {
+  font-size: 0.9375rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.tableWrap {
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--surface);
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.email,
+.org {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.motivo {
+  max-width: 280px;
+  color: var(--ink);
+}
+
+.when {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
+  color: var(--ink-strong);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approve,
+.reject {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  background-color: var(--surface);
+  color: var(--ink-strong);
+  white-space: nowrap;
+}
+
+.approve {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  color: var(--on-primary, #fff);
+}
+
+.approve:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reject:hover {
+  background-color: var(--border);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pendiente {
+  color: #92400e;
+  background-color: #fef3c7;
+}
+
+.aprobada {
+  color: #065f46;
+  background-color: #d1fae5;
+}
+
+.rechazada {
+  color: #991b1b;
+  background-color: #fee2e2;
+}
+
+/* Banner de la key recién emitida (se muestra una sola vez). */
+.keyBanner {
+  border: 1px solid var(--primary);
+  background-color: var(--primary-tint, #eff6ff);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.keyBannerTitle {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
+.rawKey {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.95rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  word-break: break-all;
+  color: var(--ink-strong);
+}
+
+.keyBannerHint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.closeButton {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background-color: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink-strong);
+}

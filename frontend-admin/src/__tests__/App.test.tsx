@@ -92,6 +92,13 @@ function buildMockApi() {
       enabled: true,
     } as Source),
     probeSource: vi.fn().mockResolvedValue({ endpointStats: [], sample: [] }),
+    getApiRequests: vi.fn().mockResolvedValue([]),
+    approveApiRequest: vi
+      .fn()
+      .mockResolvedValue({ request: {}, apiKey: {}, rawKey: "vh_live_x" }),
+    rejectApiRequest: vi.fn().mockResolvedValue(undefined),
+    getApiKeys: vi.fn().mockResolvedValue([]),
+    revokeApiKey: vi.fn().mockResolvedValue(undefined),
   };
 }
 

@@ -6,6 +6,8 @@ import { SourceRepo } from "@/shared/repos/sourceRepo";
 import { ItemRepo } from "@/shared/repos/itemRepo";
 import { VisitRepo } from "@/shared/repos/visitRepo";
 import { TgUserRepo } from "@/shared/repos/tgUserRepo";
+import { ApiRequestRepo } from "@/shared/repos/apiRequestRepo";
+import { ApiKeyRepo } from "@/shared/repos/apiKeyRepo";
 import { logger } from "@/shared/logger";
 
 const CORS = {
@@ -65,6 +67,10 @@ export async function handler(
     itemRepo: new ItemRepo(),
     visitRepo: new VisitRepo(),
     tgUserRepo: new TgUserRepo(),
+    apiRequestRepo: new ApiRequestRepo(),
+    apiKeyRepo: new ApiKeyRepo(),
+    actor: actorFrom(event),
+    now: () => new Date().toISOString(),
     invokeScraper: () =>
       lambdaClient
         .send(

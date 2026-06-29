@@ -4,6 +4,8 @@ import type { SourceRepo } from "@/shared/repos/sourceRepo";
 import type { ItemRepo } from "@/shared/repos/itemRepo";
 import type { VisitRepo } from "@/shared/repos/visitRepo";
 import type { TgUserRepo } from "@/shared/repos/tgUserRepo";
+import type { ApiRequestRepo } from "@/shared/repos/apiRequestRepo";
+import type { ApiKeyRepo } from "@/shared/repos/apiKeyRepo";
 import { assertPublicHttpUrl } from "@/connectors/ssrf";
 import { runRestSource } from "@/connectors/restEngine";
 import { fetchJson } from "@/connectors/http";
@@ -21,6 +23,12 @@ export interface RouteDeps {
   invokeScraper: () => Promise<void>;
   visitRepo: Pick<VisitRepo, "analytics">;
   tgUserRepo: Pick<TgUserRepo, "list">;
+  apiRequestRepo: Pick<ApiRequestRepo, "list" | "get" | "setStatus">;
+  apiKeyRepo: Pick<ApiKeyRepo, "list" | "create" | "revoke">;
+  // Actor (email Cognito) para el audit de aprobación/revocación, y reloj
+  // inyectable para timestamps determinísticos en tests.
+  actor: string;
+  now: () => string;
   // Dry-run de una RestConfig (probar mapeo antes de guardar). Inyectable para
   // tests; por defecto corre el motor rest real contra los endpoints.
   probeRest?: (
@@ -340,6 +348,70 @@ export async function route(
   if (method === "DELETE" && del) {
     await deps.sourceRepo.delete(decodeURIComponent(del[1]));
     return { status: 200, body: { deleted: decodeURIComponent(del[1]) } };
+  }
+
+  // ── Programa de API para terceros ──────────────────────────────────────────
+
+  // GET /api-requests — solicitudes de acceso al API
+  if (method === "GET" && path === "/api-requests") {
+    const requests = await deps.apiRequestRepo.list();
+    return { status: 200, body: requests };
+  }
+
+  // POST /api-requests/{id}/approve — aprueba, emite key y la devuelve UNA vez
+  const approve = path.match(/^\/api-requests\/([^/]+)\/approve$/);
+  if (method === "POST" && approve) {
+    const id = decodeURIComponent(approve[1]);
+    const req = await deps.apiRequestRepo.get(id);
+    if (!req) return { status: 404, body: { error: "request not found" } };
+    if (req.status !== "pendiente") {
+      return { status: 409, body: { error: "la solicitud no está pendiente" } };
+    }
+    const now = deps.now();
+    const { rawKey, apiKey } = await deps.apiKeyRepo.create({
+      consumerName: req.nombre,
+      email: req.email,
+      requestId: id,
+      createdAt: now,
+    });
+    await deps.apiRequestRepo.setStatus(id, {
+      status: "aprobada",
+      reviewedBy: deps.actor,
+      reviewedAt: now,
+      apiKeyId: apiKey.keyId,
+    });
+    // rawKey viaja UNA vez en la respuesta; el admin la muestra y nunca se vuelve
+    // a poder recuperar (en DB solo queda el hash).
+    return { status: 200, body: { request: { ...req, status: "aprobada" }, apiKey, rawKey } };
+  }
+
+  // POST /api-requests/{id}/reject
+  const reject = path.match(/^\/api-requests\/([^/]+)\/reject$/);
+  if (method === "POST" && reject) {
+    const id = decodeURIComponent(reject[1]);
+    const req = await deps.apiRequestRepo.get(id);
+    if (!req) return { status: 404, body: { error: "request not found" } };
+    await deps.apiRequestRepo.setStatus(id, {
+      status: "rechazada",
+      reviewedBy: deps.actor,
+      reviewedAt: deps.now(),
+    });
+    return { status: 200, body: { request: { ...req, status: "rechazada" } } };
+  }
+
+  // GET /api-keys — keys emitidas
+  if (method === "GET" && path === "/api-keys") {
+    const keys = await deps.apiKeyRepo.list();
+    return { status: 200, body: keys };
+  }
+
+  // POST /api-keys/{id}/revoke
+  const revoke = path.match(/^\/api-keys\/([^/]+)\/revoke$/);
+  if (method === "POST" && revoke) {
+    const keyId = decodeURIComponent(revoke[1]);
+    const ok = await deps.apiKeyRepo.revoke(keyId, deps.now());
+    if (!ok) return { status: 404, body: { error: "key not found" } };
+    return { status: 200, body: { revoked: true } };
   }
 
   return { status: 404, body: { error: "not found" } };

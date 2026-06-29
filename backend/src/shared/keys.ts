@@ -22,6 +22,19 @@ export function VISIT_PK(date: string) {
 export const VSTAT_PK = "VSTAT";
 export const TGUSER_PK = "TGUSER";
 
+// Programa de API para terceros: solicitudes de acceso y API keys emitidas.
+// SKs distintos de "META" para NO contaminar el scan de SourceRepo (SK="META").
+export function APIREQ_PK(id: string) {
+  return `APIREQ#${id}`;
+}
+export const APIREQ_SK = "REQ";
+// La clave se identifica por el hash de su valor en claro (lookup O(1) en el
+// authorizer); el valor en claro NUNCA se persiste.
+export function APIKEY_PK(hash: string) {
+  return `APIKEY#${hash}`;
+}
+export const APIKEY_SK = "KEY";
+
 export function itemKey(
   category: Category,
   sourceId: string,

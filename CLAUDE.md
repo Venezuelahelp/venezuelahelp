@@ -21,6 +21,8 @@ Lee siempre el spec y el plan de la fase activa antes de implementar.
 - **Frontend público** lee un `snapshot.json` cacheado en S3/CloudFront que el scraper regenera → el tráfico público no pega a Lambda/DynamoDB.
 - Servicios: Lambda, DynamoDB (single-table), S3 + CloudFront (×2 + snapshot), API Gateway HTTP API, Cognito (admin), EventBridge, SSM Parameter Store, Bedrock.
 
+> **API público para terceros (`VenezuelaHelpApiStack`, 8º stack).** API de **solo lectura** para que otras organizaciones consuman la misma data pública. Dominio propio `api.<dominio>` (cert wildcard). Rutas `/v1/items` (filtros `category`/`q`/`near`/`limit`/`cursor`), `/v1/categories`, `/v1/sources`, `/v1/meta` — el Lambda `data-api` **lee el mismo `snapshot.json` por HTTP igual que el front** (`data-api/snapshot.ts`, gunzip+cache; reusa `normalize` de retrieval para el keyword-match), **no toca DynamoDB ni S3**. HTTP API **no soporta API keys nativas** → claves propias: valor en claro `vh_live_<base64url>` entregado **una sola vez**, en DynamoDB solo el **sha256** como PK (lookup O(1) en un **Lambda authorizer** que **falla cerrado** y rate-limita por key reutilizando `RateLimitRepo`). **Flujo:** form público `#/api` → `POST /api-access/requests` (intake `public-api/handler.ts`, Zod + rate-limit por IP, status `pendiente`) → el admin (tab **API**, `ApiRequests.tsx`) lista/aprueba/rechaza; **aprobar** emite la key y la **muestra una sola vez** (no hay SES: se comparte manual al correo del solicitante) + revocar. Rutas admin nuevas en `admin-api/router.ts` (`/api-requests`, `/api-requests/{id}/approve|reject`, `/api-keys`, `/api-keys/{id}/revoke`). Repos `apiRequestRepo`/`apiKeyRepo`. El front público **no cambia** cómo lee datos; el `/v1` es aditivo. <!-- /aprende 2026-06-29 -->
+
 > **Conector centralizador `rest` (config-driven).** Un único motor declarativo (`backend/src/connectors/restEngine.ts`: `getPath`/`fillTemplate`/`mapRow`/`runRestSource`) ingiere cualquier fuente con API JSON parametrizado por una `RestConfig` (`restConfig.ts`) guardada en la `Source` (`base` + `endpoints[]` con `itemsPath`, `shape:array|geojson`, y `fieldMap` con dot-paths para `externalId/titulo/texto[]/lat/lng/imageUrl/sourceUrl/status` + `sourceUrlTemplate`). Las 4 fuentes "limpias" se expresan como **presets** (`presets.ts`); hoy solo **sismovenezuela** migró (captura `source_url` en sus 4 categorías). Las irregulares siguen **bespoke** en `registry.ts`: `terremotovenezuela` (categoría-por-`type` en un endpoint), `ninosvenezuela`/`hospitalesvenezuela` (texto etiquetado de Supabase). **Desde el admin** se pueden crear/editar fuentes `rest` (form "API JSON" + botón **"Probar"** = `POST /sources/probe`, dry-run con muestra) **sin deploy**. El orquestador persiste `status` (ok/error/**blocked**), `lastFetched` y `endpointStats[]` por fuente → el Dashboard distingue "ok con 0 ítems" (amarillo) de roto (rojo) y **se acabaron los fallos silenciosos**. Un endpoint caído no tumba los demás; una fuente `rest` con TODOS los endpoints rotos se marca `error` (no `ok`). `ensureSeedSources` **repara** la config base de las fuentes sembradas (migra connector/rest) preservando `enabled`/`trustLevel`/timestamps. <!-- /aprende 2026-06-29 -->
 
 > **Permalink por ítem (`sourceUrl`).** `NormalizedItem`/`StoredItem`/`Item` público/`PublicItem` del bot llevan `sourceUrl?` — el link directo al origen del ítem (p.ej. el TikTok/IG de `sismovenezuela.source_url`). Viaja solo en el snapshot (spread en `toPublic`; `snapshot.ts` no cambió). Solo se mapea cuando la API da un permalink real; si no, el frontend/bot caen a la home de la fuente (`snapshot.sources`) — **no se fabrican deep-links que darían 404**. El público pinta "Ver original" (`Source.tsx` con prop `sourceUrl`), el bot añade un botón "🔗 Ver original" (`cards.ts`). <!-- /aprende 2026-06-29 -->
@@ -69,10 +71,14 @@ PK/SK string, PAY_PER_REQUEST. Identidad estable por ítem da idempotencia (sin 
 
 | Entidad       | PK                | SK                        |
 | ------------- | ----------------- | ------------------------- |
-| Fuente        | `SOURCE#<id>`     | `META`                    |
-| Ítem agregado | `CAT#<categoria>` | `<sourceId>#<externalId>` |
-| Log Q&A       | `QA#<chatId>`     | `<ts>`                    |
-| Config global | `CONFIG`          | `GLOBAL`                  |
+| Fuente          | `SOURCE#<id>`             | `META`                    |
+| Ítem agregado   | `CAT#<categoria>`         | `<sourceId>#<externalId>` |
+| Log Q&A         | `QA#<chatId>`             | `<ts>`                    |
+| Config global   | `CONFIG`                  | `GLOBAL`                  |
+| Solicitud API   | `APIREQ#<uuid>`           | `REQ`                     |
+| API key         | `APIKEY#<sha256(rawKey)>` | `KEY`                     |
+
+> ⚠️ `SourceRepo.list()` escanea `SK="META"`; por eso las entidades del programa de API usan SKs `REQ`/`KEY` (no `META`) para no contaminar ese scan.
 
 Categorías: `reportes | desaparecidos | acopios | edificios | solicitudes`.
 

@@ -112,3 +112,35 @@ export interface TgUser {
   lastSeenAt: string;
   msgCount: number;
 }
+
+export interface ApiAccessRequest {
+  id: string;
+  nombre: string;
+  email: string;
+  organizacion?: string;
+  motivo: string;
+  descripcion?: string;
+  status: "pendiente" | "aprobada" | "rechazada";
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  apiKeyId?: string;
+}
+
+export interface ApiKey {
+  keyId: string;
+  consumerName: string;
+  email: string;
+  requestId: string;
+  status: "active" | "revoked";
+  createdAt: string;
+  revokedAt?: string;
+  lastUsedAt?: string;
+}
+
+// Respuesta de aprobar: incluye la key en claro UNA sola vez.
+export interface ApproveResult {
+  request: ApiAccessRequest;
+  apiKey: ApiKey;
+  rawKey: string;
+}

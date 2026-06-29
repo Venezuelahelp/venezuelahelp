@@ -6,6 +6,9 @@ import type {
   TgUser,
   RestConfig,
   ProbeResult,
+  ApiAccessRequest,
+  ApiKey,
+  ApproveResult,
 } from "@/types";
 
 interface ApiDeps {
@@ -34,6 +37,11 @@ interface Api {
   deleteSource(id: string): Promise<void>;
   getAnalytics(): Promise<Analytics>;
   getTgUsers(): Promise<TgUser[]>;
+  getApiRequests(): Promise<ApiAccessRequest[]>;
+  approveApiRequest(id: string): Promise<ApproveResult>;
+  rejectApiRequest(id: string): Promise<void>;
+  getApiKeys(): Promise<ApiKey[]>;
+  revokeApiKey(id: string): Promise<void>;
 }
 
 export function createApi(
@@ -127,6 +135,35 @@ export function createApi(
 
     getTgUsers(): Promise<TgUser[]> {
       return request<TgUser[]>("/tg-users", "GET");
+    },
+
+    getApiRequests(): Promise<ApiAccessRequest[]> {
+      return request<ApiAccessRequest[]>("/api-requests", "GET");
+    },
+
+    approveApiRequest(id: string): Promise<ApproveResult> {
+      return request<ApproveResult>(
+        `/api-requests/${encodeURIComponent(id)}/approve`,
+        "POST",
+      );
+    },
+
+    async rejectApiRequest(id: string): Promise<void> {
+      await request<unknown>(
+        `/api-requests/${encodeURIComponent(id)}/reject`,
+        "POST",
+      );
+    },
+
+    getApiKeys(): Promise<ApiKey[]> {
+      return request<ApiKey[]>("/api-keys", "GET");
+    },
+
+    async revokeApiKey(id: string): Promise<void> {
+      await request<unknown>(
+        `/api-keys/${encodeURIComponent(id)}/revoke`,
+        "POST",
+      );
     },
   };
 }

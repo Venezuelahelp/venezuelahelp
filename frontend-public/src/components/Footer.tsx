@@ -92,6 +92,11 @@ export default function Footer({ sources, generatedAt }: FooterProps) {
           </div>
         </section>
 
+        <p className={styles.apiLink}>
+          ¿Eres una organización y quieres mostrar estos datos en tu sitio?{" "}
+          <a href="#/api">Solicita acceso a nuestro API</a>.
+        </p>
+
         <p className={styles.disclaimer}>
           VenezuelaHelp agrega información de emergencia desde fuentes abiertas.
           No es una fuente oficial; verifica siempre con las autoridades.

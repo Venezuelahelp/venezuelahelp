@@ -106,6 +106,37 @@ export interface Config {
   enrichment: EnrichmentConfig;
 }
 
+// Solicitud de acceso al API público para terceros. La crea el form público;
+// la gestiona el admin (aprobar/rechazar). Los datos personales del solicitante
+// se guardan solo para verificación/contacto.
+export interface ApiAccessRequest {
+  id: string;
+  nombre: string;
+  email: string;
+  organizacion?: string;
+  motivo: string;
+  descripcion?: string;
+  status: "pendiente" | "aprobada" | "rechazada";
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  // Id de la API key emitida al aprobar (no el valor en claro).
+  apiKeyId?: string;
+}
+
+// API key emitida a un consumidor. En DynamoDB la PK es APIKEY#<sha256(valor)>;
+// el valor en claro se entrega una sola vez al aprobar y nunca se persiste.
+export interface ApiKey {
+  keyId: string;
+  consumerName: string;
+  email: string;
+  requestId: string;
+  status: "active" | "revoked";
+  createdAt: string;
+  revokedAt?: string;
+  lastUsedAt?: string;
+}
+
 export interface QaLogEntry {
   chatId: string;
   ts: string;

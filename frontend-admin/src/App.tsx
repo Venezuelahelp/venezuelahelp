@@ -5,6 +5,7 @@ import { Sources } from "@/components/Sources";
 import { Config } from "@/components/Config";
 import { Analytics } from "@/components/Analytics";
 import { Users } from "@/components/Users";
+import { ApiRequests } from "@/components/ApiRequests";
 import {
   loadRuntimeConfig as defaultLoadConfig,
   type RuntimeConfig,
@@ -21,11 +22,13 @@ import type {
   Stats,
   Analytics as AnalyticsData,
   TgUser,
+  ApiAccessRequest,
+  ApiKey,
 } from "@/types";
 import styles from "./App.module.css";
 
 type ApiClient = ReturnType<typeof defaultCreateApi>;
-type Tab = "dashboard" | "analytics" | "users" | "sources" | "config";
+type Tab = "dashboard" | "analytics" | "users" | "sources" | "config" | "api";
 
 export interface AppDeps {
   loadRuntimeConfig?: () => Promise<RuntimeConfig>;
@@ -59,6 +62,10 @@ export default function App({ deps = {} }: AppProps) {
   const [tgUsers, setTgUsers] = useState<TgUser[] | null>(null);
   const [sources, setSources] = useState<Source[] | null>(null);
   const [config, setConfig] = useState<ConfigType | null>(null);
+  const [apiRequests, setApiRequests] = useState<ApiAccessRequest[] | null>(
+    null,
+  );
+  const [apiKeys, setApiKeys] = useState<ApiKey[] | null>(null);
   const [scraping, setScraping] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -79,12 +86,14 @@ export default function App({ deps = {} }: AppProps) {
 
   async function loadData(api: ApiClient, isCancelled: () => boolean) {
     try {
-      const [s, src, cfg, an, users] = await Promise.all([
+      const [s, src, cfg, an, users, reqs, keys] = await Promise.all([
         api.getStats(),
         api.getSources(),
         api.getConfig(),
         api.getAnalytics(),
         api.getTgUsers(),
+        api.getApiRequests(),
+        api.getApiKeys(),
       ]);
       if (isCancelled()) return;
       setStats(s);
@@ -92,6 +101,8 @@ export default function App({ deps = {} }: AppProps) {
       setConfig(cfg);
       setAnalytics(an);
       setTgUsers(users);
+      setApiRequests(reqs);
+      setApiKeys(keys);
     } catch {
       if (!isCancelled()) setError("Error al cargar los datos.");
     }
@@ -139,6 +150,60 @@ export default function App({ deps = {} }: AppProps) {
     setConfig(null);
     setAnalytics(null);
     setTgUsers(null);
+    setApiRequests(null);
+    setApiKeys(null);
+  }
+
+  async function refreshApiProgram() {
+    if (!apiRef.current) return;
+    const [reqs, keys] = await Promise.all([
+      apiRef.current.getApiRequests(),
+      apiRef.current.getApiKeys(),
+    ]);
+    if (mountedRef.current) {
+      setApiRequests(reqs);
+      setApiKeys(keys);
+    }
+  }
+
+  async function handleRefreshApiProgram() {
+    setRefreshing(true);
+    setError(null);
+    try {
+      await refreshApiProgram();
+    } catch {
+      if (mountedRef.current)
+        setError("No se pudo actualizar el programa de API.");
+    } finally {
+      if (mountedRef.current) setRefreshing(false);
+    }
+  }
+
+  async function handleApproveRequest(id: string) {
+    if (!apiRef.current) throw new Error("API not initialized");
+    const result = await apiRef.current.approveApiRequest(id);
+    await refreshApiProgram();
+    return result;
+  }
+
+  async function handleRejectRequest(id: string) {
+    if (!apiRef.current) return;
+    try {
+      await apiRef.current.rejectApiRequest(id);
+      await refreshApiProgram();
+    } catch {
+      if (mountedRef.current) setError("No se pudo rechazar la solicitud.");
+    }
+  }
+
+  async function handleRevokeKey(id: string) {
+    if (!apiRef.current) return;
+    try {
+      await apiRef.current.revokeApiKey(id);
+      await refreshApiProgram();
+    } catch {
+      if (mountedRef.current) setError("No se pudo revocar la clave.");
+    }
   }
 
   // Auto-dismiss the success notice so it doesn't linger.
@@ -326,6 +391,7 @@ export default function App({ deps = {} }: AppProps) {
     users: "Usuarios",
     sources: "Fuentes",
     config: "Config",
+    api: "API",
   };
 
   return (
@@ -423,6 +489,23 @@ export default function App({ deps = {} }: AppProps) {
           ) : (
             <div className={styles.loading} role="status">
               Cargando fuentes…
+            </div>
+          ))}
+
+        {activeTab === "api" &&
+          (apiRequests && apiKeys ? (
+            <ApiRequests
+              requests={apiRequests}
+              keys={apiKeys}
+              onApprove={handleApproveRequest}
+              onReject={(id) => void handleRejectRequest(id)}
+              onRevoke={(id) => void handleRevokeKey(id)}
+              onRefresh={() => void handleRefreshApiProgram()}
+              refreshing={refreshing}
+            />
+          ) : (
+            <div className={styles.loading} role="status">
+              Cargando programa de API…
             </div>
           ))}
 

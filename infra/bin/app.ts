@@ -4,6 +4,7 @@ import { ScraperStack } from "../lib/scraper-stack";
 import { BotStack } from "../lib/bot-stack";
 import { FrontendStack } from "../lib/frontend-stack";
 import { AdminStack } from "../lib/admin-stack";
+import { ApiStack } from "../lib/api-stack";
 import { BudgetStack } from "../lib/budget-stack";
 import { DomainStack } from "../lib/domain-stack";
 import { CicdStack } from "../lib/cicd-stack";
@@ -49,6 +50,16 @@ new AdminStack(app, "VenezuelaHelpAdminStack", {
   table: data.table,
   scraperFn: scraper.scraperFn,
   adminDomain: `admin.${domainName}`,
+  certificate: domain.certificate,
+  hostedZone: domain.hostedZone,
+});
+// API público para terceros: consulta de datos (`/v1/*`, con API key emitida
+// desde el admin) + intake de solicitudes (`/api-access/requests`, público).
+new ApiStack(app, "VenezuelaHelpApiStack", {
+  env,
+  table: data.table,
+  domainName,
+  apiDomain: `api.${domainName}`,
   certificate: domain.certificate,
   hostedZone: domain.hostedZone,
 });
