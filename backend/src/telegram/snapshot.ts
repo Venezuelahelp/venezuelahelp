@@ -1,3 +1,4 @@
+import { gunzipSync } from "node:zlib";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import type { Snapshot } from "@/telegram/types";
 
@@ -24,9 +25,16 @@ export async function loadSnapshot(deps?: Partial<Deps>): Promise<Snapshot> {
   const res = await client.send(
     new GetObjectCommand({ Bucket: process.env.SNAPSHOT_BUCKET, Key: KEY }),
   );
-  const text = await (
-    res.Body as { transformToString: () => Promise<string> }
-  ).transformToString();
+  // El snapshot se escribe gzip (Content-Encoding: gzip); S3 GetObject NO lo
+  // descomprime, así que lo gunzipeamos acá. Detectamos por magic bytes para
+  // seguir leyendo snapshots antiguos sin comprimir.
+  const bytes = Buffer.from(
+    await (
+      res.Body as { transformToByteArray: () => Promise<Uint8Array> }
+    ).transformToByteArray(),
+  );
+  const isGzip = bytes.length > 1 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+  const text = (isGzip ? gunzipSync(bytes) : bytes).toString("utf-8");
   const data = JSON.parse(text) as Snapshot;
   cache = { at: now, data };
   return data;

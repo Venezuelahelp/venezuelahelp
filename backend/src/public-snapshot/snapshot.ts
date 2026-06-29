@@ -1,3 +1,4 @@
+import { gzipSync } from "node:zlib";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { ItemRepo } from "@/shared/repos/itemRepo";
 import { ConfigRepo } from "@/shared/repos/configRepo";
@@ -69,13 +70,19 @@ export async function buildSnapshot(
     sources[s.id] = { nombre: s.nombre, url: s.url };
   }
 
-  const body = JSON.stringify({ generatedAt: now, categories, sources });
+  // gzip al escribir: el snapshot crece con todas las fuentes (decenas de MB) y
+  // CloudFront NO auto-comprime objetos >10MB → sin esto el público descargaría
+  // el JSON entero sin comprimir. Con `Content-Encoding: gzip`, el navegador lo
+  // descomprime de forma transparente y el bot lo gunzipea al leer.
+  const json = JSON.stringify({ generatedAt: now, categories, sources });
+  const body = gzipSync(json);
   await client.send(
     new PutObjectCommand({
       Bucket: process.env.SNAPSHOT_BUCKET,
       Key: KEY,
       Body: body,
       ContentType: "application/json",
+      ContentEncoding: "gzip",
       CacheControl: "public, max-age=300",
     }),
   );
