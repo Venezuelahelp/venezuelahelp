@@ -5,7 +5,9 @@ import type { Category } from "@/shared/types";
 // se unen con " · ") y `sourceUrlTemplate` (plantilla "{campo}").
 export interface FieldMap {
   externalId: string;
-  titulo: string;
+  // dot-path al título, o una cadena de fallback (se usa el primero no vacío;
+  // p.ej. ["location_name","author"]). Si todos quedan vacíos → "(sin título)".
+  titulo: string | string[];
   texto?: string[];
   lat?: string;
   lng?: string;

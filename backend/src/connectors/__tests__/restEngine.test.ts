@@ -113,6 +113,25 @@ describe("mapRow", () => {
     const item = mapRow({ id: 2 }, arrEp, "https://s.com");
     expect(item!.titulo).toBe("(sin título)");
   });
+
+  it("titulo como cadena de fallback usa el primer path no vacío", () => {
+    const ep: RestEndpoint = {
+      ...arrEp,
+      fieldMap: { externalId: "id", titulo: ["location_name", "author"] },
+    };
+    expect(
+      mapRow({ id: 1, location_name: "", author: "Ana" }, ep, "https://s.com")!
+        .titulo,
+    ).toBe("Ana");
+    expect(
+      mapRow(
+        { id: 2, location_name: "Catia", author: "Ana" },
+        ep,
+        "https://s.com",
+      )!.titulo,
+    ).toBe("Catia");
+    expect(mapRow({ id: 3 }, ep, "https://s.com")!.titulo).toBe("(sin título)");
+  });
 });
 
 describe("runRestSource", () => {

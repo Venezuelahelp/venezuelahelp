@@ -50,11 +50,18 @@ export function mapRow(
   const externalId = getPath(src, fm.externalId);
   if (externalId == null || String(externalId).trim() === "") return null;
 
-  const tituloRaw = getPath(src, fm.titulo);
+  // titulo admite una cadena de fallback: se toma el primer path no vacío.
+  const tituloPaths = Array.isArray(fm.titulo) ? fm.titulo : [fm.titulo];
+  let tituloRaw: unknown;
+  for (const p of tituloPaths) {
+    const v = getPath(src, p);
+    if (v != null && String(v).trim() !== "") {
+      tituloRaw = v;
+      break;
+    }
+  }
   const titulo = truncate(
-    tituloRaw != null && String(tituloRaw).trim() !== ""
-      ? String(tituloRaw)
-      : "(sin título)",
+    tituloRaw != null ? String(tituloRaw) : "(sin título)",
     120,
   );
 
