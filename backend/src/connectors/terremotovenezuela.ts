@@ -8,7 +8,12 @@ import {
 import { logger } from "@/shared/logger";
 import type { Category, NormalizedItem } from "@/shared/types";
 
-const BASE = "https://terremotovenezuela.app";
+// El backend se movió de terremotovenezuela.app/api/* (hoy 404, sirve el SPA) a
+// un subdominio dedicado api.terremotovenezuela.app (mismo shape: {reports},
+// {markers}). El cliente usa un helper apiFetch contra esta base; descubierto en
+// los chunks del bundle (NEXT base-URL). La home pública sigue siendo
+// terremotovenezuela.app (Source.url / snapshot.sources). <!-- /aprende 2026-06-29 -->
+const BASE = "https://api.terremotovenezuela.app";
 const ID = "terremotovenezuela";
 
 const TYPE_TO_CATEGORY: Record<string, Category | undefined> = {
