@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from "react";
 import type { Item } from "@/types";
-import { MapPin, Clock, CaretRight } from "@phosphor-icons/react";
+import { MapPin, Clock, CaretRight, CheckCircle } from "@phosphor-icons/react";
 import Badge from "@/components/Badge";
 import Source from "@/components/Source";
 import Modal from "@/components/Modal";
@@ -37,6 +37,23 @@ function Thumb({ src, className }: { src: string; className: string }) {
   );
 }
 
+// Insignia de corroboración: el enrichment cuenta cuántas fuentes distintas
+// reportan el mismo hecho/persona (sourcesCount). ≥2 = corroborado por varias
+// fuentes → señal de mayor confianza para el público.
+function Corroboration({ item }: { item: Item }) {
+  const n = item.sourcesCount ?? 0;
+  if (n < 2) return null;
+  return (
+    <span
+      className={styles.corrobora}
+      title={`Reportado por ${n} fuentes distintas`}
+    >
+      <CheckCircle aria-hidden="true" size={13} weight="fill" />
+      En {n} fuentes
+    </span>
+  );
+}
+
 function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
   const fecha = formatDateTime(item.firstSeenAt);
   const titleId = "item-detail-title";
@@ -62,6 +79,7 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
               {item.ubicacion.nombre}
             </span>
           )}
+          <Corroboration item={item} />
         </div>
 
         {item.ubicacion && (
@@ -155,6 +173,7 @@ export default function ItemList({ items }: ItemListProps) {
                         sourceUrl={item.sourceUrl}
                       />
                     </span>
+                    <Corroboration item={item} />
                   </div>
                 </div>
 

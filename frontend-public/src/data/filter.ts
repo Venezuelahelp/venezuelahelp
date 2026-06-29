@@ -18,13 +18,19 @@ export function normalize(s: string): string {
 }
 
 /**
- * Flatten all items from a snapshot into a single array,
- * respecting category order.
+ * Flatten all items from a snapshot into a single array, respecting category
+ * order. Colapsa duplicados: el enrichment del backend marca cada cluster (misma
+ * persona/edificio/texto en una o varias fuentes) con un único canónico; el
+ * público muestra SOLO los canónicos (`isCanonical !== false`) para no repetir
+ * el mismo hecho. Los snapshots viejos sin marca (`isCanonical` undefined) se
+ * tratan como canónicos.
  */
 export function flatten(snap: Snapshot): Item[] {
   const result: Item[] = [];
   for (const category of CATEGORY_ORDER) {
-    result.push(...snap.categories[category]);
+    for (const item of snap.categories[category]) {
+      if (item.isCanonical !== false) result.push(item);
+    }
   }
   return result;
 }

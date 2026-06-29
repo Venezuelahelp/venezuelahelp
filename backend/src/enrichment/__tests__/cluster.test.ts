@@ -76,6 +76,25 @@ describe("clusterize", () => {
     expect(clusters.size).toBe(1);
   });
 
+  it("agrupa la misma persona entre fuentes: orden del nombre y coords distintas", () => {
+    const a = item({
+      category: "desaparecidos",
+      sourceId: "red-esperanza",
+      externalId: "1",
+      titulo: "Ana Castillo",
+      ubicacion: { lat: 10.5, lng: -66.9 }, // una fuente con coords
+    });
+    const b = item({
+      category: "desaparecidos",
+      sourceId: "venezuela-te-busca",
+      externalId: "2",
+      titulo: "Castillo Ana", // orden invertido
+      ubicacion: undefined, // otra sin coords
+    });
+    const clusters = clusterize([a, b], CFG);
+    expect(clusters.size).toBe(1);
+  });
+
   it("funde reportes con textos similares por Jaccard", () => {
     const a = item({
       category: "reportes",

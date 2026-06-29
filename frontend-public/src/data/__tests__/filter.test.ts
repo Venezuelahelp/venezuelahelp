@@ -84,6 +84,42 @@ describe("filter functions", () => {
       expect(result[2].category).toBe("edificios");
     });
 
+    it("colapsa duplicados: omite los ítems con isCanonical=false", () => {
+      const snap: Snapshot = {
+        generatedAt: "2026-06-26T00:00:00Z",
+        categories: {
+          reportes: [],
+          desaparecidos: [
+            {
+              category: "desaparecidos",
+              sourceId: "a",
+              externalId: "1",
+              titulo: "Ana Castillo",
+              texto: "",
+              isCanonical: true,
+              sourcesCount: 2,
+            },
+            {
+              category: "desaparecidos",
+              sourceId: "b",
+              externalId: "2",
+              titulo: "Castillo Ana",
+              texto: "",
+              isCanonical: false,
+              dupOf: "a#1",
+            },
+          ],
+          acopios: [],
+          edificios: [],
+          solicitudes: [],
+          hospitales: [],
+        },
+      };
+      const result = flatten(snap);
+      expect(result).toHaveLength(1);
+      expect(result[0].sourceId).toBe("a");
+    });
+
     it("should return empty array for empty snapshot", () => {
       const snap: Snapshot = {
         generatedAt: "2026-06-26T00:00:00Z",

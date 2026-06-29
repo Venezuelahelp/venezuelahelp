@@ -238,3 +238,18 @@
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
+
+/* Insignia de corroboración: el hecho aparece en ≥2 fuentes distintas. */
+.corrobora {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #067647;
+  background: #ecfdf3;
+  border: 1px solid #abefc6;
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}

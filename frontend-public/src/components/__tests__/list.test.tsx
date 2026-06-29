@@ -37,6 +37,18 @@ const items: Item[] = [
 
 // --------------- ItemList ---------------
 
+describe("ItemList corroboración", () => {
+  it("muestra 'En N fuentes' cuando sourcesCount ≥ 2", () => {
+    render(<ItemList items={[{ ...items[0], sourcesCount: 3 }]} />);
+    expect(screen.getByText(/en 3 fuentes/i)).toBeInTheDocument();
+  });
+
+  it("no muestra la insignia con una sola fuente", () => {
+    render(<ItemList items={[{ ...items[0], sourcesCount: 1 }]} />);
+    expect(screen.queryByText(/fuentes/i)).toBeNull();
+  });
+});
+
 describe("ItemList", () => {
   it("renders a list element", () => {
     render(<ItemList items={items} />);

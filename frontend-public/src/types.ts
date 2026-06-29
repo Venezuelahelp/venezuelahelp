@@ -28,6 +28,15 @@ export interface Item {
   firstSeenAt?: string;
   /** ISO — última vez que se vio en una fuente. */
   lastSeenAt?: string;
+  // ── Marcas de enrichment (dedup + corroboración), calculadas en cada scrape ──
+  /** Nivel de confianza derivado. */
+  trust?: "verificado" | "corroborado" | "no_verificado" | "sospechoso";
+  /** Cuántas fuentes distintas reportan este mismo hecho/persona. */
+  sourcesCount?: number;
+  /** false = es un duplicado de otro ítem (no se muestra). undefined = único. */
+  isCanonical?: boolean;
+  /** Si es duplicado, la clave del ítem canónico. */
+  dupOf?: string;
 }
 
 export interface SourceInfo {

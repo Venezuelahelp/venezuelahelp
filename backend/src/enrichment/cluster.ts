@@ -81,11 +81,16 @@ export function baseKey(item: StoredItem, cfg: EnrichmentConfig): string {
     : "";
 
   if (item.category === "desaparecidos") {
-    const person = normalizeText(item.titulo);
+    // Identidad = nombre de la persona. Tokens significativos ORDENADOS (no por
+    // geocelda): así la misma persona se agrupa entre fuentes aunque difieran el
+    // orden del nombre ("Ana Castillo" vs "Castillo Ana") o las coordenadas (una
+    // fuente trae lat/lng y otra no). Es lo que hace que `sourcesCount` refleje
+    // la corroboración real entre fuentes. <!-- /aprende 2026-06-29 -->
+    const tokens = nameTokens(normalizeText(item.titulo)).sort();
     // Un nombre con < 2 partes (vacío o una sola palabra) es demasiado ambiguo
     // para afirmar que dos fichas son la misma persona.
-    if (nameTokens(person).length < 2) return uniqueKey(item);
-    return `p:${person}|${cell}`;
+    if (tokens.length < 2) return uniqueKey(item);
+    return `p:${tokens.join(" ")}`;
   }
 
   if (GEO_IDENTITY.has(item.category)) {
