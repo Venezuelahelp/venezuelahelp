@@ -1,12 +1,14 @@
 import { SourceRepo } from "@/shared/repos/sourceRepo";
 import type { Source } from "@/shared/types";
+import { PRESETS } from "@/connectors/presets";
 
 const SEED: Source[] = [
   {
     id: "sismovenezuela",
     nombre: "SismoVenezuela",
     url: "https://www.sismovenezuela.com/",
-    connector: "jsonApi",
+    connector: "rest",
+    rest: PRESETS.sismovenezuela,
     enabled: true,
   },
   {
@@ -43,6 +45,20 @@ export async function ensureSeedSources(
 ): Promise<void> {
   for (const s of SEED) {
     const existing = await repo.get(s.id);
-    if (!existing) await repo.put(s);
+    if (!existing) {
+      await repo.put(s);
+      continue;
+    }
+    // Repara la config base de la fuente (connector/rest/nombre/url) por si el
+    // seed cambió (p.ej. migración a `rest`), preservando el estado operativo
+    // del admin (enabled, trustLevel, timestamps, status, stats).
+    const repaired: Source = {
+      ...existing,
+      nombre: s.nombre,
+      url: s.url,
+      connector: s.connector,
+      rest: s.rest,
+    };
+    await repo.put(repaired);
   }
 }

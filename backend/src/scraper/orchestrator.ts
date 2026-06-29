@@ -6,6 +6,8 @@ import {
   runAiSource as defaultRunAiSource,
   AI_EXTRACT_MODEL,
 } from "@/connectors/aiConnector";
+import { runRestSource as defaultRunRestSource } from "@/connectors/restEngine";
+import { fetchJson as defaultFetchJson } from "@/connectors/http";
 import { safeFetchText } from "@/connectors/ssrf";
 import { askBedrockTool as defaultExtract } from "@/telegram/bedrock";
 import type { Source } from "@/shared/types";
@@ -25,6 +27,8 @@ interface Deps {
   seed: (repo: SourceRepo) => Promise<void>;
   getConnector: typeof defaultGetConnector;
   runAiSource: typeof defaultRunAiSource;
+  runRestSource: typeof defaultRunRestSource;
+  fetchJson: typeof defaultFetchJson;
   fetchText: (url: string) => Promise<string>;
   extract: typeof defaultExtract;
 }
@@ -45,6 +49,8 @@ export async function runScrape(
   const seed = deps?.seed ?? ensureSeedSources;
   const getConnector = deps?.getConnector ?? defaultGetConnector;
   const runAi = deps?.runAiSource ?? defaultRunAiSource;
+  const runRest = deps?.runRestSource ?? defaultRunRestSource;
+  const fetchJson = deps?.fetchJson ?? defaultFetchJson;
   const fetchText = deps?.fetchText ?? ((url: string) => safeFetchText(url));
   const extract = deps?.extract ?? defaultExtract;
 
@@ -71,12 +77,19 @@ export async function runScrape(
         next.lastContentHash = r.nextHash;
         if (r.nextExtractAt) next.lastExtractAt = r.nextExtractAt;
         items = r.items;
+      } else if (source.connector === "rest") {
+        if (!source.rest)
+          throw new Error(`source ${source.id} sin rest config`);
+        const r = await runRest(source.id, source.rest, { fetchJson });
+        items = r.items;
+        next.endpointStats = r.endpointStats;
       } else {
         const connector = getConnector(source.id);
         if (!connector) throw new Error(`no connector for ${source.id}`);
         items = await connector.fetchItems();
       }
       result.fetched = items.length;
+      next.lastFetched = items.length;
       for (let i = 0; i < items.length; i += UPSERT_CONCURRENCY) {
         const batch = items.slice(i, i + UPSERT_CONCURRENCY);
         const outcomes = await Promise.all(
@@ -84,11 +97,29 @@ export async function runScrape(
         );
         for (const r of outcomes) result[r] += 1;
       }
-      next.lastStatus = "ok";
-      next.errorMsg = undefined;
+      // Una fuente `rest` cuyos endpoints fallaron todos cuenta como error
+      // (deja de ser un fallo silencioso). El estado "blocked" no se degrada.
+      const allEndpointsFailed =
+        source.connector === "rest" &&
+        (next.endpointStats?.length ?? 0) > 0 &&
+        next.endpointStats!.every((s) => s.error);
+      if (source.status === "blocked") {
+        next.status = "blocked";
+        next.lastStatus = "ok";
+      } else if (allEndpointsFailed) {
+        next.lastStatus = "error";
+        next.status = "error";
+        next.errorMsg = next.endpointStats!.map((s) => s.error).join("; ");
+        result.error = next.errorMsg;
+      } else {
+        next.lastStatus = "ok";
+        next.status = "ok";
+        next.errorMsg = undefined;
+      }
     } catch (err) {
       result.error = err instanceof Error ? err.message : String(err);
       next.lastStatus = "error";
+      next.status = "error";
       next.errorMsg = result.error;
     }
     await sourceRepo.put(next);
