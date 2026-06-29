@@ -30,7 +30,7 @@ export class BotStack extends Stack {
       entry: path.join(__dirname, "../../backend/src/telegram/handler.ts"),
       handler: "handler",
       timeout: Duration.seconds(30),
-      memorySize: 512,
+      memorySize: 1024,
       // NOTE: no reservedConcurrentExecutions here. This account's total
       // concurrency limit is 10, and AWS requires keeping >=10 unreserved, so
       // any reservation is rejected. The aggregate spend ceiling instead comes

@@ -5,6 +5,10 @@ import type { Category } from "@/shared/types";
 // se unen con " · ") y `sourceUrlTemplate` (plantilla "{campo}").
 export interface FieldMap {
   externalId: string;
+  // Identidad compuesta: si está, el externalId se forma uniendo estos dot-paths
+  // (no vacíos) con "|". Para fuentes sin id estable (p.ej. una Google Sheet:
+  // nombre+cédula+hospital). Tiene precedencia sobre `externalId`.
+  externalIdFrom?: string[];
   // dot-path al título, o una cadena de fallback (se usa el primero no vacío;
   // p.ej. ["location_name","author"]).
   titulo: string | string[];
@@ -32,8 +36,14 @@ export interface RestEndpoint {
   // "geojson" = {features:[{properties,geometry.coordinates:[lng,lat]}]}.
   shape?: "array" | "geojson";
   fieldMap: FieldMap;
-  // Cabeceras extra (p.ej. apikey/authorization de Supabase).
+  // Cabeceras extra (p.ej. apikey/authorization de Supabase, Referer).
   headers?: Record<string, string>;
+  // Filas iniciales a descartar tras extraer el array (p.ej. la fila de
+  // encabezados de una Google Sheet).
+  skipRows?: number;
+  // Paginación: si está, se pagina con `&limit=<pageSize>&offset=<n>` (PostgREST
+  // /Supabase) hasta agotar o alcanzar `maxItems`. Sin esto, un solo fetch.
+  paginate?: { pageSize: number; maxItems?: number };
 }
 
 export interface RestConfig {

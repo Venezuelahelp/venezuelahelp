@@ -133,6 +133,25 @@ describe("mapRow", () => {
     expect(mapRow({ id: 3 }, ep, "https://s.com")!.titulo).toBe("(sin título)");
   });
 
+  it("externalIdFrom compone la identidad uniendo paths no vacíos con '|'", () => {
+    const ep: RestEndpoint = {
+      ...arrEp,
+      fieldMap: {
+        externalId: "0",
+        externalIdFrom: ["0", "1", "2"],
+        titulo: "0",
+      },
+    };
+    // filas-array (índices como paths)
+    const it1 = mapRow(["Ana", "30123", "8", "x", "y"], ep, "https://s.com");
+    expect(it1!.externalId).toBe("Ana|30123|8");
+    // cédula vacía → se omite ese tramo
+    const it2 = mapRow(["Ana", "", "8"], ep, "https://s.com");
+    expect(it2!.externalId).toBe("Ana|8");
+    // todos vacíos → null (descartado)
+    expect(mapRow(["", "", ""], ep, "https://s.com")).toBeNull();
+  });
+
   it("tituloDefault se usa como literal cuando la cadena queda vacía", () => {
     const ep: RestEndpoint = {
       ...arrEp,
@@ -214,5 +233,89 @@ describe("runRestSource", () => {
     expect(items).toHaveLength(0);
     expect(endpointStats[0].fetched).toBe(0);
     expect(endpointStats[0].error).toMatch(/array/i);
+  });
+
+  it("paginate: recorre páginas con limit/offset hasta agotar", async () => {
+    const page0 = Array.from({ length: 2 }, (_, i) => ({ id: `${i}`, t: "x" }));
+    const page1 = [{ id: "2", t: "x" }]; // página incompleta → fin
+    const fetchJson = vi.fn(async (url: string) => {
+      if (url.includes("offset=0")) return page0 as unknown;
+      if (url.includes("offset=2")) return page1 as unknown;
+      return [] as unknown;
+    });
+    const paged: RestConfig = {
+      base: "https://s.com",
+      endpoints: [
+        {
+          label: "p",
+          url: "https://s.com/api/x?select=*",
+          category: "reportes",
+          fieldMap: { externalId: "id", titulo: "t" },
+          paginate: { pageSize: 2 },
+        },
+      ],
+    };
+    const { items, endpointStats } = await runRestSource("s", paged, {
+      fetchJson: fetchJson as never,
+    });
+    expect(items).toHaveLength(3);
+    expect(endpointStats[0].fetched).toBe(3);
+    // limit/offset se anexaron con & (la url ya tenía ?)
+    expect(fetchJson.mock.calls[0][0]).toContain("&limit=2&offset=0");
+  });
+
+  it("paginate: respeta maxItems (corta y deja de paginar)", async () => {
+    const fetchJson = vi.fn(
+      async () =>
+        Array.from({ length: 1000 }, (_, i) => ({
+          id: `${i}`,
+          t: "x",
+        })) as unknown,
+    );
+    const paged: RestConfig = {
+      base: "https://s.com",
+      endpoints: [
+        {
+          label: "p",
+          url: "https://s.com/api/x",
+          category: "reportes",
+          fieldMap: { externalId: "id", titulo: "t" },
+          paginate: { pageSize: 1000, maxItems: 1500 },
+        },
+      ],
+    };
+    const { items } = await runRestSource("s", paged, {
+      fetchJson: fetchJson as never,
+    });
+    expect(items).toHaveLength(1500);
+    expect(fetchJson).toHaveBeenCalledTimes(2); // 2 páginas de 1000, corta en 1500
+  });
+
+  it("skipRows descarta filas iniciales (encabezado de Google Sheet)", async () => {
+    const fetchJson = vi.fn(async () => ({
+      values: [
+        ["Nombre", "Cedula"],
+        ["Ana", "1"],
+        ["Beto", "2"],
+      ],
+    }));
+    const cfg2: RestConfig = {
+      base: "https://s.com",
+      endpoints: [
+        {
+          label: "sheet",
+          url: "https://s.com/values",
+          category: "desaparecidos",
+          itemsPath: "values",
+          shape: "array",
+          skipRows: 1,
+          fieldMap: { externalId: "0", titulo: "0" },
+        },
+      ],
+    };
+    const { items } = await runRestSource("s", cfg2, {
+      fetchJson: fetchJson as never,
+    });
+    expect(items.map((i) => i.titulo)).toEqual(["Ana", "Beto"]);
   });
 });

@@ -39,6 +39,61 @@ const SEED: Source[] = [
     enabled: true,
   },
   {
+    // Sismos oficiales de USGS (GeoJSON), acotados a Venezuela. Migrada de `ai`.
+    id: "usgs",
+    nombre: "USGS",
+    url: "https://www.usgs.gov/programs/earthquake-hazards",
+    connector: "rest",
+    rest: PRESETS.usgs,
+    enabled: true,
+  },
+  {
+    // Avisos públicos (necesidades/ofertas), Supabase. Migrada de `ai`.
+    id: "vzlayuda",
+    nombre: "Vzlayuda",
+    url: "https://vzlayuda.com/",
+    connector: "rest",
+    rest: PRESETS.vzlayuda,
+    enabled: true,
+  },
+  {
+    // Personas + centros + muro, API Express. Migrada de `ai`.
+    id: "sos-en-venezuela",
+    nombre: "Sos en Venezuela",
+    url: "https://sosenvenezuela.com/sos/",
+    connector: "rest",
+    rest: PRESETS["sos-en-venezuela"],
+    enabled: true,
+  },
+  {
+    // Directorio de hospitales (los pacientes no son enumerables). Migrada de `ai`.
+    id: "localiza-pacientes",
+    nombre: "Localiza Pacientes",
+    url: "https://localizapacientes.com/",
+    connector: "rest",
+    rest: PRESETS["localiza-pacientes"],
+    enabled: true,
+  },
+  {
+    // Supabase: desaparecidos (espejo público de theempire, sin reCAPTCHA) +
+    // acopios + necesidades. Migrada de `ai`. Pagina ~32k desaparecidos.
+    id: "red-esperanza",
+    nombre: "Red Esperanza",
+    url: "https://red-de-esperanza-lime.vercel.app/",
+    connector: "rest",
+    rest: PRESETS["red-esperanza"],
+    enabled: true,
+  },
+  {
+    // Pacientes hospitalizados (Google Sheet pública). Migrada de `ai`.
+    id: "pacientesve",
+    nombre: "pacientesve",
+    url: "https://pacientesve.com/",
+    connector: "rest",
+    rest: PRESETS.pacientesve,
+    enabled: true,
+  },
+  {
     // Fuente conocida pero BLOQUEADA: su API (desaparecidos-terremoto-api.
     // theempire.tech) exige x-recaptcha-token (reCAPTCHA v3) verificado en
     // backend → sin conector HTTP simple. Se siembra deshabilitada y marcada

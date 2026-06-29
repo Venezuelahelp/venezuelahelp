@@ -79,6 +79,7 @@ const publicUrl = z
 
 const fieldMapSchema = z.object({
   externalId: z.string().min(1),
+  externalIdFrom: z.array(z.string().min(1)).max(6).optional(),
   titulo: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
   tituloDefault: z.string().max(120).optional(),
   texto: z.array(z.string()).max(10).optional(),
@@ -98,6 +99,13 @@ const restEndpointSchema = z.object({
   shape: z.enum(["array", "geojson"]).optional(),
   fieldMap: fieldMapSchema,
   headers: z.record(z.string()).optional(),
+  skipRows: z.number().int().min(0).max(100).optional(),
+  paginate: z
+    .object({
+      pageSize: z.number().int().min(1).max(1000),
+      maxItems: z.number().int().min(1).optional(),
+    })
+    .optional(),
 });
 
 const restConfigSchema = z.object({

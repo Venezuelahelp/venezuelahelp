@@ -12,9 +12,15 @@ describe("ensureSeedSources", () => {
     expect(ids).toEqual([
       "desaparecidosterremotovenezuela",
       "hospitalesvenezuela",
+      "localiza-pacientes",
       "ninosvenezuela",
+      "pacientesve",
+      "red-esperanza",
       "sismovenezuela",
+      "sos-en-venezuela",
       "terremotovenezuela",
+      "usgs",
+      "vzlayuda",
     ]);
   });
 
@@ -64,9 +70,15 @@ describe("ensureSeedSources", () => {
     expect(put.mock.calls.map((c) => c[0].id).sort()).toEqual([
       "desaparecidosterremotovenezuela",
       "hospitalesvenezuela",
+      "localiza-pacientes",
       "ninosvenezuela",
+      "pacientesve",
+      "red-esperanza",
       "sismovenezuela",
+      "sos-en-venezuela",
       "terremotovenezuela",
+      "usgs",
+      "vzlayuda",
     ]);
     const sismo = put.mock.calls
       .map((c) => c[0])

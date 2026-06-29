@@ -47,7 +47,17 @@ export function mapRow(
           ?.coordinates ?? undefined)
       : undefined;
 
-  const externalId = getPath(src, fm.externalId);
+  // Identidad: compuesta (externalIdFrom) o un solo path (externalId).
+  let externalId: unknown;
+  if (fm.externalIdFrom && fm.externalIdFrom.length) {
+    const parts = fm.externalIdFrom
+      .map((p) => getPath(src, p))
+      .filter((v) => v != null && String(v).trim() !== "")
+      .map((v) => String(v).trim());
+    externalId = parts.length ? parts.join("|") : undefined;
+  } else {
+    externalId = getPath(src, fm.externalId);
+  }
   if (externalId == null || String(externalId).trim() === "") return null;
 
   // titulo admite una cadena de fallback: se toma el primer path no vacío.
@@ -135,23 +145,44 @@ export async function runRestSource(
 
   for (const ep of cfg.endpoints) {
     try {
-      const json = await deps.fetchJson<unknown>(ep.url, 15000, ep.headers);
-      const arr = getPath(json, ep.itemsPath ?? "");
-      if (!Array.isArray(arr)) {
+      let n = 0;
+      // Paginación opcional (PostgREST/Supabase: limit+offset). Sin `paginate`,
+      // una sola página.
+      const pageSize = ep.paginate?.pageSize;
+      const maxItems = ep.paginate?.maxItems ?? Infinity;
+      let offset = 0;
+      let nonArray = false;
+      for (;;) {
+        const url = pageSize
+          ? `${ep.url}${ep.url.includes("?") ? "&" : "?"}limit=${pageSize}&offset=${offset}`
+          : ep.url;
+        const json = await deps.fetchJson<unknown>(url, 15000, ep.headers);
+        const raw = getPath(json, ep.itemsPath ?? "");
+        if (!Array.isArray(raw)) {
+          if (offset === 0) nonArray = true;
+          break;
+        }
+        const arr: unknown[] =
+          ep.skipRows && offset === 0 ? raw.slice(ep.skipRows) : raw;
+        for (const row of arr) {
+          if (n >= maxItems) break;
+          const mapped = mapRow(row, ep, cfg.base);
+          if (!mapped) continue;
+          mapped.sourceId = sourceId;
+          items.push(mapped);
+          n += 1;
+        }
+        // Fin: sin paginación, o página incompleta, o tope alcanzado.
+        if (!pageSize || arr.length < pageSize || n >= maxItems) break;
+        offset += pageSize;
+      }
+      if (nonArray) {
         endpointStats.push({
           label: ep.label,
           fetched: 0,
           error: "respuesta no es un array (¿HTML/SPA?)",
         });
         continue;
-      }
-      let n = 0;
-      for (const row of arr) {
-        const mapped = mapRow(row, ep, cfg.base);
-        if (!mapped) continue;
-        mapped.sourceId = sourceId;
-        items.push(mapped);
-        n += 1;
       }
       endpointStats.push({ label: ep.label, fetched: n });
     } catch (err) {

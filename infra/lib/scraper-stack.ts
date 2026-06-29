@@ -27,8 +27,8 @@ export class ScraperStack extends Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       entry: path.join(__dirname, "../../backend/src/scraper/handler.ts"),
       handler: "handler",
-      timeout: Duration.minutes(10),
-      memorySize: 512,
+      timeout: Duration.minutes(15),
+      memorySize: 1024,
       deadLetterQueue: props.dlq,
       // Short log retention so CloudWatch storage never grows without bound.
       logGroup: new logs.LogGroup(this, "ScraperFnLogs", {
