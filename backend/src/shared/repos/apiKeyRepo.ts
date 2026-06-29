@@ -2,11 +2,11 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   GetCommand,
   PutCommand,
-  ScanCommand,
+  QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE_NAME } from "@/shared/ddb";
-import { APIKEY_PK, APIKEY_SK } from "@/shared/keys";
+import { APIKEY_PK } from "@/shared/keys";
 import type { ApiKey } from "@/shared/types";
 
 const KEY_PREFIX = "vh_live_";
@@ -28,7 +28,7 @@ export interface CreateKeyInput {
 }
 
 export class ApiKeyRepo {
-  // Genera la clave en claro, guarda solo su hash y la devuelve UNA vez.
+  // Genera la clave en claro, guarda solo su hash (como SK) y la devuelve UNA vez.
   async create(
     input: CreateKeyInput,
   ): Promise<{ rawKey: string; apiKey: ApiKey }> {
@@ -44,31 +44,33 @@ export class ApiKeyRepo {
     await ddb.send(
       new PutCommand({
         TableName: TABLE_NAME,
-        Item: { PK: APIKEY_PK(hashKey(rawKey)), SK: APIKEY_SK, ...apiKey },
+        Item: { PK: APIKEY_PK, SK: hashKey(rawKey), ...apiKey },
       }),
     );
     return { rawKey, apiKey };
   }
 
+  // Hot path del authorizer: GetItem O(1) por SK=hash en la partición APIKEY.
   async getByHash(hash: string): Promise<ApiKey | null> {
     const res = await ddb.send(
       new GetCommand({
         TableName: TABLE_NAME,
-        Key: { PK: APIKEY_PK(hash), SK: APIKEY_SK },
+        Key: { PK: APIKEY_PK, SK: hash },
       }),
     );
     return res.Item ? toKey(res.Item) : null;
   }
 
+  // Query sobre la partición compartida (barato) — NO Scan de toda la tabla.
   async list(): Promise<ApiKey[]> {
     const items: Record<string, unknown>[] = [];
     let ExclusiveStartKey: Record<string, unknown> | undefined;
     do {
       const res = await ddb.send(
-        new ScanCommand({
+        new QueryCommand({
           TableName: TABLE_NAME,
-          FilterExpression: "SK = :sk",
-          ExpressionAttributeValues: { ":sk": APIKEY_SK },
+          KeyConditionExpression: "PK = :pk",
+          ExpressionAttributeValues: { ":pk": APIKEY_PK },
           ExclusiveStartKey,
         }),
       );
@@ -80,16 +82,17 @@ export class ApiKeyRepo {
     return items.map(toKey);
   }
 
-  // Revoca por keyId. Como la PK es el hash (no el keyId), escaneamos para
-  // ubicar la PK real; el volumen de keys es bajo (pocos terceros).
+  // Revoca por keyId. La PK es fija y la SK es el hash; ubicamos la SK con un
+  // Query a la partición (pocas keys) y filtrando por keyId del lado servidor.
   async revoke(keyId: string, revokedAt: string): Promise<boolean> {
     let ExclusiveStartKey: Record<string, unknown> | undefined;
     do {
       const res = await ddb.send(
-        new ScanCommand({
+        new QueryCommand({
           TableName: TABLE_NAME,
-          FilterExpression: "SK = :sk AND keyId = :keyId",
-          ExpressionAttributeValues: { ":sk": APIKEY_SK, ":keyId": keyId },
+          KeyConditionExpression: "PK = :pk",
+          FilterExpression: "keyId = :keyId",
+          ExpressionAttributeValues: { ":pk": APIKEY_PK, ":keyId": keyId },
           ExclusiveStartKey,
         }),
       );
@@ -98,7 +101,7 @@ export class ApiKeyRepo {
         await ddb.send(
           new UpdateCommand({
             TableName: TABLE_NAME,
-            Key: { PK: hit.PK as string, SK: APIKEY_SK },
+            Key: { PK: APIKEY_PK, SK: hit.SK as string },
             UpdateExpression: "SET #status = :status, revokedAt = :revokedAt",
             ExpressionAttributeNames: { "#status": "status" },
             ExpressionAttributeValues: {

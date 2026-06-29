@@ -23,17 +23,14 @@ export const VSTAT_PK = "VSTAT";
 export const TGUSER_PK = "TGUSER";
 
 // Programa de API para terceros: solicitudes de acceso y API keys emitidas.
-// SKs distintos de "META" para NO contaminar el scan de SourceRepo (SK="META").
-export function APIREQ_PK(id: string) {
-  return `APIREQ#${id}`;
-}
-export const APIREQ_SK = "REQ";
-// La clave se identifica por el hash de su valor en claro (lookup O(1) en el
-// authorizer); el valor en claro NUNCA se persiste.
-export function APIKEY_PK(hash: string) {
-  return `APIKEY#${hash}`;
-}
-export const APIKEY_SK = "KEY";
+// Viven en una PARTICIÓN COMPARTIDA (PK fija) para listarlas con Query barato —
+// NO Scan. La tabla tiene ~55k ítems `CAT#`; un Scan completo por cada list()
+// saturaba la capacidad de lectura (ThrottlingException 500 en el admin).
+// - Solicitud: PK="APIREQ", SK=<id>
+// - API key:   PK="APIKEY", SK=<sha256(rawKey)>  (authorizer hace GetItem por
+//   SK=hash; el valor en claro NUNCA se persiste)
+export const APIREQ_PK = "APIREQ";
+export const APIKEY_PK = "APIKEY";
 
 export function itemKey(
   category: Category,

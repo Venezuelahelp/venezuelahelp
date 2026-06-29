@@ -1,11 +1,11 @@
 import {
   GetCommand,
   PutCommand,
-  ScanCommand,
+  QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE_NAME } from "@/shared/ddb";
-import { APIREQ_PK, APIREQ_SK } from "@/shared/keys";
+import { APIREQ_PK } from "@/shared/keys";
 import type { ApiAccessRequest } from "@/shared/types";
 
 function toRequest(item: Record<string, unknown>): ApiAccessRequest {
@@ -25,7 +25,7 @@ export class ApiRequestRepo {
     await ddb.send(
       new PutCommand({
         TableName: TABLE_NAME,
-        Item: { PK: APIREQ_PK(r.id), SK: APIREQ_SK, ...r },
+        Item: { PK: APIREQ_PK, SK: r.id, ...r },
       }),
     );
   }
@@ -34,21 +34,22 @@ export class ApiRequestRepo {
     const res = await ddb.send(
       new GetCommand({
         TableName: TABLE_NAME,
-        Key: { PK: APIREQ_PK(id), SK: APIREQ_SK },
+        Key: { PK: APIREQ_PK, SK: id },
       }),
     );
     return res.Item ? toRequest(res.Item) : null;
   }
 
+  // Query sobre la partición compartida (barato) — NO Scan de toda la tabla.
   async list(): Promise<ApiAccessRequest[]> {
     const items: Record<string, unknown>[] = [];
     let ExclusiveStartKey: Record<string, unknown> | undefined;
     do {
       const res = await ddb.send(
-        new ScanCommand({
+        new QueryCommand({
           TableName: TABLE_NAME,
-          FilterExpression: "SK = :sk",
-          ExpressionAttributeValues: { ":sk": APIREQ_SK },
+          KeyConditionExpression: "PK = :pk",
+          ExpressionAttributeValues: { ":pk": APIREQ_PK },
           ExclusiveStartKey,
         }),
       );
@@ -78,7 +79,7 @@ export class ApiRequestRepo {
     await ddb.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
-        Key: { PK: APIREQ_PK(id), SK: APIREQ_SK },
+        Key: { PK: APIREQ_PK, SK: id },
         UpdateExpression: `SET ${sets.join(", ")}`,
         // `status` es palabra reservada en DynamoDB.
         ExpressionAttributeNames: { "#status": "status" },

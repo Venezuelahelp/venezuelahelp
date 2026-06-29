@@ -75,10 +75,10 @@ PK/SK string, PAY_PER_REQUEST. Identidad estable por ítem da idempotencia (sin 
 | Ítem agregado   | `CAT#<categoria>`         | `<sourceId>#<externalId>` |
 | Log Q&A         | `QA#<chatId>`             | `<ts>`                    |
 | Config global   | `CONFIG`                  | `GLOBAL`                  |
-| Solicitud API   | `APIREQ#<uuid>`           | `REQ`                     |
-| API key         | `APIKEY#<sha256(rawKey)>` | `KEY`                     |
+| Solicitud API   | `APIREQ` (fija)           | `<uuid>`                  |
+| API key         | `APIKEY` (fija)           | `<sha256(rawKey)>`        |
 
-> ⚠️ `SourceRepo.list()` escanea `SK="META"`; por eso las entidades del programa de API usan SKs `REQ`/`KEY` (no `META`) para no contaminar ese scan.
+> ⚠️ **Las entidades del programa de API usan una partición COMPARTIDA (PK fija) y se listan con `Query`, NO `Scan`.** La tabla tiene ~55k ítems `CAT#`; un `Scan` completo por cada `list()` saturaba la capacidad on-demand (`ThrottlingException` → 500 en el admin, sobre todo con varios `list()` en paralelo). El authorizer hace `GetItem` O(1) por `PK=APIKEY, SK=<hash>`. (Aprendido en prod: `SourceRepo.list()` aún hace `Scan` de toda la tabla → riesgo a migrar al mismo patrón si reaparece throttling.) <!-- /aprende 2026-06-29 -->
 
 Categorías: `reportes | desaparecidos | acopios | edificios | solicitudes`.
 
