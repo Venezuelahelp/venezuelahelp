@@ -5,7 +5,14 @@ import type { ItemRepo } from "@/shared/repos/itemRepo";
 import type { VisitRepo } from "@/shared/repos/visitRepo";
 import type { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import { assertPublicHttpUrl } from "@/connectors/ssrf";
-import { CATEGORIES } from "@/shared/types";
+import { runRestSource } from "@/connectors/restEngine";
+import { fetchJson } from "@/connectors/http";
+import {
+  CATEGORIES,
+  type EndpointStat,
+  type NormalizedItem,
+} from "@/shared/types";
+import type { RestConfig } from "@/connectors/restConfig";
 
 export interface RouteDeps {
   configRepo: Pick<ConfigRepo, "get" | "put">;
@@ -14,6 +21,11 @@ export interface RouteDeps {
   invokeScraper: () => Promise<void>;
   visitRepo: Pick<VisitRepo, "analytics">;
   tgUserRepo: Pick<TgUserRepo, "list">;
+  // Dry-run de una RestConfig (probar mapeo antes de guardar). Inyectable para
+  // tests; por defecto corre el motor rest real contra los endpoints.
+  probeRest?: (
+    rest: RestConfig,
+  ) => Promise<{ items: NormalizedItem[]; endpointStats: EndpointStat[] }>;
 }
 
 export interface RouteResult {
@@ -26,10 +38,6 @@ const configSchema = z.object({
   bedrockModelId: z.string().min(1),
   systemPrompt: z.string().min(1),
   botTriggerMode: z.enum(["mention", "command", "all"]),
-});
-
-const patchSourceSchema = z.object({
-  enabled: z.boolean(),
 });
 
 const newSourceSchema = z.object({
@@ -52,6 +60,65 @@ const newSourceSchema = z.object({
     ),
   extractHint: z.string().max(500).optional(),
 });
+
+// URL pública (http(s), no privada) reutilizable en endpoints rest.
+const publicUrl = z
+  .string()
+  .url()
+  .refine(
+    (u) => {
+      try {
+        assertPublicHttpUrl(u);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "URL no permitida (host privado o esquema inválido)" },
+  );
+
+const fieldMapSchema = z.object({
+  externalId: z.string().min(1),
+  titulo: z.string().min(1),
+  texto: z.array(z.string()).max(10).optional(),
+  lat: z.string().optional(),
+  lng: z.string().optional(),
+  imageUrl: z.string().optional(),
+  sourceUrl: z.string().optional(),
+  sourceUrlTemplate: z.string().optional(),
+  status: z.string().optional(),
+});
+
+const restEndpointSchema = z.object({
+  label: z.string().min(1).max(40),
+  url: publicUrl,
+  category: z.enum(CATEGORIES),
+  itemsPath: z.string().max(80).optional(),
+  shape: z.enum(["array", "geojson"]).optional(),
+  fieldMap: fieldMapSchema,
+  headers: z.record(z.string()).optional(),
+});
+
+const restConfigSchema = z.object({
+  base: publicUrl,
+  endpoints: z.array(restEndpointSchema).min(1).max(10),
+});
+
+const newRestSourceSchema = z.object({
+  tipo: z.literal("rest"),
+  nombre: z.string().min(1).max(80),
+  url: publicUrl,
+  rest: restConfigSchema,
+});
+
+const patchSourceConfigSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    rest: restConfigSchema.optional(),
+  })
+  .refine((b) => b.enabled !== undefined || b.rest !== undefined, {
+    message: "se requiere 'enabled' o 'rest'",
+  });
 
 function slugify(s: string): string {
   return (
@@ -111,7 +178,7 @@ export async function route(
     segments[2] !== ""
   ) {
     const id = segments[2];
-    const parsed = patchSourceSchema.safeParse(body);
+    const parsed = patchSourceConfigSchema.safeParse(body);
     if (!parsed.success) {
       return {
         status: 400,
@@ -122,9 +189,37 @@ export async function route(
     if (!src) {
       return { status: 404, body: { error: "source not found" } };
     }
-    const updated = { ...src, enabled: parsed.data.enabled };
+    const updated = { ...src };
+    if (parsed.data.enabled !== undefined)
+      updated.enabled = parsed.data.enabled;
+    if (parsed.data.rest !== undefined) {
+      updated.rest = parsed.data.rest;
+      updated.connector = "rest";
+    }
     await deps.sourceRepo.put(updated);
     return { status: 200, body: updated };
+  }
+
+  // POST /sources/probe — dry-run de una RestConfig (probar mapeo sin guardar)
+  if (method === "POST" && path === "/sources/probe") {
+    const parsed = restConfigSchema.safeParse(
+      (body as { rest?: unknown } | undefined)?.rest,
+    );
+    if (!parsed.success) {
+      return {
+        status: 400,
+        body: { error: "invalid rest config", issues: parsed.error.issues },
+      };
+    }
+    const runProbe =
+      deps.probeRest ??
+      ((rest: RestConfig) => runRestSource("__probe__", rest, { fetchJson }));
+    const { items, endpointStats } = await runProbe(parsed.data);
+    // Muestra acotada para que el admin valide el mapeo sin traer todo.
+    return {
+      status: 200,
+      body: { endpointStats, sample: items.slice(0, 15) },
+    };
   }
 
   // POST /scrape
@@ -176,14 +271,40 @@ export async function route(
       id: s.id,
       nombre: s.nombre,
       enabled: s.enabled,
+      connector: s.connector,
       lastRun: s.lastRun,
       lastStatus: s.lastStatus,
+      status: s.status,
+      lastFetched: s.lastFetched,
+      endpointStats: s.endpointStats,
     }));
     return { status: 200, body: { counts, sources } };
   }
 
-  // POST /sources
+  // POST /sources — tipo "ai" (default, pega una URL) o "rest" (API JSON
+  // declarativa: base + endpoints + mapeo de campos).
   if (method === "POST" && path === "/sources") {
+    if ((body as { tipo?: unknown } | undefined)?.tipo === "rest") {
+      const parsed = newRestSourceSchema.safeParse(body);
+      if (!parsed.success)
+        return {
+          status: 400,
+          body: { error: "invalid", issues: parsed.error.issues },
+        };
+      let id = slugify(parsed.data.nombre);
+      for (let n = 2; await deps.sourceRepo.get(id); n++)
+        id = `${slugify(parsed.data.nombre)}-${n}`;
+      const source = {
+        id,
+        nombre: parsed.data.nombre,
+        url: parsed.data.url,
+        connector: "rest" as const,
+        rest: parsed.data.rest,
+        enabled: true,
+      };
+      await deps.sourceRepo.put(source);
+      return { status: 201, body: source };
+    }
     const parsed = newSourceSchema.safeParse(body);
     if (!parsed.success)
       return {
