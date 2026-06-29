@@ -66,7 +66,9 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
 
         {item.ubicacion && (
           <Suspense
-            fallback={<div className={styles.detailMapFallback}>Cargando mapa…</div>}
+            fallback={
+              <div className={styles.detailMapFallback}>Cargando mapa…</div>
+            }
           >
             <DetailMap
               lat={item.ubicacion.lat}
@@ -84,7 +86,7 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
         {item.texto && <p className={styles.detailText}>{item.texto}</p>}
 
         <div className={styles.detailFoot}>
-          <Source sourceId={item.sourceId} />
+          <Source sourceId={item.sourceId} sourceUrl={item.sourceUrl} />
         </div>
       </div>
     </Modal>
@@ -148,7 +150,10 @@ export default function ItemList({ items }: ItemListProps) {
                       </span>
                     )}
                     <span className={styles.metaItem}>
-                      <Source sourceId={item.sourceId} />
+                      <Source
+                        sourceId={item.sourceId}
+                        sourceUrl={item.sourceUrl}
+                      />
                     </span>
                   </div>
                 </div>

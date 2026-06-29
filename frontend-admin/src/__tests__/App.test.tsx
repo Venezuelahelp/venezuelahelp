@@ -56,9 +56,8 @@ function buildMockApi() {
     getSources: vi.fn().mockResolvedValue(mockSources),
     patchSource: vi
       .fn()
-      .mockImplementation(
-        (id: string, enabled: boolean): Promise<Source> =>
-          Promise.resolve({ ...mockSources[0], id, enabled }),
+      .mockImplementation((id: string, enabled: boolean): Promise<Source> =>
+        Promise.resolve({ ...mockSources[0], id, enabled }),
       ),
     scrapeNow: vi.fn().mockResolvedValue(undefined),
     getStats: vi.fn().mockResolvedValue(mockStats),
@@ -78,6 +77,21 @@ function buildMockApi() {
       enabled: true,
     } as Source),
     deleteSource: vi.fn().mockResolvedValue(undefined),
+    createRestSource: vi.fn().mockResolvedValue({
+      id: "rest-1",
+      nombre: "API",
+      url: "https://api.com",
+      connector: "rest",
+      enabled: true,
+    } as Source),
+    updateSourceConfig: vi.fn().mockResolvedValue({
+      id: "rest-1",
+      nombre: "API",
+      url: "https://api.com",
+      connector: "rest",
+      enabled: true,
+    } as Source),
+    probeSource: vi.fn().mockResolvedValue({ endpointStats: [], sample: [] }),
   };
 }
 

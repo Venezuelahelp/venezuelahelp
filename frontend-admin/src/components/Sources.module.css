@@ -275,3 +275,167 @@
     transition: none;
   }
 }
+
+/* ── Selector de tipo (IA / API JSON) ───────────────────────────────────── */
+.tipoRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.tipoOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ── Editor rest (API JSON declarativa) ─────────────────────────────────── */
+.restEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.endpointCard {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+}
+
+.endpointLegend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--ink-strong);
+  padding: 0 6px;
+}
+
+.removeEndpoint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.restActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.addEndpoint,
+.probeButton {
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink-strong);
+  cursor: pointer;
+}
+
+.probeButton {
+  background: var(--primary-tint);
+  border-color: var(--primary);
+  color: var(--primary-strong);
+}
+
+.probeButton:disabled,
+.addEndpoint:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.probeError {
+  color: #b42318;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.probeResult {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+}
+
+.probeStats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.probeStats li[data-error="true"] {
+  color: #b42318;
+}
+
+.probeSample {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+
+/* ── Badge de estado de fuente ──────────────────────────────────────────── */
+.statusBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.statusBadge[data-kind="ok"] {
+  color: #067647;
+  border-color: #abefc6;
+  background: #ecfdf3;
+}
+
+.statusBadge[data-kind="warn"] {
+  color: #b54708;
+  border-color: #fedf89;
+  background: #fffaeb;
+}
+
+.statusBadge[data-kind="error"] {
+  color: #b42318;
+  border-color: #fecdca;
+  background: #fef3f2;
+}
+
+.statusBadge[data-kind="blocked"] {
+  color: #475467;
+  border-color: var(--border-strong);
+  background: var(--bg);
+}

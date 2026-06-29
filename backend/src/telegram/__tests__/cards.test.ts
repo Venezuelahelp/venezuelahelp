@@ -46,4 +46,16 @@ describe("renderList", () => {
     const { text } = renderList([conGeo], { lat: 10.5, lng: -66.9 });
     expect(text).toMatch(/km/);
   });
+
+  it("añade botón 'Ver original' cuando el ítem trae sourceUrl", () => {
+    const conLink: PublicItem = {
+      ...sinGeo,
+      sourceUrl: "https://www.instagram.com/p/ABC/",
+    };
+    const { buttons } = renderList([conLink]);
+    const flat = buttons.flat();
+    const link = flat.find((b) => b.url === "https://www.instagram.com/p/ABC/");
+    expect(link).toBeDefined();
+    expect(link?.text).toMatch(/ver original/i);
+  });
 });

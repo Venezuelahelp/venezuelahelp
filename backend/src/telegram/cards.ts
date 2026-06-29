@@ -32,19 +32,25 @@ export function renderList(
     const parts = [`${i + 1}. ${it.titulo}${badge ? `  ·  ${badge}` : ""}`];
     const ex = excerpt(it.texto);
     if (ex) parts.push(ex);
+    const rowButtons: InlineKeyboardButton[] = [];
     if (it.ubicacion) {
       if (it.ubicacion.nombre) parts.push(`📍 ${it.ubicacion.nombre}`);
       if (userLoc) {
         const km = haversineKm(userLoc, it.ubicacion);
         parts.push(`📏 a ~${km < 1 ? "<1" : Math.round(km)} km`);
       }
-      buttons.push([
-        {
-          text: `📍 Cómo llegar — ${excerpt(it.titulo, 24)}`,
-          url: mapsUrl(it.ubicacion),
-        },
-      ]);
+      rowButtons.push({
+        text: `📍 Cómo llegar — ${excerpt(it.titulo, 24)}`,
+        url: mapsUrl(it.ubicacion),
+      });
     }
+    if (it.sourceUrl) {
+      rowButtons.push({
+        text: `🔗 Ver original — ${excerpt(it.titulo, 24)}`,
+        url: it.sourceUrl,
+      });
+    }
+    if (rowButtons.length) buttons.push(rowButtons);
     blocks.push(parts.join("\n"));
   });
   return { text: blocks.join("\n\n"), buttons };

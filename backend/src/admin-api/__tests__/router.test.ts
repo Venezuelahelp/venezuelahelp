@@ -236,10 +236,11 @@ describe("admin-api router", () => {
         solicitudes: 0,
       });
       expect(body.sources).toHaveLength(1);
-      expect(body.sources[0]).toEqual({
+      expect(body.sources[0]).toMatchObject({
         id: "src-1",
         nombre: "Fuente 1",
         enabled: true,
+        connector: "jsonApi",
         lastRun: "2024-01-01T00:00:00Z",
         lastStatus: "ok",
       });
@@ -368,6 +369,170 @@ describe("admin-api router", () => {
         username: "ana",
         nombre: "Ana P",
         msgCount: 4,
+      });
+    });
+  });
+
+  const validRest = {
+    base: "https://api.example.com",
+    endpoints: [
+      {
+        label: "reportes",
+        url: "https://api.example.com/api/reports",
+        category: "reportes" as const,
+        itemsPath: "data",
+        shape: "array" as const,
+        fieldMap: { externalId: "id", titulo: "title" },
+      },
+    ],
+  };
+
+  describe("POST /sources (tipo rest)", () => {
+    it("crea una fuente rest con connector:'rest' y su config", async () => {
+      const deps = makeDeps({
+        sourceRepo: {
+          list: vi.fn(),
+          get: vi.fn().mockResolvedValue(null),
+          put: vi.fn().mockResolvedValue(undefined),
+          delete: vi.fn(),
+        },
+      });
+      const result = await route(
+        "POST",
+        "/sources",
+        {
+          tipo: "rest",
+          nombre: "Mi API",
+          url: "https://example.com",
+          rest: validRest,
+        },
+        deps,
+      );
+      expect(result.status).toBe(201);
+      expect(result.body).toMatchObject({
+        connector: "rest",
+        nombre: "Mi API",
+        rest: { endpoints: [{ label: "reportes" }] },
+      });
+    });
+
+    it("rechaza un endpoint con host privado (SSRF) con 400", async () => {
+      const deps = makeDeps();
+      const result = await route(
+        "POST",
+        "/sources",
+        {
+          tipo: "rest",
+          nombre: "Malicia",
+          url: "https://example.com",
+          rest: {
+            base: "https://example.com",
+            endpoints: [
+              {
+                label: "x",
+                url: "http://169.254.169.254/latest/meta-data/",
+                category: "reportes",
+                fieldMap: { externalId: "id", titulo: "t" },
+              },
+            ],
+          },
+        },
+        deps,
+      );
+      expect(result.status).toBe(400);
+    });
+  });
+
+  describe("PATCH /sources/{id} (config rest)", () => {
+    it("actualiza la rest config y fija connector:'rest'", async () => {
+      const put = vi.fn().mockResolvedValue(undefined);
+      const deps = makeDeps({
+        sourceRepo: {
+          list: vi.fn(),
+          get: vi.fn().mockResolvedValue(mockSource),
+          put,
+          delete: vi.fn(),
+        },
+      });
+      const result = await route(
+        "PATCH",
+        "/sources/src-1",
+        { rest: validRest },
+        deps,
+      );
+      expect(result.status).toBe(200);
+      expect(put).toHaveBeenCalledWith(
+        expect.objectContaining({ connector: "rest", rest: validRest }),
+      );
+    });
+  });
+
+  describe("POST /sources/probe", () => {
+    it("devuelve muestra + endpointStats sin guardar", async () => {
+      const probeRest = vi.fn().mockResolvedValue({
+        items: [
+          {
+            category: "reportes",
+            sourceId: "__probe__",
+            externalId: "1",
+            titulo: "t",
+            texto: "",
+            raw: {},
+          },
+        ],
+        endpointStats: [{ label: "reportes", fetched: 1 }],
+      });
+      const deps = makeDeps({ probeRest });
+      const result = await route(
+        "POST",
+        "/sources/probe",
+        { rest: validRest },
+        deps,
+      );
+      expect(result.status).toBe(200);
+      expect(probeRest).toHaveBeenCalled();
+      expect(result.body).toMatchObject({
+        endpointStats: [{ label: "reportes", fetched: 1 }],
+        sample: [{ externalId: "1" }],
+      });
+    });
+
+    it("rechaza rest config inválida con 400", async () => {
+      const deps = makeDeps();
+      const result = await route(
+        "POST",
+        "/sources/probe",
+        { rest: { base: "no-url", endpoints: [] } },
+        deps,
+      );
+      expect(result.status).toBe(400);
+    });
+  });
+
+  describe("GET /stats (status enriquecido)", () => {
+    it("expone status, lastFetched y endpointStats por fuente", async () => {
+      const deps = makeDeps({
+        sourceRepo: {
+          list: vi.fn().mockResolvedValue([
+            {
+              ...mockSource,
+              status: "ok",
+              lastFetched: 42,
+              endpointStats: [{ label: "reportes", fetched: 42 }],
+            },
+          ]),
+          get: vi.fn(),
+          put: vi.fn(),
+          delete: vi.fn(),
+        },
+      });
+      const result = await route("GET", "/stats", null, deps);
+      expect(result.status).toBe(200);
+      const src = (result.body as { sources: unknown[] }).sources[0];
+      expect(src).toMatchObject({
+        status: "ok",
+        lastFetched: 42,
+        endpointStats: [{ label: "reportes", fetched: 42 }],
       });
     });
   });

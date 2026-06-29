@@ -4,23 +4,35 @@ import styles from "./Source.module.css";
 
 interface SourceProps {
   sourceId: string;
+  /** Permalink del ítem en su origen. Si está presente, el enlace va al ítem
+   * concreto ("Ver original") en vez de a la home de la fuente. */
+  sourceUrl?: string;
 }
 
 /** Muestra la fuente de un ítem y enlaza a su sitio cuando la URL es conocida. */
-export default function Source({ sourceId }: SourceProps) {
+export default function Source({ sourceId, sourceUrl }: SourceProps) {
   const src = useResolveSource()(sourceId);
+  // El permalink del ítem (origen real) gana a la home de la fuente.
+  const href = sourceUrl ?? src.url;
 
-  if (src.url) {
+  if (href) {
+    const aimsAtItem = Boolean(sourceUrl);
     return (
       <a
         className={styles.source}
-        href={src.url}
+        href={href}
         target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`Ver fuente en ${src.nombre} (abre en una pestaña nueva)`}
+        rel={
+          aimsAtItem ? "noopener noreferrer nofollow" : "noopener noreferrer"
+        }
+        aria-label={
+          aimsAtItem
+            ? `Ver original en ${src.nombre} (abre en una pestaña nueva)`
+            : `Ver fuente en ${src.nombre} (abre en una pestaña nueva)`
+        }
       >
         <span className={styles.label} aria-hidden="true">
-          Fuente:
+          {aimsAtItem ? "Ver original:" : "Fuente:"}
         </span>
         <span className={styles.name}>{src.nombre}</span>
         <ArrowUpRight aria-hidden="true" size={12} weight="bold" />

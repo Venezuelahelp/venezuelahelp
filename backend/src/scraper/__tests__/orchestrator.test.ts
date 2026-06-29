@@ -74,6 +74,113 @@ describe("runScrape", () => {
     });
   });
 
+  it("runs the rest engine for connector:'rest' sources and persists status/lastFetched/endpointStats", async () => {
+    const restSrc: Source = {
+      id: "sismovenezuela",
+      nombre: "S",
+      url: "u",
+      connector: "rest",
+      rest: { base: "https://s.com", endpoints: [] },
+      enabled: true,
+    };
+    const itemRepo = { upsert: vi.fn(async () => "created" as const) };
+    const sourceRepo = {
+      listEnabled: vi.fn(async () => [restSrc]),
+      put: vi.fn(async () => {}),
+    };
+    const runRestSource = vi.fn(async () => ({
+      items: [
+        {
+          category: "reportes" as const,
+          sourceId: "sismovenezuela",
+          externalId: "1",
+          titulo: "t",
+          texto: "x",
+          raw: {},
+        },
+      ],
+      endpointStats: [{ label: "reportes", fetched: 1 }],
+    }));
+    const deps = {
+      sourceRepo,
+      itemRepo,
+      seed: vi.fn(async () => {}),
+      runRestSource,
+      fetchJson: vi.fn(),
+    };
+    await runScrape("2026-06-29T00:00:00Z", deps as any);
+    expect(runRestSource).toHaveBeenCalled();
+    expect(itemRepo.upsert).toHaveBeenCalledTimes(1);
+    const persisted = sourceRepo.put.mock.calls[0][0];
+    expect(persisted).toMatchObject({
+      id: "sismovenezuela",
+      status: "ok",
+      lastStatus: "ok",
+      lastFetched: 1,
+      endpointStats: [{ label: "reportes", fetched: 1 }],
+    });
+  });
+
+  it("marca error si TODOS los endpoints rest fallan (no es fallo silencioso)", async () => {
+    const restSrc: Source = {
+      id: "x",
+      nombre: "X",
+      url: "u",
+      connector: "rest",
+      rest: { base: "https://s.com", endpoints: [] },
+      enabled: true,
+    };
+    const sourceRepo = {
+      listEnabled: vi.fn(async () => [restSrc]),
+      put: vi.fn(async () => {}),
+    };
+    const runRestSource = vi.fn(async () => ({
+      items: [],
+      endpointStats: [{ label: "reportes", fetched: 0, error: "HTML/SPA" }],
+    }));
+    const deps = {
+      sourceRepo,
+      itemRepo: { upsert: vi.fn() },
+      seed: vi.fn(async () => {}),
+      runRestSource,
+      fetchJson: vi.fn(),
+    };
+    await runScrape("2026-06-29T00:00:00Z", deps as any);
+    const persisted = sourceRepo.put.mock.calls[0][0];
+    expect(persisted.status).toBe("error");
+    expect(persisted.lastStatus).toBe("error");
+  });
+
+  it("una fuente blocked no se degrada a error", async () => {
+    const blockedSrc: Source = {
+      id: "b",
+      nombre: "B",
+      url: "u",
+      connector: "rest",
+      rest: { base: "https://s.com", endpoints: [] },
+      enabled: true,
+      status: "blocked",
+    };
+    const sourceRepo = {
+      listEnabled: vi.fn(async () => [blockedSrc]),
+      put: vi.fn(async () => {}),
+    };
+    const runRestSource = vi.fn(async () => ({
+      items: [],
+      endpointStats: [{ label: "x", fetched: 0, error: "gated" }],
+    }));
+    const deps = {
+      sourceRepo,
+      itemRepo: { upsert: vi.fn() },
+      seed: vi.fn(async () => {}),
+      runRestSource,
+      fetchJson: vi.fn(),
+    };
+    await runScrape("2026-06-29T00:00:00Z", deps as any);
+    const persisted = sourceRepo.put.mock.calls[0][0];
+    expect(persisted.status).toBe("blocked");
+  });
+
   it("isolates a failing source and still processes the healthy one", async () => {
     const itemRepo = { upsert: vi.fn(async () => "created" as const) };
     const deps = {

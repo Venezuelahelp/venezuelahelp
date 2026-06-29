@@ -270,6 +270,102 @@ describe("Sources", () => {
     expect(onDelete).not.toHaveBeenCalled();
   });
 
+  it("al elegir tipo 'API JSON' muestra el editor rest y el botón Probar", async () => {
+    const user = userEvent.setup();
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onCreateRest={vi.fn()}
+        onProbe={vi.fn()}
+        onDelete={vi.fn()}
+        creating={false}
+      />,
+    );
+    await user.click(screen.getByLabelText(/API JSON/i));
+    expect(screen.getByLabelText(/Base de la API/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /probar/i })).toBeInTheDocument();
+  });
+
+  it("Probar llama onProbe con la RestConfig y muestra los stats", async () => {
+    const onProbe = vi.fn().mockResolvedValue({
+      endpointStats: [{ label: "reportes", fetched: 3 }],
+      sample: [
+        {
+          category: "reportes",
+          titulo: "Caso 1",
+          texto: "x",
+          sourceUrl: "https://o/1",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(
+      <Sources
+        sources={mockSources}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+        onCreate={vi.fn()}
+        onCreateRest={vi.fn()}
+        onProbe={onProbe}
+        onDelete={vi.fn()}
+        creating={false}
+      />,
+    );
+    await user.click(screen.getByLabelText(/API JSON/i));
+    await user.type(
+      screen.getByLabelText(/Base de la API/i),
+      "https://api.x.com",
+    );
+    await user.type(screen.getByLabelText(/^Etiqueta$/i), "reportes");
+    await user.type(
+      screen.getByLabelText(/URL del endpoint/i),
+      "https://api.x.com/api/reports",
+    );
+    await user.type(screen.getByLabelText(/^titulo$/i), "place");
+    await user.click(screen.getByRole("button", { name: /probar/i }));
+
+    expect(onProbe).toHaveBeenCalled();
+    expect(await screen.findByText(/reportes: ✓ 3 ítems/i)).toBeInTheDocument();
+    expect(screen.getByText(/Caso 1/i)).toBeInTheDocument();
+  });
+
+  it("muestra el estado de la fuente (status + lastFetched)", () => {
+    const withStatus: Source[] = [
+      {
+        id: "s",
+        nombre: "Sismo",
+        url: "https://s.com",
+        connector: "rest",
+        enabled: true,
+        status: "ok",
+        lastFetched: 120,
+      },
+      {
+        id: "b",
+        nombre: "FuenteBloqueada",
+        url: "https://b.com",
+        connector: "jsonApi",
+        enabled: false,
+        status: "blocked",
+      },
+    ];
+    render(
+      <Sources
+        sources={withStatus}
+        onToggle={vi.fn()}
+        onScrape={vi.fn()}
+        scraping={false}
+      />,
+    );
+    expect(screen.getByText(/OK \(120\)/)).toBeInTheDocument();
+    expect(screen.getByText("Bloqueada")).toBeInTheDocument();
+  });
+
   it("shows IA badge when source connector is ai", () => {
     const aiSources = [
       {

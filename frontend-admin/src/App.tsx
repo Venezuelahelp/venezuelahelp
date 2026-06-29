@@ -257,6 +257,33 @@ export default function App({ deps = {} }: AppProps) {
       });
   }
 
+  function handleCreateRestSource(body: {
+    nombre: string;
+    url: string;
+    rest: import("@/types").RestConfig;
+  }) {
+    if (!apiRef.current)
+      return Promise.reject(new Error("API not initialized"));
+    const api = apiRef.current;
+    setCreating(true);
+    return api
+      .createRestSource(body)
+      .then(() => refreshSources())
+      .catch((e) => {
+        if (mountedRef.current) setError("No se pudo agregar la fuente API.");
+        throw e;
+      })
+      .finally(() => {
+        if (mountedRef.current) setCreating(false);
+      });
+  }
+
+  function handleProbe(rest: import("@/types").RestConfig) {
+    if (!apiRef.current)
+      return Promise.reject(new Error("API not initialized"));
+    return apiRef.current.probeSource(rest);
+  }
+
   function handleDeleteSource(id: string) {
     if (!apiRef.current) return;
     const api = apiRef.current;
@@ -388,6 +415,8 @@ export default function App({ deps = {} }: AppProps) {
               onScrape={() => void handleScrape()}
               scraping={scraping}
               onCreate={handleCreateSource}
+              onCreateRest={handleCreateRestSource}
+              onProbe={handleProbe}
               onDelete={handleDeleteSource}
               creating={creating}
             />

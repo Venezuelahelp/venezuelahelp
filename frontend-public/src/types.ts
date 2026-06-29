@@ -22,6 +22,8 @@ export interface Item {
   status?: string;
   /** URL absoluta de la foto en la fuente original (hotlink, no re-hospedada). */
   imageUrl?: string;
+  /** URL absoluta del ítem en su origen (permalink). Cae a la home de la fuente si falta. */
+  sourceUrl?: string;
   /** ISO — primera vez que la plataforma agregó este ítem ("Registrado"). */
   firstSeenAt?: string;
   /** ISO — última vez que se vio en una fuente. */

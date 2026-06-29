@@ -41,7 +41,7 @@ describe("terremotovenezuela connector", () => {
       (i) => i.externalId === "b7651e6d-747e-4b52-bc6f-b916a8a6dcab",
     );
     expect(withPhoto?.imageUrl).toBe(
-      "https://terremotovenezuela.app/api/reports/b7651e6d-747e-4b52-bc6f-b916a8a6dcab/photo",
+      "https://api.terremotovenezuela.app/api/reports/b7651e6d-747e-4b52-bc6f-b916a8a6dcab/photo",
     );
     // report 476b... has photoUrl: null → no imageUrl field
     const noPhoto = items.find(
@@ -56,7 +56,7 @@ describe("terremotovenezuela connector", () => {
       (i) => i.externalId === "e55b1b4b-13bc-4344-8715-1b888e8a539b",
     );
     expect(desap?.imageUrl).toBe(
-      "https://terremotovenezuela.app/api/missing/e55b1b4b-13bc-4344-8715-1b888e8a539b/photo",
+      "https://api.terremotovenezuela.app/api/missing/e55b1b4b-13bc-4344-8715-1b888e8a539b/photo",
     );
   });
 

@@ -1,4 +1,12 @@
-import type { Config, Source, Stats, Analytics, TgUser } from "@/types";
+import type {
+  Config,
+  Source,
+  Stats,
+  Analytics,
+  TgUser,
+  RestConfig,
+  ProbeResult,
+} from "@/types";
 
 interface ApiDeps {
   fetch?: typeof fetch;
@@ -16,6 +24,13 @@ interface Api {
     url: string;
     extractHint?: string;
   }): Promise<Source>;
+  createRestSource(body: {
+    nombre: string;
+    url: string;
+    rest: RestConfig;
+  }): Promise<Source>;
+  updateSourceConfig(id: string, rest: RestConfig): Promise<Source>;
+  probeSource(rest: RestConfig): Promise<ProbeResult>;
   deleteSource(id: string): Promise<void>;
   getAnalytics(): Promise<Analytics>;
   getTgUsers(): Promise<TgUser[]>;
@@ -82,6 +97,24 @@ export function createApi(
       extractHint?: string;
     }): Promise<Source> {
       return request<Source>("/sources", "POST", body);
+    },
+
+    createRestSource(body: {
+      nombre: string;
+      url: string;
+      rest: RestConfig;
+    }): Promise<Source> {
+      return request<Source>("/sources", "POST", { tipo: "rest", ...body });
+    },
+
+    updateSourceConfig(id: string, rest: RestConfig): Promise<Source> {
+      return request<Source>(`/sources/${encodeURIComponent(id)}`, "PATCH", {
+        rest,
+      });
+    },
+
+    probeSource(rest: RestConfig): Promise<ProbeResult> {
+      return request<ProbeResult>("/sources/probe", "POST", { rest });
     },
 
     async deleteSource(id: string): Promise<void> {

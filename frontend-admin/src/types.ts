@@ -5,6 +5,39 @@ export interface Config {
   botTriggerMode: string;
 }
 
+export interface FieldMap {
+  externalId: string;
+  titulo: string;
+  texto?: string[];
+  lat?: string;
+  lng?: string;
+  imageUrl?: string;
+  sourceUrl?: string;
+  sourceUrlTemplate?: string;
+  status?: string;
+}
+
+export interface RestEndpoint {
+  label: string;
+  url: string;
+  category: string;
+  itemsPath?: string;
+  shape?: "array" | "geojson";
+  fieldMap: FieldMap;
+  headers?: Record<string, string>;
+}
+
+export interface RestConfig {
+  base: string;
+  endpoints: RestEndpoint[];
+}
+
+export interface EndpointStat {
+  label: string;
+  fetched: number;
+  error?: string;
+}
+
 export interface Source {
   id: string;
   nombre: string;
@@ -13,6 +46,10 @@ export interface Source {
   enabled: boolean;
   lastRun?: string;
   lastStatus?: string;
+  status?: "ok" | "error" | "blocked";
+  lastFetched?: number;
+  endpointStats?: EndpointStat[];
+  rest?: RestConfig;
   extractHint?: string;
 }
 
@@ -22,8 +59,24 @@ export interface Stats {
     id: string;
     nombre: string;
     enabled: boolean;
+    connector?: string;
     lastRun?: string;
     lastStatus?: string;
+    status?: "ok" | "error" | "blocked";
+    lastFetched?: number;
+    endpointStats?: EndpointStat[];
+  }>;
+}
+
+export interface ProbeResult {
+  endpointStats: EndpointStat[];
+  sample: Array<{
+    category: string;
+    titulo: string;
+    texto: string;
+    sourceUrl?: string;
+    imageUrl?: string;
+    ubicacion?: { lat: number; lng: number; nombre?: string };
   }>;
 }
 

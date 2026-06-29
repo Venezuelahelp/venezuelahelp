@@ -44,6 +44,8 @@ export interface PublicItem {
   texto: string;
   ubicacion?: { lat: number; lng: number; nombre?: string };
   status?: string;
+  // Permalink del ítem en su origen (si la fuente lo provee).
+  sourceUrl?: string;
   // Marcas de enrichment (opcionales: snapshots viejos no las traen).
   trust?: "verificado" | "corroborado" | "no_verificado" | "sospechoso";
   isCanonical?: boolean;
@@ -78,6 +80,4 @@ export interface RemoveKeyboard {
   remove_keyboard: true;
 }
 export type ReplyMarkup =
-  | InlineKeyboardMarkup
-  | ReplyKeyboardMarkup
-  | RemoveKeyboard;
+  InlineKeyboardMarkup | ReplyKeyboardMarkup | RemoveKeyboard;
