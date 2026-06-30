@@ -16,7 +16,7 @@ export default function AboutPage() {
       <p className={styles.lead}>
         VenezuelaHelp es una iniciativa ciudadana, sin fines de lucro, que reúne
         en un solo lugar la información pública dispersa sobre el terremoto del
-        25 de junio de 2026 en Venezuela, para que quien la necesite la
+        24 de junio de 2026 en Venezuela, para que quien la necesite la
         encuentre rápido y sin ruido.
       </p>
 
