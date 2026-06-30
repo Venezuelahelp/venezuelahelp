@@ -60,6 +60,8 @@ function deps(over = {}) {
       setPending: vi.fn(async () => {}),
       setLocation: vi.fn(async () => {}),
       clearPending: vi.fn(async () => {}),
+      setPendingSearch: vi.fn(async () => {}),
+      clearPendingSearch: vi.fn(async () => {}),
     },
     ...over,
   };
@@ -139,7 +141,7 @@ describe("telegram handler", () => {
     expect(d.qaLogRepo.append).toHaveBeenCalled();
   });
 
-  it("on zero retrieval, replies canned and skips bedrock", async () => {
+  it("on zero retrieval, replies with guidance and skips bedrock", async () => {
     const d = deps();
     await handler(event("@vh_bot xyzzy plutonio"), d as any);
     expect(d.askBedrock).not.toHaveBeenCalled();
@@ -147,7 +149,55 @@ describe("telegram handler", () => {
     expect(d.sendMessage).toHaveBeenCalledWith(
       "TOK",
       9,
-      expect.stringContaining("No tengo"),
+      expect.stringContaining("No encontré"),
+    );
+  });
+
+  it("'buscar a una persona' (sin nombre) → pide el nombre y guarda pendingSearch", async () => {
+    const d = deps();
+    await handler(
+      event("buscar a una persona", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    // No corta con "No tengo": pide el nombre (clarificación).
+    expect(d.sendMessage).toHaveBeenCalledWith(
+      "TOK",
+      9,
+      expect.stringMatching(/a quién buscas|nombre y apellido/i),
+    );
+    expect(d.menuState.setPendingSearch).toHaveBeenCalledWith(
+      9,
+      "persona",
+      expect.any(String),
+    );
+    expect(d.routeTools).not.toHaveBeenCalled();
+  });
+
+  it("con pendingSearch activo, el siguiente mensaje se busca por nombre (sin router)", async () => {
+    const d = deps({
+      menuState: {
+        get: vi.fn(async () => ({
+          pendingSearch: "persona",
+          pendingSearchAt: new Date().toISOString(),
+        })),
+        setPending: vi.fn(async () => {}),
+        setLocation: vi.fn(async () => {}),
+        clearPending: vi.fn(async () => {}),
+        setPendingSearch: vi.fn(async () => {}),
+        clearPendingSearch: vi.fn(async () => {}),
+      },
+    });
+    await handler(
+      event("Pedro Gonzalez", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    // Búsqueda determinista: no pasa por el router LLM y limpia el estado.
+    expect(d.routeTools).not.toHaveBeenCalled();
+    expect(d.menuState.clearPendingSearch).toHaveBeenCalledWith(9);
+    expect(d.sendMessage).toHaveBeenCalledWith(
+      "TOK",
+      9,
+      expect.stringContaining("Pedro Gonzalez"),
     );
   });
 

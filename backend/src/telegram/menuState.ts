@@ -7,6 +7,10 @@ export interface MenuState {
   lastLat?: number;
   lastLng?: number;
   lastLocationAt?: string;
+  // El bot pidió un dato y espera la respuesta en el próximo turno (patrón de
+  // clarificación). Hoy solo "persona" (esperando el nombre de un desaparecido).
+  pendingSearch?: string;
+  pendingSearchAt?: string;
 }
 
 function key(chatId: number) {
@@ -26,7 +30,36 @@ export class MenuStateRepo {
     if (typeof it.lastLng === "number") out.lastLng = it.lastLng;
     if (typeof it.lastLocationAt === "string")
       out.lastLocationAt = it.lastLocationAt;
+    if (typeof it.pendingSearch === "string")
+      out.pendingSearch = it.pendingSearch;
+    if (typeof it.pendingSearchAt === "string")
+      out.pendingSearchAt = it.pendingSearchAt;
     return out;
+  }
+
+  async setPendingSearch(
+    chatId: number,
+    kind: string,
+    now: string,
+  ): Promise<void> {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: key(chatId),
+        UpdateExpression: "SET pendingSearch = :k, pendingSearchAt = :ts",
+        ExpressionAttributeValues: { ":k": kind, ":ts": now },
+      }),
+    );
+  }
+
+  async clearPendingSearch(chatId: number): Promise<void> {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: key(chatId),
+        UpdateExpression: "REMOVE pendingSearch, pendingSearchAt",
+      }),
+    );
   }
 
   async setPending(chatId: number, category: string): Promise<void> {

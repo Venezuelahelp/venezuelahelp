@@ -138,14 +138,16 @@ describe("answerWithTools (agente sobre el JSON)", () => {
     expect(r.reply).not.toContain("Juan rada");
   });
 
-  it("buscar sin resultados → No tengo ese dato (sin askBedrock)", async () => {
+  it("buscar sin resultados → respuesta que guía (sin askBedrock)", async () => {
     const askBedrock = vi.fn();
     const r = await answerWithTools("plutonio xyzzy", snap, config, {
       routeTools: route("buscar", { consulta: "plutonio xyzzy" }),
       askBedrock,
     });
     expect(askBedrock).not.toHaveBeenCalled();
-    expect(r.reply).toMatch(/No tengo/i);
+    // Ya no es "No tengo ese dato" seco: orienta sobre qué sí puede responder.
+    expect(r.reply).toMatch(/no encontré/i);
+    expect(r.reply).toMatch(/buscar una persona|acopio|refugio/i);
   });
 
   it("buscar por nombre con match de localización añade el aviso (corroborado)", async () => {

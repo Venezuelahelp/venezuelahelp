@@ -20,7 +20,16 @@ import {
   countAnswer,
   isHelpRequest,
 } from "@/telegram/retrieval";
-import { answerWithTools, GREETING } from "@/telegram/agent";
+import {
+  answerWithTools,
+  answerPersonSearch,
+  GREETING,
+} from "@/telegram/agent";
+import {
+  isBareSearchIntent,
+  ASK_FOR_NAME,
+  notFoundByName,
+} from "@/telegram/searchIntent";
 import { buildUserText } from "@/telegram/prompt";
 import {
   shouldRespond,
@@ -84,7 +93,12 @@ interface Deps {
   >;
   menuState: Pick<
     MenuStateRepo,
-    "get" | "setPending" | "setLocation" | "clearPending"
+    | "get"
+    | "setPending"
+    | "setLocation"
+    | "clearPending"
+    | "setPendingSearch"
+    | "clearPendingSearch"
   >;
   loadSnapshot: typeof realLoad;
   askBedrock: typeof realAsk;
@@ -151,6 +165,41 @@ async function safeResetStrikes(d: Deps, chatId: number): Promise<void> {
     await d.tgUserRepo.resetStrikes(chatId);
   } catch (e) {
     logger.warn("no se pudo resetear strikes", {
+      chatId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+// El bot espera el nombre de una persona si lo pidió hace ≤30 min (patrón de
+// clarificación + "session gap" de alo-ai-engine: no arrastrar contexto viejo).
+const PENDING_SEARCH_MS = 30 * 60 * 1000;
+function pendingPersonSearch(state: MenuState, nowMs: number): boolean {
+  if (state.pendingSearch !== "persona" || !state.pendingSearchAt) return false;
+  return nowMs - Date.parse(state.pendingSearchAt) <= PENDING_SEARCH_MS;
+}
+
+async function safeSetPendingSearch(
+  d: Deps,
+  chatId: number,
+  kind: string,
+  now: string,
+): Promise<void> {
+  try {
+    await d.menuState.setPendingSearch(chatId, kind, now);
+  } catch (e) {
+    logger.warn("no se pudo guardar pendingSearch", {
+      chatId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+async function safeClearPendingSearch(d: Deps, chatId: number): Promise<void> {
+  try {
+    await d.menuState.clearPendingSearch(chatId);
+  } catch (e) {
+    logger.warn("no se pudo limpiar pendingSearch", {
       chatId,
       error: e instanceof Error ? e.message : String(e),
     });
@@ -321,6 +370,55 @@ export async function handler(
         chatId,
         question,
         GREETING,
+        [],
+        config.bedrockModelId,
+        0,
+        0,
+      );
+      return ok();
+    }
+
+    // Clarificación conversacional (patrón pendingItems de alo-ai-engine): si
+    // antes pedimos un nombre y sigue vigente, este mensaje ES el nombre →
+    // búsqueda determinista, sin pasar por el router LLM.
+    const convState = await safeGetState(d, chatId);
+    if (pendingPersonSearch(convState, Date.now())) {
+      await safeClearPendingSearch(d, chatId);
+      const snapForName = await d.loadSnapshot();
+      const found = answerPersonSearch(question, snapForName);
+      const reply = found ? found.reply : notFoundByName(question);
+      await d.sendMessage(token, chatId, reply);
+      await safeResetStrikes(d, chatId);
+      await logQa(
+        d,
+        chatId,
+        question,
+        reply,
+        found?.itemsUsed ?? [],
+        config.bedrockModelId,
+        0,
+        0,
+      );
+      return ok();
+    }
+
+    // Intención de búsqueda de persona SIN nombre ("buscar a una persona") →
+    // pedir el nombre y recordarlo para el próximo turno, en vez de "No tengo
+    // ese dato" (patrón de clarificación: 1 pregunta por turno).
+    if (isBareSearchIntent(question)) {
+      await d.sendMessage(token, chatId, ASK_FOR_NAME);
+      await safeSetPendingSearch(
+        d,
+        chatId,
+        "persona",
+        new Date().toISOString(),
+      );
+      await safeResetStrikes(d, chatId);
+      await logQa(
+        d,
+        chatId,
+        question,
+        ASK_FOR_NAME,
         [],
         config.bedrockModelId,
         0,

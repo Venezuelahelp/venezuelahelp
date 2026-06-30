@@ -16,7 +16,11 @@ import { buildUserText } from "@/telegram/prompt";
 import { buildMatchIndex, locatedNotice } from "@/telegram/locatedNotice";
 import type { PublicItem, Snapshot } from "@/telegram/types";
 
-const NO_DATA = "No tengo ese dato.";
+// Fallback que GUÍA en vez de cortar (patrón "Data Boundary" + tono de
+// alo-ai-engine): cuando no hay datos para la consulta, orienta sobre qué sí
+// puede responder, sin inventar.
+const NO_DATA =
+  "No encontré información sobre eso. Puedo ayudarte a buscar una persona por su nombre, o a ver centros de acopio, refugios, hospitales y solicitudes de ayuda. ¿Qué necesitas? 🔎";
 
 // Respuestas fijas (sin Bedrock) para saludo y rechazo de fuera-de-tema.
 export const GREETING =
@@ -220,20 +224,8 @@ export async function answerWithTools(
   // en los datos.
   const named = nameMatches(consulta, items);
   if (named.length) {
-    let reply = formatMatches(named);
-    // Si alguno de los nombres presentados tiene una coincidencia de
-    // localización en el snapshot, anexamos el aviso (no afirma; dice si está
-    // corroborado por varias fuentes).
-    const idx = buildMatchIndex(snap.matches ?? []);
-    for (const it of named) {
-      const notice = locatedNotice(it.titulo, idx);
-      if (notice) {
-        reply += `\n\n${notice}`;
-        break;
-      }
-    }
     return {
-      reply,
+      reply: withLocatedNotice(named, snap),
       kind: "respuesta",
       itemsUsed: named.map((i) => key(i)),
       tokensIn,
@@ -256,6 +248,38 @@ export async function answerWithTools(
 
 function key(i: PublicItem): string {
   return `${i.category}/${i.sourceId}#${i.externalId}`;
+}
+
+// Formatea las fichas halladas por nombre y anexa el aviso de posible
+// localización (no afirma; dice si está corroborado por varias fuentes).
+function withLocatedNotice(named: PublicItem[], snap: Snapshot): string {
+  let reply = formatMatches(named);
+  const idx = buildMatchIndex(snap.matches ?? []);
+  for (const it of named) {
+    const notice = locatedNotice(it.titulo, idx);
+    if (notice) {
+      reply += `\n\n${notice}`;
+      break;
+    }
+  }
+  return reply;
+}
+
+// Búsqueda determinista por nombre, reutilizable fuera del router (p. ej. el
+// handler cuando ya pidió el nombre y el usuario lo respondió). Devuelve null si
+// no hay coincidencia por título.
+export function answerPersonSearch(
+  consulta: string,
+  snap: Snapshot,
+): { reply: string; itemsUsed: string[] } | null {
+  const items = retrieve(consulta, snap);
+  if (items.length === 0) return null;
+  const named = nameMatches(consulta, items);
+  if (named.length === 0) return null;
+  return {
+    reply: withLocatedNotice(named, snap),
+    itemsUsed: named.map((i) => key(i)),
+  };
 }
 
 // Cuántas fichas presentar como máximo ante una búsqueda por nombre.
