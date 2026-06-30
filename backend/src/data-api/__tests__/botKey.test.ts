@@ -45,5 +45,18 @@ describe("ensureBotApiKey", () => {
     expect(putArg.input.Name).toBe(PARAM);
     expect(putArg.input.Type).toBe("SecureString");
     expect(putArg.input.Value).toBe("vh_live_new");
+    expect(putArg.input.Overwrite).toBe(false);
+  });
+
+  it("propaga errores que no son ParameterNotFound", async () => {
+    const throttle = Object.assign(new Error("throttled"), {
+      name: "ThrottlingException",
+    });
+    const ssm = { send: vi.fn().mockRejectedValue(throttle) };
+    const repo = { create: vi.fn() };
+    await expect(
+      ensureBotApiKey({ ssm: ssm as never, apiKeyRepo: repo as never }),
+    ).rejects.toThrow("throttled");
+    expect(repo.create).not.toHaveBeenCalled();
   });
 });

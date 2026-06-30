@@ -1,4 +1,5 @@
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+import { BOT_API_KEY_PARAM } from "@/data-api/botKey";
 
 const ssm = new SSMClient({});
 const NAME = "/venezuelahelp/telegram-token";
@@ -7,7 +8,6 @@ let cached: string | null = null;
 const SECRET_NAME = "/venezuelahelp/telegram-webhook-secret";
 let cachedSecret: string | null = null;
 
-const DATA_API_KEY_NAME = "/venezuelahelp/bot/data-api-key";
 let cachedDataApiKey: string | null = null;
 
 interface Deps {
@@ -42,7 +42,7 @@ export async function getDataApiKey(deps?: Partial<Deps>): Promise<string> {
   if (cachedDataApiKey) return cachedDataApiKey;
   const client = (deps?.ssm as Deps["ssm"]) ?? ssm;
   const res = await client.send(
-    new GetParameterCommand({ Name: DATA_API_KEY_NAME, WithDecryption: true }),
+    new GetParameterCommand({ Name: BOT_API_KEY_PARAM, WithDecryption: true }),
   );
   cachedDataApiKey = res.Parameter?.Value ?? "";
   return cachedDataApiKey;
