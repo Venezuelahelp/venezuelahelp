@@ -10,10 +10,9 @@ import * as path from "node:path";
 // BucketDeployment checks the source path exists at synth time.
 // Create a placeholder so CDK can construct the stack without a real build.
 beforeAll(() => {
-  fs.mkdirSync(
-    path.join(__dirname, "../../../frontend-admin/dist"),
-    { recursive: true },
-  );
+  fs.mkdirSync(path.join(__dirname, "../../../frontend-admin/dist"), {
+    recursive: true,
+  });
 });
 
 function template() {
@@ -114,8 +113,10 @@ describe("AdminStack", () => {
     });
   });
 
-  it("creates a BucketDeployment to deploy admin SPA and config.json", () => {
-    template().resourceCountIs("Custom::CDKBucketDeployment", 1);
+  it("creates two BucketDeployments (assets immutable + html no-cache)", () => {
+    // Assets hasheados con cache largo y el index.html/config.json con no-cache
+    // para que el navegador no sirva un index viejo tras un deploy.
+    template().resourceCountIs("Custom::CDKBucketDeployment", 2);
   });
 
   it("outputs AdminUrl", () => {

@@ -1,6 +1,6 @@
 # VenezuelaHelp
 
-Plataforma **serverless de bajo costo** para agregar información del terremoto de Venezuela (evento del 25 de junio de 2026) desde fuentes públicas de terceros, y exponerla vía un **bot de Telegram** (preguntas con RAG por palabra clave + Bedrock) y dos **frontends web** (público y admin). Patrocinado por una persona → la restricción transversal es **minimizar costo** (sin costos fijos, pago por uso).
+Plataforma **serverless de bajo costo** para agregar información del terremoto de Venezuela (evento del 24 de junio de 2026) desde fuentes públicas de terceros, y exponerla vía un **bot de Telegram** (preguntas con RAG por palabra clave + Bedrock) y dos **frontends web** (público y admin). Patrocinado por una persona → la restricción transversal es **minimizar costo** (sin costos fijos, pago por uso).
 
 ## Estado
 
@@ -71,12 +71,12 @@ PK/SK string, PAY_PER_REQUEST. Identidad estable por ítem da idempotencia (sin 
 
 | Entidad       | PK                | SK                        |
 | ------------- | ----------------- | ------------------------- |
-| Fuente          | `SOURCE#<id>`             | `META`                    |
-| Ítem agregado   | `CAT#<categoria>`         | `<sourceId>#<externalId>` |
-| Log Q&A         | `QA#<chatId>`             | `<ts>`                    |
-| Config global   | `CONFIG`                  | `GLOBAL`                  |
-| Solicitud API   | `APIREQ` (fija)           | `<uuid>`                  |
-| API key         | `APIKEY` (fija)           | `<sha256(rawKey)>`        |
+| Fuente        | `SOURCE#<id>`     | `META`                    |
+| Ítem agregado | `CAT#<categoria>` | `<sourceId>#<externalId>` |
+| Log Q&A       | `QA#<chatId>`     | `<ts>`                    |
+| Config global | `CONFIG`          | `GLOBAL`                  |
+| Solicitud API | `APIREQ` (fija)   | `<uuid>`                  |
+| API key       | `APIKEY` (fija)   | `<sha256(rawKey)>`        |
 
 > ⚠️ **Las entidades del programa de API usan una partición COMPARTIDA (PK fija) y se listan con `Query`, NO `Scan`.** La tabla tiene ~55k ítems `CAT#`; un `Scan` completo por cada `list()` saturaba la capacidad on-demand (`ThrottlingException` → 500 en el admin, sobre todo con varios `list()` en paralelo). El authorizer hace `GetItem` O(1) por `PK=APIKEY, SK=<hash>`. (Aprendido en prod: `SourceRepo.list()` aún hace `Scan` de toda la tabla → riesgo a migrar al mismo patrón si reaparece throttling.) <!-- /aprende 2026-06-29 -->
 
