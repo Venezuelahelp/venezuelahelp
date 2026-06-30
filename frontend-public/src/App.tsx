@@ -159,9 +159,6 @@ export default function App() {
                     </div>
 
                     <div className={styles.container}>
-                      {data.matches && data.matches.length > 0 && (
-                        <LocatedMatches matches={data.matches} />
-                      )}
                       <div
                         className={styles.controls}
                         id="resultados"
@@ -188,6 +185,10 @@ export default function App() {
                           </div>
                         )}
                       </div>
+
+                      {data.matches && data.matches.length > 0 && (
+                        <LocatedMatches matches={data.matches} />
+                      )}
 
                       {filtered.length === 0 ? (
                         <Empty query={query} />
