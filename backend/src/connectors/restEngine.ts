@@ -131,7 +131,12 @@ interface RestDeps {
     timeoutMs?: number,
     headers?: Record<string, string>,
   ) => Promise<T>;
+  // Pausa entre páginas (inyectable para tests). Default: setTimeout real.
+  sleep?: (ms: number) => Promise<void>;
 }
+
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 // Corre todos los endpoints de una RestConfig. Un endpoint que falla queda
 // registrado en endpointStats (fetched 0 + error) y NO impide los demás.
@@ -150,6 +155,8 @@ export async function runRestSource(
       // una sola página.
       const pageSize = ep.paginate?.pageSize;
       const maxItems = ep.paginate?.maxItems ?? Infinity;
+      const throttleMs = ep.paginate?.throttleMs;
+      const sleep = deps.sleep ?? defaultSleep;
       let offset = 0;
       let nonArray = false;
       for (;;) {
@@ -175,6 +182,8 @@ export async function runRestSource(
         // Fin: sin paginación, o página incompleta, o tope alcanzado.
         if (!pageSize || arr.length < pageSize || n >= maxItems) break;
         offset += pageSize;
+        // Pausa antes de la siguiente página para respetar el rate-limit.
+        if (throttleMs) await sleep(throttleMs);
       }
       if (nonArray) {
         endpointStats.push({

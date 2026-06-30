@@ -43,7 +43,9 @@ export interface RestEndpoint {
   skipRows?: number;
   // Paginación: si está, se pagina con `&limit=<pageSize>&offset=<n>` (PostgREST
   // /Supabase) hasta agotar o alcanzar `maxItems`. Sin esto, un solo fetch.
-  paginate?: { pageSize: number; maxItems?: number };
+  // `throttleMs`: pausa entre páginas para respetar rate-limits de la API
+  // (p.ej. venezuelareporta: 120 req/min → ~500ms). Sin él, no hay pausa.
+  paginate?: { pageSize: number; maxItems?: number; throttleMs?: number };
 }
 
 export interface RestConfig {
