@@ -32,122 +32,6 @@
   -webkit-appearance: none;
 }
 
-/* ── Category cards ─────────────────────────────────────────── */
-
-.cardsHeader {
-  margin: 2px 0 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-/* Grilla de tarjetas, visible por defecto (también en móvil), con scroll
-   vertical dentro del contenedor para que no empuje toda la página. */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  max-height: 248px; /* ~2 filas en móvil → el resto se ve con scroll vertical */
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding: 2px; /* aire para el anillo de foco */
-  margin: -2px;
-}
-
-@media (min-width: 480px) {
-  .cards {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (min-width: 768px) {
-  .cards {
-    grid-template-columns: repeat(6, 1fr);
-    max-height: none; /* en desktop hay sitio: sin scroll interno */
-    overflow: visible;
-  }
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 104px;
-  padding: 14px 8px;
-  text-align: center;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  transition:
-    border-color 140ms ease,
-    transform 120ms ease,
-    background 140ms ease;
-}
-
-.card:hover {
-  border-color: color-mix(
-    in oklab,
-    var(--card-color) 45%,
-    var(--border-strong)
-  );
-  transform: translateY(-1px);
-}
-
-.card:active {
-  transform: scale(0.98);
-}
-
-.card:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.cardIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 13px;
-  color: var(--card-color);
-  background: color-mix(in oklab, var(--card-color) 16%, white);
-}
-
-.cardLabel {
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--ink-strong);
-}
-
-.cardCount {
-  font-family: ui-monospace, monospace;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--muted);
-  background: var(--surface);
-  padding: 1px 8px;
-  border-radius: 999px;
-}
-
-/* Seleccionada: borde + tinte del color de la categoría. */
-.cardActive {
-  border-color: var(--card-color);
-  background: color-mix(in oklab, var(--card-color) 8%, var(--bg));
-}
-
-.cardActive .cardCount {
-  color: var(--card-color);
-  background: color-mix(in oklab, var(--card-color) 16%, white);
-}
-
 /* ── Results feedback row ─────────────────────────────────────── */
 
 .results {
@@ -199,12 +83,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card,
   .search {
     transition: none;
-  }
-  .card:hover,
-  .card:active {
-    transform: none;
   }
 }

@@ -1,5 +1,5 @@
 import type { Category } from "@/types";
-import { CATEGORY_META, CATEGORY_ORDER } from "@/data/categories";
+import CategoryFilter from "@/components/CategoryFilter";
 import styles from "./FilterBar.module.css";
 
 interface FilterBarProps {
@@ -36,40 +36,7 @@ export default function FilterBar({
         onChange={(e) => onQuery(e.target.value)}
       />
 
-      <p className={styles.cardsHeader}>
-        Filtra las necesidades de ayuda por categoría
-      </p>
-
-      {/* Tarjetas de categoría: visibles por defecto (también en móvil) dentro
-          de un contenedor con scroll vertical. */}
-      <div
-        className={styles.cards}
-        role="group"
-        aria-label="Filtrar por categoría"
-      >
-        {CATEGORY_ORDER.map((cat) => {
-          const meta = CATEGORY_META[cat];
-          const Icon = meta.icon;
-          const isActive = active.has(cat);
-          const colorVar = `var(${meta.colorVar})`;
-          return (
-            <button
-              key={cat}
-              type="button"
-              className={`${styles.card} ${isActive ? styles.cardActive : ""}`}
-              aria-pressed={isActive}
-              onClick={() => onToggle(cat)}
-              style={{ "--card-color": colorVar } as React.CSSProperties}
-            >
-              <span className={styles.cardIcon} aria-hidden="true">
-                <Icon size={26} weight="duotone" />
-              </span>
-              <span className={styles.cardLabel}>{meta.label}</span>
-              <span className={styles.cardCount}>{counts[cat]}</span>
-            </button>
-          );
-        })}
-      </div>
+      <CategoryFilter active={active} onToggle={onToggle} counts={counts} />
 
       <div className={styles.results}>
         <p className={styles.resultsCount} aria-live="polite">
