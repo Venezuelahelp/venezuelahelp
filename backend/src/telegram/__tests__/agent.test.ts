@@ -147,4 +147,37 @@ describe("answerWithTools (agente sobre el JSON)", () => {
     expect(askBedrock).not.toHaveBeenCalled();
     expect(r.reply).toMatch(/No tengo/i);
   });
+
+  it("buscar por nombre con match de localización añade el aviso (corroborado)", async () => {
+    const snapM = {
+      generatedAt: "t",
+      categories: {
+        desaparecidos: [di("1", "Juan Perez Lopez")],
+        reportes: [],
+      },
+      matches: [
+        {
+          nombre: "Juan Perez Lopez",
+          signal: "nombre-fuerte",
+          locatedSourcesCount: 2,
+          missing: { sourceId: "A", texto: "buscado" },
+          located: { sourceId: "B", texto: "a salvo", sources: ["B", "C"] },
+        },
+      ],
+    } as unknown as Snapshot;
+    const r = await answerWithTools("Juan Perez Lopez", snapM, config, {
+      routeTools: route("buscar", { consulta: "Juan Perez Lopez" }),
+      askBedrock: vi.fn(),
+    });
+    expect(r.reply).toContain("reportada como");
+    expect(r.reply).toContain("Corroborado por 2 fuentes");
+  });
+
+  it("buscar por nombre sin match no añade aviso", async () => {
+    const r = await answerWithTools("Ana", snap, config, {
+      routeTools: route("buscar", { consulta: "Ana" }),
+      askBedrock: vi.fn(),
+    });
+    expect(r.reply).not.toContain("Coincidencia automática");
+  });
 });

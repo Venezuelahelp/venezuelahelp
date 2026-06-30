@@ -57,6 +57,8 @@ export interface PublicItem {
 export interface Snapshot {
   generatedAt: string;
   categories: Record<string, PublicItem[]>;
+  // Cruce "posibles localizaciones" (opcional: snapshots viejos no lo traen).
+  matches?: import("@/shared/types").LocatedMatch[];
 }
 
 export interface InlineKeyboardButton {

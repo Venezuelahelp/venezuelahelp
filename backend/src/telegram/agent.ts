@@ -13,6 +13,7 @@ import {
 } from "@venezuelahelp/core";
 import { formatList } from "@/telegram/format";
 import { buildUserText } from "@/telegram/prompt";
+import { buildMatchIndex, locatedNotice } from "@/telegram/locatedNotice";
 import type { PublicItem, Snapshot } from "@/telegram/types";
 
 const NO_DATA = "No tengo ese dato.";
@@ -219,8 +220,20 @@ export async function answerWithTools(
   // en los datos.
   const named = nameMatches(consulta, items);
   if (named.length) {
+    let reply = formatMatches(named);
+    // Si alguno de los nombres presentados tiene una coincidencia de
+    // localización en el snapshot, anexamos el aviso (no afirma; dice si está
+    // corroborado por varias fuentes).
+    const idx = buildMatchIndex(snap.matches ?? []);
+    for (const it of named) {
+      const notice = locatedNotice(it.titulo, idx);
+      if (notice) {
+        reply += `\n\n${notice}`;
+        break;
+      }
+    }
     return {
-      reply: formatMatches(named),
+      reply,
       kind: "respuesta",
       itemsUsed: named.map((i) => key(i)),
       tokensIn,
