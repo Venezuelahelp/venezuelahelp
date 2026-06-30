@@ -47,9 +47,13 @@ describe("queryItems", () => {
     expect(r.items.map((i) => i.externalId)).toEqual(["1"]);
   });
 
-  it("requires all keywords to match (AND)", () => {
-    const r = queryItems(snap, { q: "maria valencia" });
-    expect(r.items.map((i) => i.externalId)).toEqual(["2"]);
+  it("retorna ítems con cualquier keyword coincidente", () => {
+    // "maria" hits externalId "2" (desaparecidos); "derrumbe" hits externalId "4" (reportes)
+    // OR semantics: both items are returned even though neither has BOTH keywords
+    const r = queryItems(snap, { q: "maria derrumbe" });
+    const ids = r.items.map((i) => i.externalId);
+    expect(ids).toContain("2");
+    expect(ids).toContain("4");
   });
 
   it("filters by proximity (near + radiusKm)", () => {
@@ -103,10 +107,38 @@ const snapAcopios: DataSnapshot = {
   },
 };
 
+// Fixture con DOS ítems que AMBOS coinciden con "petare" pero en campos distintos.
+// El viejo código substring-AND los devolvería en orden de inserción (item "1" primero).
+// El nuevo ranking devuelve item "2" primero porque titulo tiene mayor peso que texto.
+const snapRanking: DataSnapshot = {
+  generatedAt: "t",
+  categories: {
+    acopios: [
+      // "petare" solo en texto → score bajo
+      {
+        category: "acopios",
+        sourceId: "s",
+        externalId: "1",
+        titulo: "Centro Norte",
+        texto: "acopio en petare zona apoyo",
+      },
+      // "petare" en titulo → score alto (titulo weight > texto)
+      {
+        category: "acopios",
+        sourceId: "s",
+        externalId: "2",
+        titulo: "Acopio Petare",
+        texto: "agua",
+      },
+    ],
+  },
+};
+
 describe("queryItems (core)", () => {
-  it("rankea por relevancia y excluye no-coincidentes", () => {
-    const r = queryItems(snapAcopios, { q: "petare" });
-    expect(r.items[0].externalId).toBe("1");
+  it("rankea titulo > texto (relevancia, no substring-AND)", () => {
+    const r = queryItems(snapRanking, { q: "petare" });
+    expect(r.items[0].externalId).toBe("2"); // titulo match ranks higher
+    expect(r.items).toHaveLength(2); // OR semantics: both items match
   });
   it("pagina con cursor", () => {
     const r = queryItems(snapAcopios, { limit: 1 });
