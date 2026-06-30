@@ -1,7 +1,12 @@
 # Posibles localizaciones — cruce desaparecido ↔ localizado/hospital
 
-**Fecha:** 2026-06-29
+**Fecha:** 2026-06-29 (revisado 2026-06-30)
 **Estado:** Diseño aprobado, pendiente de plan de implementación.
+
+> **Revisión 2026-06-30 (alcance ampliado).** Dos deltas sobre el diseño original, marcados con **▲ DELTA** abajo:
+>
+> 1. **Corroboración por varias fuentes ("azul").** El match distingue si la localización está respaldada por **una** fuente (verde) o por **varias** (azul) → nuevo `locatedSourcesCount`.
+> 2. **Bot de Telegram (entra al alcance).** El bot, al buscar un nombre, avisa si hay coincidencia de localización y dice si está corroborada por varias fuentes. Sale de "Fuera de alcance".
 
 ## Problema
 
@@ -57,6 +62,7 @@ Función pura sobre la lista de ítems `desaparecidos` ya normalizados.
    - nombre de **3+ tokens** y el localizado es de **otra fuente** (cross-source), **o**
    - comparte una **señal dura**: misma cédula, mismo teléfono, o mismo hospital normalizado (extraídos del `texto` por regex).
 5. **Dedup**: 1 match por persona buscada. Si hay varios localizados candidatos, preferir el de señal más fuerte (cédula > teléfono > hospital > nombre-fuerte) y, a igualdad, el más reciente.
+6. **▲ DELTA — Corroboración.** Antes de quedarse con el localizado canónico, agrupar **todos** los localizados que coinciden con esa clave y contar las **fuentes distintas** (`sourceId`) que lo respaldan → `locatedSourcesCount`. El canónico (más fuerte / más reciente) sigue siendo el que se muestra en detalle, pero el conteo refleja toda la corroboración. `locatedSourcesCount ≥ 2` ⇒ **azul** ("localización corroborada por varias fuentes"); `= 1` ⇒ **verde** ("posible localización").
 
 ### Componente 2 — Forma en el snapshot
 
@@ -66,6 +72,7 @@ Campo nuevo top-level `matches: LocatedMatch[]` en `public-snapshot/snapshot.ts`
 interface LocatedMatch {
   nombre: string;
   signal: "cédula" | "teléfono" | "hospital" | "nombre-fuerte";
+  locatedSourcesCount: number; // ▲ DELTA: fuentes distintas que respaldan la localización (≥2 ⇒ azul)
   missing: {
     sourceId: string;
     texto: string;
@@ -73,11 +80,13 @@ interface LocatedMatch {
     sourceUrl?: string;
   };
   located: {
+    // canónico (señal más fuerte / más reciente) que se muestra en detalle
     sourceId: string;
     texto: string;
     status?: string;
     sourceUrl?: string;
     hospital?: string;
+    sources: string[]; // ▲ DELTA: todos los sourceId que reportan localizado para este nombre
   };
 }
 ```
@@ -93,11 +102,33 @@ Cada tarjeta:
 - **"Ver original"** a ambas fuentes (`sourceUrl`, con fallback a la home de la fuente como en el resto del público).
 - Aviso fijo de encuadre (no afirmar; ver copy abajo).
 
+**▲ DELTA — Color por corroboración.** Cada tarjeta lleva un indicador de color según `locatedSourcesCount`:
+
+- `= 1` → **verde**, etiqueta "Posible localización" (una sola fuente la reporta localizada).
+- `≥ 2` → **azul**, etiqueta "Localización corroborada por N fuentes" (varias páginas coinciden — mayor confianza).
+
+El color es solo una señal de confianza relativa; **no cambia el copy de "no es confirmación"** (un homónimo puede repetirse en varias fuentes). Reusar los tokens de color existentes del público; nada de scroll infinito.
+
 Si `matches` viene vacío, la sección no se renderiza.
 
 ### Copy de encuadre (fijo, visible en la sección)
 
 > "Estas son coincidencias automáticas por nombre entre reportes de personas buscadas y reportes de personas localizadas o ingresadas en hospitales. **No son confirmaciones.** Verifica siempre directamente con las fuentes antes de sacar conclusiones."
+
+### ▲ DELTA — Componente 4: aviso en el bot de Telegram (reactivo al buscar)
+
+El bot **no añade un menú nuevo**: enriquece la respuesta de búsqueda por nombre que ya existe.
+
+- El snapshot que el bot ya lee (`telegram/snapshot.ts`) ahora trae `matches`. Al cargarlo, el bot indexa los `LocatedMatch` por **clave de nombre** (la misma normalización ordenada del motor) → lookup O(1).
+- En la **rama "buscar"** (que ya hace short-circuit determinista por match de título), tras hallar la ficha del buscado, si su clave de nombre tiene un `LocatedMatch` se **añade un bloque de aviso** a la respuesta, p. ej.:
+
+  > ⚠️ _Coincidencia automática (no confirmada):_ esta persona fue **reportada como localizada** en _[fuente]_.
+  > **Corroborado por N fuentes.** ← solo si `locatedSourcesCount ≥ 2`
+  > Verifica directamente con la fuente antes de sacar conclusiones.
+
+- Botón inline **"🔗 Ver original"** a `located.sourceUrl` (fallback a la home de la fuente), como en `cards.ts`.
+- **Mismas exclusiones que el público:** fallecidos fuera, solo matches confirmados, nunca afirma. El bloque solo aparece cuando el nombre buscado tiene match; si no, la respuesta es la de hoy.
+- Si `matches` no está en el snapshot (snapshot viejo) el bot se comporta como hoy (campo opcional, sin romper).
 
 ## Manejo de errores
 
@@ -112,6 +143,8 @@ TDD con `vitest` (`backend/src/enrichment/__tests__/matchLocated.test.ts`):
 - **Deben matchear**: mismo hospital; misma cédula; mismo teléfono; nombre 3+ tokens cross-source; nombre con orden invertido.
 - **No deben matchear**: nombre de 2 tokens sin corroboración (homónimo); fallecido (`deceased`); buscado y localizado de la **misma** fuente sin señal dura (ruido intra-fuente); título vacío.
 - **Dedup**: una persona buscada con dos localizados candidatos → un solo match, con la señal más fuerte.
+- **▲ Corroboración**: un buscado con localizados en **dos fuentes distintas** → `locatedSourcesCount === 2` (azul); con una sola fuente → `1` (verde); dos localizados de la **misma** fuente no inflan el conteo (se cuentan `sourceId` distintos).
+- **▲ Bot**: dado un snapshot con un `LocatedMatch`, buscar ese nombre produce el bloque de aviso con la línea "Corroborado por N fuentes" solo cuando `locatedSourcesCount ≥ 2`; un nombre sin match no añade bloque.
 
 Validación final: **smoke sobre el snapshot real** (regla del proyecto de validar heurísticas en prod), midiendo cuántos matches confirmados produce y revisando manualmente una muestra antes de exponerlo.
 
@@ -120,4 +153,5 @@ Validación final: **smoke sobre el snapshot real** (regla del proyecto de valid
 - Badge en la ficha del desaparecido (se descartó en favor de la sección dedicada).
 - Coincidencias de fallecidos.
 - Matching por similitud difusa de tokens (Jaccard parcial); el MVP usa igualdad de clave + corroboración. Se puede extender luego si la cobertura se queda corta.
-- Notificación push / por bot de Telegram de una coincidencia (posible fase futura).
+- **Notificación push proactiva** del bot (mandar mensaje sin que el usuario pregunte). El bot solo avisa **reactivamente** al buscar un nombre (Componente 4); el push proactivo sigue fuera de alcance.
+- Marcar/afirmar el match en la **ficha del buscado** (público o bot): se mantiene la sección/bloque aparte que nunca afirma.
