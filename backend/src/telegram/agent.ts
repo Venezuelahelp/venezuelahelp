@@ -4,7 +4,13 @@ import {
   type ToolSpec,
 } from "@/telegram/bedrock";
 import { retrieve } from "@/telegram/retrieval";
-import { listItems, countItems } from "@venezuelahelp/core";
+import {
+  listItems,
+  countItems,
+  keywords,
+  normalize,
+  CAT_LABEL,
+} from "@venezuelahelp/core";
 import { formatList } from "@/telegram/format";
 import { buildUserText } from "@/telegram/prompt";
 import type { PublicItem, Snapshot } from "@/telegram/types";
@@ -154,6 +160,20 @@ export async function answerWithTools(
   if (items.length === 0) {
     return { reply: NO_DATA, itemsUsed: [], tokensIn, tokensOut };
   }
+  // Búsqueda por nombre/entidad: si la consulta coincide con el TÍTULO de los
+  // ítems recuperados (p. ej. el nombre de un desaparecido), la presentamos de
+  // forma determinista. El modelo redactor barato (Nova Lite) rechaza estas
+  // consultas de "solo un nombre" con "No tengo ese dato" aunque la ficha esté
+  // en los datos.
+  const named = nameMatches(consulta, items);
+  if (named.length) {
+    return {
+      reply: formatMatches(named),
+      itemsUsed: named.map((i) => key(i)),
+      tokensIn,
+      tokensOut,
+    };
+  }
   const ans = await deps.askBedrock(
     config.bedrockModelId,
     config.systemPrompt,
@@ -169,4 +189,47 @@ export async function answerWithTools(
 
 function key(i: PublicItem): string {
   return `${i.category}/${i.sourceId}#${i.externalId}`;
+}
+
+// Cuántas fichas presentar como máximo ante una búsqueda por nombre.
+const MAX_NAME_MATCHES = 5;
+const MATCH_TEXT_MAX = 280;
+
+// Ítems cuya TÍTULO contiene TODAS las palabras buscables de la consulta: es una
+// búsqueda por nombre/entidad, no una pregunta abierta. `items` ya viene
+// rankeado por `retrieve`, así que el filtro preserva el orden de relevancia.
+function nameMatches(consulta: string, items: PublicItem[]): PublicItem[] {
+  const kws = keywords(consulta);
+  if (kws.length === 0) return [];
+  return items
+    .filter((it) => {
+      const t = normalize(it.titulo);
+      return t !== "" && kws.every((kw) => t.includes(kw));
+    })
+    .slice(0, MAX_NAME_MATCHES);
+}
+
+function formatMatch(it: PublicItem): string {
+  const lines = [`🔎 ${it.titulo} — ${CAT_LABEL[it.category] ?? it.category}`];
+  const texto = (it.texto ?? "").replace(/\s+/g, " ").trim();
+  if (texto) {
+    lines.push(
+      texto.length > MATCH_TEXT_MAX
+        ? `${texto.slice(0, MATCH_TEXT_MAX).trimEnd()}…`
+        : texto,
+    );
+  }
+  if (it.ubicacion?.nombre) lines.push(`📍 ${it.ubicacion.nombre}`);
+  if (it.status) lines.push(`Estado: ${it.status.replace(/_/g, " ")}`);
+  lines.push(`Fuente: ${it.sourceId}`);
+  if (it.sourceUrl) lines.push(`🔗 ${it.sourceUrl}`);
+  return lines.join("\n");
+}
+
+function formatMatches(items: PublicItem[]): string {
+  const head =
+    items.length === 1
+      ? "Encontré 1 coincidencia:"
+      : `Encontré ${items.length} coincidencias:`;
+  return `${head}\n\n${items.map(formatMatch).join("\n\n")}`;
 }
