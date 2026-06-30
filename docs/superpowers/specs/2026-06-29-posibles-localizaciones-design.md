@@ -7,6 +7,11 @@
 >
 > 1. **Corroboración por varias fuentes ("azul").** El match distingue si la localización está respaldada por **una** fuente (verde) o por **varias** (azul) → nuevo `locatedSourcesCount`.
 > 2. **Bot de Telegram (entra al alcance).** El bot, al buscar un nombre, avisa si hay coincidencia de localización y dice si está corroborada por varias fuentes. Sale de "Fuera de alcance".
+>
+> **Revisión 2026-07-01 (ajuste tras smoke en prod).** El smoke real arrojó 3.083 matches, de los cuales **~2.3k eran solo por nombre (3+ tokens)** con alta tasa de homónimos ("elena maria sanchez", "jose gregorio hernandez") y **477 tarjetas duplicadas** del mismo nombre. Dos correcciones:
+>
+> 1. **Se elimina la señal `nombre-fuerte`.** El cruce **exige señal dura** (cédula/teléfono/hospital). Por la regla ética (homónimo = peor fallo), el solo-nombre no se muestra. Resultado: **294 matches creíbles** (241 verde / 53 azul).
+> 2. **Dedup por persona** (`dedupeByPerson`): varios ítems "buscando" con el mismo nombre se colapsan en **una sola tarjeta**, uniendo las fuentes localizadas para que la corroboración (azul) refleje todas.
 
 ## Problema
 

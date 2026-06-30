@@ -66,11 +66,6 @@ export function nameKey(titulo: string): string {
     .join(" ");
 }
 
-function tokenCount(titulo: string): number {
-  const k = nameKey(titulo);
-  return k === "" ? 0 : k.split(" ").length;
-}
-
 // Señales duras extraídas del texto libre del ítem. Tolerantes a formato; si no
 // extraen nada, simplemente no hay señal dura.
 const RE_CEDULA = /\b[VvEe]?[-\s]?(\d{1,2}[.\s]?\d{3}[.\s]?\d{3}|\d{6,9})\b/;
@@ -117,8 +112,11 @@ interface Indexed {
   signals: { cedula?: string; telefono?: string; hospital?: string };
 }
 
-// Devuelve la señal que justifica el match entre un buscado y un localizado, o
-// null si no sobrevive el filtro (homónimo sin corroboración).
+// Devuelve la señal DURA que justifica el match entre un buscado y un
+// localizado, o null si no la hay. Decisión validada con smoke real (2026-07-01):
+// el match por solo-nombre (3+ tokens) producía ~2.3k coincidencias con alta
+// tasa de homónimos ("elena maria sanchez", "jose gregorio hernandez"); anunciar
+// un homónimo a una familia es el peor fallo del proyecto → exigimos señal dura.
 function matchSignal(b: Indexed, l: Indexed): LocatedSignal | null {
   if (b.signals.cedula && b.signals.cedula === l.signals.cedula)
     return "cédula";
@@ -127,10 +125,6 @@ function matchSignal(b: Indexed, l: Indexed): LocatedSignal | null {
   }
   if (b.signals.hospital && b.signals.hospital === l.signals.hospital) {
     return "hospital";
-  }
-  // Nombre fuerte cross-source: 3+ tokens y distinta fuente.
-  if (tokenCount(b.item.titulo) >= 3 && b.item.sourceId !== l.item.sourceId) {
-    return "nombre-fuerte";
   }
   return null;
 }
@@ -200,5 +194,36 @@ export function matchLocated(desaparecidos: StoredItem[]): LocatedMatch[] {
       },
     });
   }
-  return out;
+  return dedupeByPerson(out);
+}
+
+// Colapsa a 1 match por persona (clave de nombre). Varios ítems "buscando" con
+// el mismo nombre (distintas fuentes) generan un match cada uno; el público no
+// debe ver la misma persona repetida. Conserva la señal más fuerte como
+// canónica y UNE las fuentes localizadas de todo el grupo, de modo que la
+// corroboración (azul) refleje todas las fuentes que la respaldan.
+function dedupeByPerson(matches: LocatedMatch[]): LocatedMatch[] {
+  const byKey = new Map<string, LocatedMatch>();
+  for (const m of matches) {
+    const k = nameKey(m.nombre);
+    const existing = byKey.get(k);
+    if (!existing) {
+      byKey.set(k, m);
+      continue;
+    }
+    const sources = Array.from(
+      new Set([...existing.located.sources, ...m.located.sources]),
+    );
+    if (SIGNAL_RANK[m.signal] > SIGNAL_RANK[existing.signal]) {
+      byKey.set(k, {
+        ...m,
+        locatedSourcesCount: sources.length,
+        located: { ...m.located, sources },
+      });
+    } else {
+      existing.locatedSourcesCount = sources.length;
+      existing.located.sources = sources;
+    }
+  }
+  return Array.from(byKey.values());
 }

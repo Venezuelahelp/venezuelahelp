@@ -90,7 +90,8 @@ describe("extractSignals", () => {
 });
 
 describe("matchLocated", () => {
-  it("matchea nombre 3+ tokens cross-source", () => {
+  it("NO matchea solo por nombre (sin señal dura), aunque sea 3+ tokens cross-source", () => {
+    // Decisión validada con smoke: el match por solo-nombre genera homónimos.
     const m = matchLocated([
       buscando({ sourceId: "A", externalId: "1", titulo: "Juan Perez Lopez" }),
       localizado({
@@ -99,9 +100,7 @@ describe("matchLocated", () => {
         titulo: "Lopez Juan Perez",
       }),
     ]);
-    expect(m).toHaveLength(1);
-    expect(m[0].signal).toBe("nombre-fuerte");
-    expect(m[0].locatedSourcesCount).toBe(1);
+    expect(m).toHaveLength(0);
   });
 
   it("matchea por señal dura (mismo hospital) aunque el nombre sea de 2 tokens", () => {
@@ -133,41 +132,62 @@ describe("matchLocated", () => {
 
   it("NO matchea fallecido", () => {
     const m = matchLocated([
-      buscando({ sourceId: "A", externalId: "1", titulo: "Juan Perez Lopez" }),
+      buscando({
+        sourceId: "A",
+        externalId: "1",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
+      }),
       item({
         status: "deceased",
         sourceId: "B",
         externalId: "2",
         titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
       }),
     ]);
     expect(m).toHaveLength(0);
   });
 
-  it("NO matchea buscado y localizado de la MISMA fuente sin señal dura", () => {
+  it("señal dura (hospital) entre fuentes distintas SÍ matchea, count=1", () => {
     const m = matchLocated([
-      buscando({ sourceId: "A", externalId: "1", titulo: "Juan Perez Lopez" }),
-      localizado({
+      buscando({
         sourceId: "A",
-        externalId: "2",
+        externalId: "1",
         titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
       }),
-    ]);
-    expect(m).toHaveLength(0);
-  });
-
-  it("corroboración: localizado en dos fuentes distintas → locatedSourcesCount=2 (azul)", () => {
-    const m = matchLocated([
-      buscando({ sourceId: "A", externalId: "1", titulo: "Juan Perez Lopez" }),
       localizado({
         sourceId: "B",
         externalId: "2",
         titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
+      }),
+    ]);
+    expect(m).toHaveLength(1);
+    expect(m[0].located.sourceId).toBe("B");
+    expect(m[0].locatedSourcesCount).toBe(1);
+  });
+
+  it("corroboración: localizado por hospital en dos fuentes distintas → count=2 (azul)", () => {
+    const m = matchLocated([
+      buscando({
+        sourceId: "A",
+        externalId: "1",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
+      }),
+      localizado({
+        sourceId: "B",
+        externalId: "2",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
       }),
       localizado({
         sourceId: "C",
         externalId: "3",
         titulo: "Lopez Juan Perez",
+        texto: "Hospital Vargas",
       }),
     ]);
     expect(m).toHaveLength(1);
@@ -177,16 +197,23 @@ describe("matchLocated", () => {
 
   it("dos localizados de la MISMA fuente no inflan el conteo", () => {
     const m = matchLocated([
-      buscando({ sourceId: "A", externalId: "1", titulo: "Juan Perez Lopez" }),
+      buscando({
+        sourceId: "A",
+        externalId: "1",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
+      }),
       localizado({
         sourceId: "B",
         externalId: "2",
         titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
       }),
       localizado({
         sourceId: "B",
         externalId: "3",
         titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
       }),
     ]);
     expect(m[0].locatedSourcesCount).toBe(1);
@@ -212,6 +239,7 @@ describe("matchLocated", () => {
         sourceId: "B",
         externalId: "2",
         titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
       }),
       localizado({
         sourceId: "C",
@@ -223,5 +251,63 @@ describe("matchLocated", () => {
     expect(m).toHaveLength(1);
     expect(m[0].signal).toBe("cédula");
     expect(m[0].located.sourceId).toBe("C");
+  });
+
+  it("dedup por persona: varios buscados con el mismo nombre → UNA sola tarjeta", () => {
+    const m = matchLocated([
+      buscando({
+        sourceId: "A",
+        externalId: "1",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
+      }),
+      buscando({
+        sourceId: "D",
+        externalId: "9",
+        titulo: "Lopez Juan Perez",
+        texto: "Hospital Vargas",
+      }),
+      localizado({
+        sourceId: "B",
+        externalId: "2",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
+      }),
+    ]);
+    expect(m).toHaveLength(1);
+  });
+
+  it("dedup por persona AGREGA corroboración entre buscados distintos (azul)", () => {
+    // Dos buscados del mismo nombre, cada uno respaldado por un hospital distinto
+    // en una fuente distinta → al colapsar, la persona queda corroborada por 2.
+    const m = matchLocated([
+      buscando({
+        sourceId: "A",
+        externalId: "1",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
+      }),
+      buscando({
+        sourceId: "A",
+        externalId: "2",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Universitario",
+      }),
+      localizado({
+        sourceId: "B",
+        externalId: "3",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Vargas",
+      }),
+      localizado({
+        sourceId: "C",
+        externalId: "4",
+        titulo: "Juan Perez Lopez",
+        texto: "Hospital Universitario",
+      }),
+    ]);
+    expect(m).toHaveLength(1);
+    expect(m[0].locatedSourcesCount).toBe(2);
+    expect(m[0].located.sources.sort()).toEqual(["B", "C"]);
   });
 });
