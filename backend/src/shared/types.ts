@@ -144,6 +144,36 @@ export interface ApiKey {
   lastUsedAt?: string;
 }
 
+// Cruce "posibles localizaciones": una persona reportada como buscada que
+// aparece reportada como localizada/en hospital por otra(s) fuente(s). Se
+// calcula en buildSnapshot (determinista, sin LLM) y viaja en el snapshot.json.
+export type LocatedClass = "buscando" | "localizado" | "otro";
+
+export type LocatedSignal =
+  "cédula" | "teléfono" | "hospital" | "nombre-fuerte";
+
+export interface LocatedMatch {
+  nombre: string;
+  signal: LocatedSignal;
+  // Fuentes distintas que respaldan la localización (≥2 ⇒ azul en el público).
+  locatedSourcesCount: number;
+  missing: {
+    sourceId: string;
+    texto: string;
+    status?: string;
+    sourceUrl?: string;
+  };
+  located: {
+    sourceId: string;
+    texto: string;
+    status?: string;
+    sourceUrl?: string;
+    hospital?: string;
+    // Todos los sourceId que reportan localizado para este nombre.
+    sources: string[];
+  };
+}
+
 export interface QaLogEntry {
   chatId: string;
   ts: string;
