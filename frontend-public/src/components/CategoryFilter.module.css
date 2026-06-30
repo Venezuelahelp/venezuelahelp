@@ -1,0 +1,152 @@
+.header {
+  margin: 2px 0 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Fila de tarjetas, visible por defecto (también en móvil) con scroll
+   horizontal (carrusel); en desktop llenan el ancho. */
+.cards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  padding: 2px 2px 8px;
+  margin: -2px;
+}
+
+.card {
+  flex: 0 0 auto;
+  width: 116px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 104px;
+  padding: 14px 8px;
+  text-align: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    transform 120ms ease,
+    background 140ms ease;
+}
+
+.card:hover {
+  border-color: color-mix(
+    in oklab,
+    var(--card-color) 45%,
+    var(--border-strong)
+  );
+  transform: translateY(-1px);
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Desktop: hay sitio para las 6 → estiran para llenar la fila, sin scroll. */
+@media (min-width: 768px) {
+  .cards {
+    overflow: visible;
+  }
+  .card {
+    flex: 1 1 0;
+    width: auto;
+  }
+  /* En modo compacto (overlay del mapa) mantenemos el carrusel también. */
+  .compact .cards {
+    overflow-x: auto;
+  }
+  .compact .card {
+    flex: 0 0 auto;
+    width: 92px;
+  }
+}
+
+.cardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  color: var(--card-color);
+  background: color-mix(in oklab, var(--card-color) 16%, white);
+}
+
+.cardLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-strong);
+}
+
+.cardCount {
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+.cardActive {
+  border-color: var(--card-color);
+  background: color-mix(in oklab, var(--card-color) 8%, var(--bg));
+}
+
+.cardActive .cardCount {
+  color: var(--card-color);
+  background: color-mix(in oklab, var(--card-color) 16%, white);
+}
+
+/* ── Compacto (overlay del mapa): tarjetas chicas en fila ───── */
+.compact .card {
+  width: 92px;
+  min-height: 78px;
+  padding: 9px 6px;
+  gap: 5px;
+  border-radius: 12px;
+}
+
+.compact .cardIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.compact .cardLabel {
+  font-size: 0.7rem;
+}
+
+.compact .cardCount {
+  font-size: 0.62rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+  .card:hover,
+  .card:active {
+    transform: none;
+  }
+}

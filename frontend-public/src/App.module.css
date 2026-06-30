@@ -82,6 +82,61 @@
   }
 }
 
+/* Móvil: sin toggle Lista/Mapa — se usa el botón flotante + mapa a pantalla
+   completa. El toggle vuelve en desktop. */
+@media (max-width: 767px) {
+  .subControls {
+    display: none;
+  }
+}
+
+/* ── Botón flotante "Ver mapa" (solo móvil) ─────────────────── */
+
+.mapFab {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 30; /* sobre el contenido, bajo el overlay del mapa (60) */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--on-primary);
+  background: var(--primary);
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px color-mix(in oklab, var(--ink) 32%, transparent);
+  cursor: pointer;
+}
+
+.mapFab:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+.mapFab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.mapFabCount {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in oklab, white 22%, transparent);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+@media (min-width: 768px) {
+  .mapFab {
+    display: none;
+  }
+}
+
 /* ── Results (single view at a time: list OR map) ───────────── */
 
 .results {

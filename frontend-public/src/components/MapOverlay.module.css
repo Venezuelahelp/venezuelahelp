@@ -1,0 +1,71 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* sobre header (20) y modales (40) */
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  /* respeta el notch en móviles */
+  padding-top: max(11px, env(safe-area-inset-top));
+}
+
+.title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.close:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.filters {
+  flex: none;
+  padding: 10px 12px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.map {
+  flex: 1 1 auto;
+  min-height: 0; /* deja que el flex hijo encoja y el mapa llene el resto */
+  isolation: isolate; /* contiene los z-index de Leaflet */
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 0.875rem;
+}

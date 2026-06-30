@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useSnapshot } from "@/data/useSnapshot";
 import { useHideOnScroll } from "@/hooks/useHideOnScroll";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { sendBeacon } from "@/track";
 import {
   flatten,
@@ -12,10 +11,11 @@ import {
 import { SourcesContext } from "@/data/sources";
 import type { Category } from "@/types";
 
+import { MapTrifold } from "@phosphor-icons/react";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
-import ItemList from "@/components/ItemList";
-import Pagination from "@/components/Pagination";
+import InfiniteList from "@/components/InfiniteList";
+import MapOverlay from "@/components/MapOverlay";
 import ViewToggle, { type View } from "@/components/ViewToggle";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
@@ -31,24 +31,22 @@ import styles from "./App.module.css";
 // Leaflet is heavy; code-split it so it only loads when the map view is opened.
 const MapView = lazy(() => import("@/components/MapView"));
 
-const PAGE_SIZE = 20;
-
 export default function App() {
   const { data, loading, error } = useSnapshot();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<Set<Category>>(new Set());
   const [view, setView] = useState<View>("lista");
-  const [page, setPage] = useState(1);
   const [route, setRoute] = useState<string>(
     typeof window !== "undefined" ? window.location.hash : "",
   );
-  const listTopRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const HEADER_H = 80;
-  // El auto-ocultar de la barra solo en mobile (desktop tiene espacio de sobra).
-  const isMobile = useMediaQuery("(max-width: 639px)", false);
-  const controlsHidden = useHideOnScroll(controlsRef, isMobile, HEADER_H);
+  // La barra (búsqueda + filtros) scrollea con el contenido y reaparece al
+  // subir, en móvil y desktop.
+  const controlsHidden = useHideOnScroll(controlsRef, true, HEADER_H);
   const [showSplash, setShowSplash] = useState(true);
+  // Mapa a pantalla completa en móvil (en desktop se usa el toggle Lista/Mapa).
+  const [mapOpen, setMapOpen] = useState(false);
 
   // Fire the analytics beacon once per page load (never blocks render).
   useEffect(() => {
@@ -63,16 +61,6 @@ export default function App() {
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, []);
-
-  // Any change to the filters returns to the first page.
-  useEffect(() => {
-    setPage(1);
-  }, [query, active]);
-
-  // Beacon de analítica: una vez por carga, al montar. Fire-and-forget.
-  useEffect(() => {
-    sendBeacon();
   }, []);
 
   function onToggle(cat: Category) {
@@ -90,16 +78,6 @@ export default function App() {
   function onClear() {
     setQuery("");
     setActive(new Set());
-  }
-
-  function onChangePage(p: number) {
-    setPage(p);
-    // Scroll the list top to sit just below the sticky header + controls bar.
-    const el = listTopRef.current;
-    if (!el) return;
-    const stick = (controlsRef.current?.offsetHeight ?? 0) + HEADER_H;
-    const top = window.scrollY + el.getBoundingClientRect().top - stick - 8;
-    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
   }
 
   const isAbout = route === "#/quienes-somos";
@@ -144,16 +122,9 @@ export default function App() {
                   Object.keys(data.sources ?? {}),
                   items,
                 );
-
-                const totalPages = Math.max(
-                  1,
-                  Math.ceil(filtered.length / PAGE_SIZE),
-                );
-                const currentPage = Math.min(page, totalPages);
-                const pageItems = filtered.slice(
-                  (currentPage - 1) * PAGE_SIZE,
-                  currentPage * PAGE_SIZE,
-                );
+                // Clave para reiniciar la lista infinita (volver arriba) cuando
+                // cambian los filtros.
+                const filterKey = `${query}|${[...active].sort().join(",")}`;
 
                 return (
                   <SourcesContext.Provider value={data.sources}>
@@ -189,15 +160,6 @@ export default function App() {
                               onChange={setView}
                               mapCount={located.length}
                             />
-                            {view === "lista" && totalPages > 1 && (
-                              <Pagination
-                                page={currentPage}
-                                totalPages={totalPages}
-                                onChange={onChangePage}
-                                label="Paginación de resultados (arriba)"
-                                compact
-                              />
-                            )}
                           </div>
                         )}
                       </div>
@@ -205,19 +167,9 @@ export default function App() {
                       {filtered.length === 0 ? (
                         <Empty query={query} />
                       ) : (
-                        <div ref={listTopRef} className={styles.results}>
+                        <div className={styles.results}>
                           {view === "lista" ? (
-                            <section aria-label="Lista de elementos">
-                              <ItemList items={pageItems} />
-                              {totalPages > 1 && (
-                                <Pagination
-                                  page={currentPage}
-                                  totalPages={totalPages}
-                                  onChange={onChangePage}
-                                  label="Paginación de resultados (abajo)"
-                                />
-                              )}
-                            </section>
+                            <InfiniteList key={filterKey} items={filtered} />
                           ) : (
                             <section
                               className={styles.mapSection}
@@ -237,6 +189,32 @@ export default function App() {
                         </div>
                       )}
                     </div>
+
+                    {/* Móvil: botón flotante para abrir el mapa a pantalla
+                        completa (en desktop se usa el toggle Lista/Mapa). */}
+                    {located.length > 0 && !mapOpen && (
+                      <button
+                        type="button"
+                        className={styles.mapFab}
+                        onClick={() => setMapOpen(true)}
+                      >
+                        <MapTrifold size={18} weight="fill" aria-hidden="true" />
+                        Ver mapa
+                        <span className={styles.mapFabCount}>
+                          {located.length.toLocaleString("es")}
+                        </span>
+                      </button>
+                    )}
+
+                    {mapOpen && (
+                      <MapOverlay
+                        items={filtered}
+                        active={active}
+                        onToggle={onToggle}
+                        counts={catCounts}
+                        onClose={() => setMapOpen(false)}
+                      />
+                    )}
 
                     <Footer
                       sources={displaySources}
