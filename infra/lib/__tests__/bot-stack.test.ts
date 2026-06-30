@@ -36,6 +36,31 @@ describe("BotStack", () => {
     });
   });
 
+  it("grants ssm:GetParameter on the bot data-api-key path", () => {
+    // CDK collapses single-action arrays to a string; 3 resources → array
+    template().hasResourceProperties("AWS::IAM::Policy", {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: "ssm:GetParameter",
+            Resource: Match.arrayWith([
+              Match.objectLike({
+                "Fn::Join": Match.arrayWith([
+                  "",
+                  Match.arrayWith([
+                    Match.stringLikeRegexp(
+                      ".*parameter/venezuelahelp/bot/data-api-key",
+                    ),
+                  ]),
+                ]),
+              }),
+            ]),
+          }),
+        ]),
+      },
+    });
+  });
+
   it("does NOT reserve concurrency (account limit is 10; AWS rejects any reservation)", () => {
     const fns = template().findResources("AWS::Lambda::Function");
     for (const [id, res] of Object.entries(fns)) {

@@ -57,6 +57,15 @@ export class ScraperStack extends Stack {
       }),
     );
 
+    fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["ssm:GetParameter", "ssm:PutParameter"],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/venezuelahelp/bot/data-api-key`,
+        ],
+      }),
+    );
+
     new events.Rule(this, "ScraperSchedule", {
       schedule: events.Schedule.rate(Duration.minutes(30)),
       targets: [new targets.LambdaFunction(fn)],

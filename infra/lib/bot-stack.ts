@@ -61,6 +61,7 @@ export class BotStack extends Stack {
         resources: [
           `arn:aws:ssm:${this.region}:${this.account}:parameter/venezuelahelp/telegram-token`,
           `arn:aws:ssm:${this.region}:${this.account}:parameter/venezuelahelp/telegram-webhook-secret`,
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/venezuelahelp/bot/data-api-key`,
         ],
       }),
     );

@@ -51,4 +51,27 @@ describe("ScraperStack", () => {
       },
     });
   });
+
+  it("grants the scraper ssm:PutParameter on the bot data-api-key path", () => {
+    // CDK emits two actions → array; single resource → plain object (Fn::Join)
+    template().hasResourceProperties("AWS::IAM::Policy", {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: Match.arrayWith(["ssm:PutParameter"]),
+            Resource: Match.objectLike({
+              "Fn::Join": Match.arrayWith([
+                "",
+                Match.arrayWith([
+                  Match.stringLikeRegexp(
+                    ".*parameter/venezuelahelp/bot/data-api-key",
+                  ),
+                ]),
+              ]),
+            }),
+          }),
+        ]),
+      },
+    });
+  });
 });
