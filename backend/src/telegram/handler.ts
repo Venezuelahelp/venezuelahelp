@@ -19,6 +19,7 @@ import {
   retrieve,
   countAnswer,
   isHelpRequest,
+  isHelpCry,
 } from "@/telegram/retrieval";
 import {
   answerWithTools,
@@ -27,6 +28,7 @@ import {
 } from "@/telegram/agent";
 import {
   isBareSearchIntent,
+  bareCategoryAction,
   ASK_FOR_NAME,
   notFoundByName,
 } from "@/telegram/searchIntent";
@@ -200,6 +202,21 @@ async function safeClearPendingSearch(d: Deps, chatId: number): Promise<void> {
     await d.menuState.clearPendingSearch(chatId);
   } catch (e) {
     logger.warn("no se pudo limpiar pendingSearch", {
+      chatId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+async function safeSetPendingCategory(
+  d: Deps,
+  chatId: number,
+  action: string,
+): Promise<void> {
+  try {
+    await d.menuState.setPending(chatId, action);
+  } catch (e) {
+    logger.warn("no se pudo guardar pendingCategory", {
       chatId,
       error: e instanceof Error ? e.message : String(e),
     });
@@ -427,9 +444,28 @@ export async function handler(
       return ok();
     }
 
-    const snap = await d.loadSnapshot();
+    // Grito de auxilio ("necesito ayuda", "auxilio") → menú de recursos con
+    // botones (emergencias/refugios/víveres), no un texto que pide /menu.
+    if (isHelpCry(question)) {
+      const help = navScreen("ayuda") ?? homeScreen();
+      await d.sendMessage(token, chatId, help.text, {
+        replyMarkup: help.replyMarkup,
+      });
+      await safeResetStrikes(d, chatId);
+      await logQa(
+        d,
+        chatId,
+        question,
+        help.text,
+        [],
+        config.bedrockModelId,
+        0,
+        0,
+      );
+      return ok();
+    }
 
-    // "Cómo pedir ayuda": guía fija (pre-check barato y fiable; on-topic).
+    // "Cómo pedir ayuda" (cómo uso el bot): guía fija de texto.
     if (isHelpRequest(question)) {
       await d.sendMessage(token, chatId, HELP_GUIDE);
       await safeResetStrikes(d, chatId);
@@ -445,6 +481,31 @@ export async function handler(
       );
       return ok();
     }
+
+    // Categoría sin zona ("acopios", "refugios") → pedir la ubicación y recordar
+    // la categoría (engancha el flujo de menú existente: ubicación → resultados).
+    const catAction = bareCategoryAction(question);
+    if (catAction) {
+      const prompt = locationPrompt(catAction);
+      await d.sendMessage(token, chatId, prompt.text, {
+        replyMarkup: prompt.replyMarkup,
+      });
+      await safeSetPendingCategory(d, chatId, catAction);
+      await safeResetStrikes(d, chatId);
+      await logQa(
+        d,
+        chatId,
+        question,
+        prompt.text,
+        [],
+        config.bedrockModelId,
+        0,
+        0,
+      );
+      return ok();
+    }
+
+    const snap = await d.loadSnapshot();
 
     // Agente: el modelo enruta el mensaje a una herramienta (saludar/
     // fuera_de_tema/contar/listar/buscar) sobre el snapshot COMPLETO. Aplica

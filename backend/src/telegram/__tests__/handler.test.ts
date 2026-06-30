@@ -201,6 +201,37 @@ describe("telegram handler", () => {
     );
   });
 
+  it("'necesito ayuda' → muestra el menú de recursos con botones (no texto seco)", async () => {
+    const d = deps();
+    await handler(
+      event("necesito ayuda", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    expect(d.routeTools).not.toHaveBeenCalled();
+    expect(d.sendMessage).toHaveBeenCalledWith(
+      "TOK",
+      9,
+      expect.stringMatching(/NECESITO AYUDA/i),
+      expect.objectContaining({ replyMarkup: expect.anything() }),
+    );
+  });
+
+  it("'acopios' (sin zona) → pide la ubicación y recuerda la categoría", async () => {
+    const d = deps();
+    await handler(
+      event("acopios", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    expect(d.routeTools).not.toHaveBeenCalled();
+    expect(d.menuState.setPending).toHaveBeenCalledWith(9, "insumos");
+    expect(d.sendMessage).toHaveBeenCalledWith(
+      "TOK",
+      9,
+      expect.stringMatching(/ubicación/i),
+      expect.objectContaining({ replyMarkup: expect.anything() }),
+    );
+  });
+
   it("on /start, sends a welcome message and skips retrieval/bedrock", async () => {
     const d = deps();
     const res = await handler(

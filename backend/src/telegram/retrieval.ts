@@ -69,3 +69,9 @@ export function isHelpRequest(question: string): boolean {
   const n = normalize(question);
   return HELP_PHRASES.some((p) => n.includes(p)) || isBareHelpCry(n);
 }
+
+// Solo el grito de auxilio escueto ("necesito ayuda", "auxilio") — para
+// distinguirlo de "cómo pido ayuda" y mostrarle el menú de recursos con botones.
+export function isHelpCry(question: string): boolean {
+  return isBareHelpCry(normalize(question));
+}

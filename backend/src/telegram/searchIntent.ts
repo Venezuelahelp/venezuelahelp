@@ -86,6 +86,80 @@ export function isBareSearchIntent(question: string): boolean {
 export const ASK_FOR_NAME =
   "¿A quién buscas? Escríbeme el nombre y apellido de la persona y reviso los reportes de personas desaparecidas. 🔎";
 
+// Mapa palabra→action del menú (LOCATION_ACTIONS de menu.ts). Si el usuario
+// nombra una categoría sin zona, pedimos la ubicación (mejor UX que listar todo).
+// Solo NOMBRES de categoría inequívocos. NO palabras de contenido (agua, comida)
+// que son consultas legítimas ("dónde hay agua" → búsqueda, no pedir ubicación).
+const CATEGORY_WORD_TO_ACTION: Record<string, string> = {
+  acopio: "insumos",
+  acopios: "insumos",
+  insumo: "insumos",
+  insumos: "insumos",
+  refugio: "refugios",
+  refugios: "refugios",
+  albergue: "refugios",
+  albergues: "refugios",
+  vivere: "viveres",
+  viveres: "viveres",
+  voluntariado: "voluntariado",
+  voluntario: "voluntariado",
+  voluntarios: "voluntariado",
+};
+
+// Conectores que pueden acompañar a la categoría sin aportar una zona concreta.
+const CATEGORY_FILLER = new Set([
+  "ver",
+  "los",
+  "las",
+  "el",
+  "la",
+  "un",
+  "una",
+  "de",
+  "del",
+  "donde",
+  "hay",
+  "centro",
+  "centros",
+  "punto",
+  "puntos",
+  "quiero",
+  "necesito",
+  "busco",
+  "buscar",
+  "muestrame",
+  "dame",
+  "info",
+  "informacion",
+  "cerca",
+  "lista",
+  "listar",
+  "que",
+  "hay",
+]);
+
+/**
+ * Si el mensaje es SOLO una categoría (acopios/refugios/víveres/voluntariado)
+ * sin una zona concreta, devuelve la action del menú para pedir la ubicación.
+ * "acopios" → "insumos"; "refugios cerca" → "refugios"; "acopios en Petare" →
+ * null (hay zona → se busca normal).
+ */
+export function bareCategoryAction(question: string): string | null {
+  const toks = normalize(question).split(" ").filter(Boolean);
+  if (toks.length === 0) return null;
+  let action: string | null = null;
+  for (const t of toks) {
+    const a = CATEGORY_WORD_TO_ACTION[t];
+    if (a) {
+      action = a;
+    } else if (!CATEGORY_FILLER.has(t)) {
+      // Token que no es categoría ni conector → probablemente una zona/nombre.
+      return null;
+    }
+  }
+  return action;
+}
+
 /** Mensaje cuando, ya con el nombre, no aparece nadie en los reportes. */
 export function notFoundByName(nombre: string): string {
   const n = nombre.trim();

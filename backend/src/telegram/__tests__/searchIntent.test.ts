@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { isBareSearchIntent, notFoundByName } from "@/telegram/searchIntent";
+import {
+  isBareSearchIntent,
+  bareCategoryAction,
+  notFoundByName,
+} from "@/telegram/searchIntent";
 
 describe("isBareSearchIntent", () => {
   it("detecta intención de búsqueda de persona sin nombre", () => {
@@ -28,6 +32,29 @@ describe("isBareSearchIntent", () => {
     expect(isBareSearchIntent("hola")).toBe(false);
     expect(isBareSearchIntent("una persona")).toBe(false);
     expect(isBareSearchIntent("")).toBe(false);
+  });
+});
+
+describe("bareCategoryAction", () => {
+  it("mapea una categoría sola a su action de menú", () => {
+    expect(bareCategoryAction("acopios")).toBe("insumos");
+    expect(bareCategoryAction("centros de acopio")).toBe("insumos");
+    expect(bareCategoryAction("refugios")).toBe("refugios");
+    expect(bareCategoryAction("ver refugios cerca")).toBe("refugios");
+    expect(bareCategoryAction("víveres")).toBe("viveres");
+    expect(bareCategoryAction("voluntariado")).toBe("voluntariado");
+  });
+
+  it("NO dispara cuando hay una zona concreta", () => {
+    expect(bareCategoryAction("acopios en Petare")).toBeNull();
+    expect(bareCategoryAction("refugios en La Guaira")).toBeNull();
+    expect(bareCategoryAction("agua en Caracas")).toBeNull();
+  });
+
+  it("NO dispara para mensajes sin categoría", () => {
+    expect(bareCategoryAction("hola")).toBeNull();
+    expect(bareCategoryAction("buscar a una persona")).toBeNull();
+    expect(bareCategoryAction("")).toBeNull();
   });
 });
 
