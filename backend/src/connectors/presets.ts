@@ -324,7 +324,10 @@ export const venezuelareporta: RestConfig = {
       category: "desaparecidos",
       itemsPath: "personas",
       shape: "array",
-      paginate: { pageSize: 100, maxItems: 25000 },
+      // 46k+ personas paginadas de 100 en 100. La API limita a 120 req/min, así
+      // que pausamos ~500ms entre páginas (≈ el límite; el tiempo del propio
+      // fetch añade margen) para traer el dataset completo sin recibir 429.
+      paginate: { pageSize: 100, maxItems: 50000, throttleMs: 500 },
       fieldMap: {
         externalId: "id",
         titulo: ["nombre"],

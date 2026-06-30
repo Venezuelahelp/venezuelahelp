@@ -291,6 +291,43 @@ describe("runRestSource", () => {
     expect(fetchJson).toHaveBeenCalledTimes(2); // 2 páginas de 1000, corta en 1500
   });
 
+  it("paginate con throttleMs: pausa entre páginas, no tras la última", async () => {
+    const fetchJson = vi.fn(async (url: string) => {
+      if (url.includes("offset=0"))
+        return [
+          { id: "0", t: "x" },
+          { id: "1", t: "x" },
+        ] as unknown;
+      if (url.includes("offset=2"))
+        return [
+          { id: "2", t: "x" },
+          { id: "3", t: "x" },
+        ] as unknown;
+      return [{ id: "4", t: "x" }] as unknown; // incompleta → fin
+    });
+    const sleep = vi.fn(async () => {});
+    const paged: RestConfig = {
+      base: "https://s.com",
+      endpoints: [
+        {
+          label: "p",
+          url: "https://s.com/api/x",
+          category: "reportes",
+          fieldMap: { externalId: "id", titulo: "t" },
+          paginate: { pageSize: 2, throttleMs: 500 },
+        },
+      ],
+    };
+    const { items } = await runRestSource("s", paged, {
+      fetchJson: fetchJson as never,
+      sleep,
+    });
+    expect(items).toHaveLength(5);
+    // 3 páginas → 2 pausas (entre p0–p1 y p1–p2), ninguna tras la última.
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(500);
+  });
+
   it("skipRows descarta filas iniciales (encabezado de Google Sheet)", async () => {
     const fetchJson = vi.fn(async () => ({
       values: [
