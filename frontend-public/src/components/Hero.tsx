@@ -11,9 +11,16 @@ interface HeroProps {
   total: number;
   counts: Record<Category, number>;
   generatedAt?: string;
+  /** Posibles localizaciones (cruce buscado↔localizado). No suma al total. */
+  matchCount?: number;
 }
 
-export default function Hero({ total, counts, generatedAt }: HeroProps) {
+export default function Hero({
+  total,
+  counts,
+  generatedAt,
+  matchCount = 0,
+}: HeroProps) {
   const updated = formatDateTime(generatedAt);
   // Escala las barras respecto a la categoría más numerosa (no al total): así
   // la categoría líder llena la barra y las pequeñas siguen siendo visibles.
@@ -65,6 +72,30 @@ export default function Hero({ total, counts, generatedAt }: HeroProps) {
             </div>
 
             <ul className={styles.stats}>
+              {matchCount > 0 && (
+                <li className={styles.statRow}>
+                  <div className={styles.statTop}>
+                    <span className={styles.statName}>
+                      <span
+                        className={styles.statDot}
+                        style={{ background: "var(--primary)" }}
+                        aria-hidden="true"
+                      />
+                      Match
+                    </span>
+                    <span className={styles.statCount}>{matchCount}</span>
+                  </div>
+                  <span className={styles.statTrack} aria-hidden="true">
+                    <span
+                      className={styles.statFill}
+                      style={{
+                        width: `${Math.round((matchCount / max) * 100)}%`,
+                        background: "var(--primary)",
+                      }}
+                    />
+                  </span>
+                </li>
+              )}
               {CATEGORY_ORDER.map((cat) => {
                 const meta = CATEGORY_META[cat];
                 const n = counts[cat] ?? 0;
@@ -95,7 +126,9 @@ export default function Hero({ total, counts, generatedAt }: HeroProps) {
             </ul>
 
             {updated && (
-              <p className={styles.panelFoot}>Última actualización · {updated}</p>
+              <p className={styles.panelFoot}>
+                Última actualización · {updated}
+              </p>
             )}
           </aside>
         </div>
