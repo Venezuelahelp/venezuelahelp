@@ -4,7 +4,8 @@ import { ItemRepo } from "@/shared/repos/itemRepo";
 import { ConfigRepo } from "@/shared/repos/configRepo";
 import { SourceRepo } from "@/shared/repos/sourceRepo";
 import { enrichItems, type EnrichedItem } from "@/enrichment";
-import { CATEGORIES, type Category } from "@/shared/types";
+import { matchLocated } from "@/enrichment/matchLocated";
+import { CATEGORIES, type Category, type LocatedMatch } from "@/shared/types";
 
 const s3 = new S3Client({});
 const KEY = "snapshot.json";
@@ -53,11 +54,23 @@ export async function buildSnapshot(
     PublicItem[]
   >;
   let count = 0;
+  // Cruce "posibles localizaciones": una persona buscada que aparece reportada
+  // como localizada/en hospital por otra(s) fuente(s). Determinista, sin LLM; un
+  // fallo aquí no debe tumbar el snapshot (queda matches=[]).
+  let matches: LocatedMatch[] = [];
   for (const cat of CATEGORIES) {
     const items = await itemRepo.listByCategory(cat);
     const enriched = enrichItems(items, cfg.enrichment, sourceTrust);
     categories[cat] = enriched.map(toPublic);
     count += enriched.length;
+    if (cat === "desaparecidos") {
+      try {
+        matches = matchLocated(enriched);
+      } catch (err) {
+        console.error("matchLocated failed", err);
+        matches = [];
+      }
+    }
   }
 
   // Mapa de fuentes (nombre + url) para que el frontend enlace cada ítem a su
@@ -74,7 +87,12 @@ export async function buildSnapshot(
   // CloudFront NO auto-comprime objetos >10MB → sin esto el público descargaría
   // el JSON entero sin comprimir. Con `Content-Encoding: gzip`, el navegador lo
   // descomprime de forma transparente y el bot lo gunzipea al leer.
-  const json = JSON.stringify({ generatedAt: now, categories, sources });
+  const json = JSON.stringify({
+    generatedAt: now,
+    categories,
+    sources,
+    matches,
+  });
   const body = gzipSync(json);
   await client.send(
     new PutObjectCommand({

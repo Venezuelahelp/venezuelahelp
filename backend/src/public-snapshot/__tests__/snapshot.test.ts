@@ -169,4 +169,61 @@ describe("buildSnapshot", () => {
     );
     expect(edif[0].raw).toBeUndefined();
   });
+
+  it("incluye matches de posibles localizaciones en el snapshot", async () => {
+    s3Mock.on(PutObjectCommand).resolves({});
+    const itemRepo = {
+      listByCategory: vi.fn(async (cat: string) =>
+        cat === "desaparecidos"
+          ? [
+              {
+                category: "desaparecidos",
+                sourceId: "A",
+                externalId: "1",
+                titulo: "Juan Perez Lopez",
+                texto: "",
+                raw: {},
+                status: "no_encontrado",
+                contentHash: "h",
+                firstSeenAt: "2026-06-25T00:00:00Z",
+                lastSeenAt: "2026-06-25T00:00:00Z",
+              },
+              {
+                category: "desaparecidos",
+                sourceId: "B",
+                externalId: "2",
+                titulo: "Lopez Juan Perez",
+                texto: "",
+                raw: {},
+                status: "encontrado",
+                contentHash: "h",
+                firstSeenAt: "2026-06-25T00:00:00Z",
+                lastSeenAt: "2026-06-25T00:00:00Z",
+              },
+            ]
+          : [],
+      ),
+    };
+    await buildSnapshot("2026-06-30T00:00:00Z", {
+      itemRepo: itemRepo as never,
+      configRepo: configRepo as never,
+      sourceRepo: sourceRepo as never,
+    });
+    const body = parsePutBody();
+    expect(Array.isArray(body.matches)).toBe(true);
+    expect(body.matches).toHaveLength(1);
+    expect(body.matches[0].nombre).toBe("Juan Perez Lopez");
+    expect(body.matches[0].locatedSourcesCount).toBe(1);
+  });
+
+  it("matches=[] cuando no hay cruces (no rompe el snapshot)", async () => {
+    s3Mock.on(PutObjectCommand).resolves({});
+    const itemRepo = { listByCategory: vi.fn(async () => []) };
+    await buildSnapshot("2026-06-30T00:00:00Z", {
+      itemRepo: itemRepo as never,
+      configRepo: configRepo as never,
+      sourceRepo: sourceRepo as never,
+    });
+    expect(parsePutBody().matches).toEqual([]);
+  });
 });
