@@ -134,6 +134,36 @@ const snapRanking: DataSnapshot = {
   },
 };
 
+// Guard: queryItems colapsa duplicados y excluye sospechosos
+const snapEnrichment: DataSnapshot = {
+  generatedAt: "t",
+  categories: {
+    desaparecidos: [
+      item({
+        externalId: "canonical",
+        titulo: "Ana Castillo",
+        isCanonical: true,
+        sourcesCount: 2,
+      }),
+      item({
+        externalId: "dup",
+        titulo: "Castillo Ana",
+        isCanonical: false,
+        dupOf: "s1#canonical",
+      }),
+      item({ externalId: "sus", titulo: "Sospechoso", trust: "sospechoso" }),
+    ],
+  },
+};
+
+describe("queryItems (enrichment guards)", () => {
+  it("excluye duplicados (isCanonical:false) y sospechosos", () => {
+    const r = queryItems(snapEnrichment, {});
+    expect(r.total).toBe(1);
+    expect(r.items[0].externalId).toBe("canonical");
+  });
+});
+
 describe("queryItems (core)", () => {
   it("rankea titulo > texto (relevancia, no substring-AND)", () => {
     const r = queryItems(snapRanking, { q: "petare" });

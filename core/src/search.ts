@@ -24,8 +24,12 @@ interface Scored {
 // Coherente con el bot: infiere categoría, pondera campos, respeta enrichment.
 // No pagina ni recorta (eso lo hace cada superficie).
 function rankPool(snap: Snapshot, params: SearchParams): Scored[] {
-  const targetCats = params.q ? inferCategories(params.q) : new Set<string>();
-  const kws = params.q ? keywords(params.q) : [];
+  const hasQuery = typeof params.q === "string" && params.q.trim() !== "";
+  const kws = hasQuery ? keywords(params.q!) : [];
+  // Query con texto pero todos stopwords → sin términos buscables → sin resultados.
+  if (hasQuery && kws.length === 0) return [];
+
+  const targetCats = hasQuery ? inferCategories(params.q!) : new Set<string>();
   // Las palabras que dispararon la categoría no discriminan dentro de ella.
   const signals = [...targetCats].flatMap((c) => CATEGORY_SIGNALS[c] ?? []);
   const rankKws = signals.length

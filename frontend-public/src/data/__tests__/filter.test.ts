@@ -120,6 +120,39 @@ describe("filter functions", () => {
       expect(result[0].sourceId).toBe("a");
     });
 
+    it("excluye ítems con trust:'sospechoso'", () => {
+      const snap: Snapshot = {
+        generatedAt: "2026-06-30T00:00:00Z",
+        categories: {
+          reportes: [
+            {
+              category: "reportes",
+              sourceId: "s1",
+              externalId: "ok1",
+              titulo: "Reporte normal",
+              texto: "Contenido",
+            },
+            {
+              category: "reportes",
+              sourceId: "s2",
+              externalId: "sus1",
+              titulo: "Reporte sospechoso",
+              texto: "Coordenadas fuera de VE",
+              trust: "sospechoso",
+            },
+          ],
+          desaparecidos: [],
+          acopios: [],
+          edificios: [],
+          solicitudes: [],
+          hospitales: [],
+        },
+      };
+      const result = flatten(snap);
+      expect(result).toHaveLength(1);
+      expect(result[0].externalId).toBe("ok1");
+    });
+
     it("should return empty array for empty snapshot", () => {
       const snap: Snapshot = {
         generatedAt: "2026-06-26T00:00:00Z",

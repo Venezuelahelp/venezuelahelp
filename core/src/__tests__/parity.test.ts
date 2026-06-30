@@ -52,4 +52,15 @@ describe("paridad bot ↔ API/frontend", () => {
     ).length;
     expect(api).toBe(bot);
   });
+
+  it("paridad en query de solo stopwords (ambas vacías)", () => {
+    expect(retrieve("que hay", snap, 200)).toEqual([]);
+    expect(searchItems(snap, { q: "que hay" })).toEqual([]);
+  });
+
+  it("sin query (q undefined) searchItems devuelve todos los ítems usables", () => {
+    const all = searchItems(snap, {});
+    // snap tiene 3 ítems (r1, a1, a2), ninguno sospechoso ni duplicado
+    expect(all.length).toBe(3);
+  });
 });
