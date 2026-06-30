@@ -153,6 +153,7 @@ export default function App() {
                       total={items.length}
                       counts={catCounts}
                       generatedAt={data.generatedAt}
+                      matchCount={matchCount}
                     />
 
                     {/* Barra fija de respaldo: reaparece al subir cuando los
