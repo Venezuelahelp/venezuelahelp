@@ -4,14 +4,6 @@ import { PRESETS } from "@/connectors/presets";
 
 const SEED: Source[] = [
   {
-    id: "sismovenezuela",
-    nombre: "SismoVenezuela",
-    url: "https://www.sismovenezuela.com/",
-    connector: "rest",
-    rest: PRESETS.sismovenezuela,
-    enabled: true,
-  },
-  {
     id: "terremotovenezuela",
     nombre: "Terremoto Venezuela",
     url: "https://terremotovenezuela.app/",

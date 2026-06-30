@@ -16,7 +16,6 @@ describe("ensureSeedSources", () => {
       "ninosvenezuela",
       "pacientesve",
       "red-esperanza",
-      "sismovenezuela",
       "sos-en-venezuela",
       "terremotovenezuela",
       "usgs",
@@ -52,9 +51,9 @@ describe("ensureSeedSources", () => {
   it("repara la config base de una fuente existente preservando su estado", async () => {
     const repo = new SourceRepo();
     vi.spyOn(repo, "get").mockImplementation(async (id) => {
-      if (id === "sismovenezuela") {
+      if (id === "usgs") {
         return {
-          id: "sismovenezuela",
+          id: "usgs",
           nombre: "viejo nombre",
           url: "u",
           connector: "jsonApi",
@@ -75,23 +74,20 @@ describe("ensureSeedSources", () => {
       "ninosvenezuela",
       "pacientesve",
       "red-esperanza",
-      "sismovenezuela",
       "sos-en-venezuela",
       "terremotovenezuela",
       "usgs",
       "venezuela-te-busca",
       "vzlayuda",
     ]);
-    const sismo = put.mock.calls
-      .map((c) => c[0])
-      .find((s) => s.id === "sismovenezuela");
+    const src = put.mock.calls.map((c) => c[0]).find((s) => s.id === "usgs");
     // config base reparada (migra a rest)…
-    expect(sismo?.connector).toBe("rest");
-    expect(sismo?.rest?.endpoints.length).toBeGreaterThan(0);
-    expect(sismo?.nombre).toBe("SismoVenezuela");
+    expect(src?.connector).toBe("rest");
+    expect(src?.rest?.endpoints.length).toBeGreaterThan(0);
+    expect(src?.nombre).toBe("USGS");
     // …pero conserva el estado operativo del admin
-    expect(sismo?.enabled).toBe(false);
-    expect(sismo?.trustLevel).toBe("official");
-    expect(sismo?.lastRun).toBe("2026-06-01T00:00:00Z");
+    expect(src?.enabled).toBe(false);
+    expect(src?.trustLevel).toBe("official");
+    expect(src?.lastRun).toBe("2026-06-01T00:00:00Z");
   });
 });
