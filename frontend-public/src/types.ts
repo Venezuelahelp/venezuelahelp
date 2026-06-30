@@ -44,9 +44,34 @@ export interface SourceInfo {
   url?: string;
 }
 
+/** Coincidencia automática buscado↔localizado. Nunca afirma; el público la
+ * muestra en la sección "Posibles localizaciones". */
+export interface LocatedMatch {
+  nombre: string;
+  signal: "cédula" | "teléfono" | "hospital" | "nombre-fuerte";
+  /** Fuentes distintas que respaldan la localización (≥2 ⇒ azul). */
+  locatedSourcesCount: number;
+  missing: {
+    sourceId: string;
+    texto: string;
+    status?: string;
+    sourceUrl?: string;
+  };
+  located: {
+    sourceId: string;
+    texto: string;
+    status?: string;
+    sourceUrl?: string;
+    hospital?: string;
+    sources: string[];
+  };
+}
+
 export interface Snapshot {
   generatedAt: string;
   /** id → nombre + url. Emitido por el backend para enlazar cada fuente. */
   sources?: Record<string, SourceInfo>;
   categories: Record<Category, Item[]>;
+  /** Cruce "posibles localizaciones" (opcional: snapshots viejos no lo traen). */
+  matches?: LocatedMatch[];
 }

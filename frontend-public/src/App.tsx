@@ -19,6 +19,7 @@ import MapOverlay from "@/components/MapOverlay";
 import ViewToggle, { type View } from "@/components/ViewToggle";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
+import LocatedMatches from "@/components/LocatedMatches";
 import AboutPage from "@/components/AboutPage";
 import ApiAccessPage from "@/components/ApiAccessPage";
 import ApiDocsPage from "@/components/ApiDocsPage";
@@ -158,6 +159,9 @@ export default function App() {
                     </div>
 
                     <div className={styles.container}>
+                      {data.matches && data.matches.length > 0 && (
+                        <LocatedMatches matches={data.matches} />
+                      )}
                       <div
                         className={styles.controls}
                         id="resultados"
@@ -219,7 +223,11 @@ export default function App() {
                         className={styles.mapFab}
                         onClick={() => setMapOpen(true)}
                       >
-                        <MapTrifold size={18} weight="fill" aria-hidden="true" />
+                        <MapTrifold
+                          size={18}
+                          weight="fill"
+                          aria-hidden="true"
+                        />
                         Ver mapa
                         <span className={styles.mapFabCount}>
                           {located.length.toLocaleString("es")}
