@@ -19,7 +19,7 @@ const NO_DATA = "No tengo ese dato.";
 
 // Respuestas fijas (sin Bedrock) para saludo y rechazo de fuera-de-tema.
 export const GREETING =
-  "¡Hola! 👋 Soy el asistente de VenezuelaHelp. Te ayudo con información del terremoto de Venezuela (25 de junio de 2026): reportes, personas desaparecidas, centros de acopio, refugios, hospitales y solicitudes de ayuda. ¿Qué necesitas consultar?";
+  "¡Hola! 👋 Soy el asistente de VenezuelaHelp. Te ayudo con información del terremoto de Venezuela (24 de junio de 2026): reportes, personas desaparecidas, centros de acopio, refugios, hospitales y solicitudes de ayuda. ¿Qué necesitas consultar?";
 export const OFF_TOPIC =
   "Solo manejo información sobre el terremoto de Venezuela (reportes, desaparecidos, acopios, refugios, hospitales y solicitudes). No puedo ayudarte con eso. ¿Qué te gustaría consultar sobre el terremoto?";
 

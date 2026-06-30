@@ -90,7 +90,7 @@ export function homeScreen(): MenuResponse {
     text: [
       "👋 ¡Hola! Soy el asistente de VenezuelaHelp.",
       "",
-      "Reúno información pública sobre el terremoto de Venezuela (25 de junio de 2026). Usa los botones para encontrar ayuda, o escríbeme tu pregunta en lenguaje natural.",
+      "Reúno información pública sobre el terremoto de Venezuela (24 de junio de 2026). Usa los botones para encontrar ayuda, o escríbeme tu pregunta en lenguaje natural.",
     ].join("\n"),
     replyMarkup: {
       inline_keyboard: [
