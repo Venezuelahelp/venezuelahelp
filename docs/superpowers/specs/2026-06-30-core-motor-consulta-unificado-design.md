@@ -17,7 +17,8 @@ Decisiones tomadas (brainstorming 2026-06-30):
 
 - **Alcance:** las tres superficies (bot, API, frontend público). El **frontend admin queda fuera** (lee `admin-api`/DynamoDB, no el snapshot).
 - **Nivel de calidad:** se **eleva** el motor común al del bot (ranking ponderado + inferencia de categoría + enrichment-aware). La API gana calidad; el frontend público adopta los mismos criterios.
-- **Cómo se comparte:** **módulo de código compartido**, no HTTP. El bot NO llamará a la API por red (añadiría latencia, otra invocación Lambda facturada, una API key interna y un punto de fallo, violando la restricción "el público/los servicios no pegan a Lambda sin necesidad"). Se comparte un paquete TypeScript.
+- **Cómo se comparte (camino caliente):** **módulo de código compartido**, no HTTP. En el camino caliente el bot NO llama a la API por red (añadiría latencia, otra invocación Lambda facturada y un punto de fallo en cada pregunta). Responde con el `core` cargado en memoria. Se comparte un paquete TypeScript.
+- **API key interna del bot (híbrido):** además del camino caliente por código, se **aprovisiona una API key interna para el bot** y se **guarda a lo interno** (SSM SecureString, igual que el token de Telegram), lista para que el bot pueda consumir la API `/v1/*` por HTTP en usos futuros (p. ej. endpoints que no estén en el snapshot, o ejecución fuera del Lambda del bot). Hoy el bot **no** la usa en el camino caliente. Ver §9.
 - **Empaquetado:** nuevo workspace **`@venezuelahelp/core`** (5º workspace del monorepo), **isomorfo y sin dependencias** (ni AWS SDK ni `node:*`): solo lógica pura sobre el objeto `Snapshot` ya cargado en memoria. Cada superficie carga el snapshot a su manera (browser `fetch` desde CloudFront / Lambda `fetch` HTTP / bot gunzip desde S3) y aplica **el mismo motor** encima.
 - **Enrichment:** el **cómputo** del enrichment (`clusterize`, `scoreTrust`, `geoCell`) **se queda en `backend`** — corre dentro de `buildSnapshot` sobre `StoredItem` (con `raw`), datos que ni la API ni el frontend ven. Al `core` migran solo los **tipos** de enrichment y las funciones que **consumen** las marcas ya calculadas (`isCanonical`/`trust`/`sourcesCount`/`dupOf`).
 - **Compatibilidad:** el **shape del `snapshot.json` no cambia** (el público vivo depende de él). La clave estable de ítem (`CAT#<cat>/<sourceId>#<externalId>`) no cambia.
@@ -172,7 +173,39 @@ export function listItems(
 - Athena / queries directas sobre S3 (el snapshot sigue siendo un blob; explorar aparte si surge necesidad real de analítica ad-hoc).
 - Versionado formal de la API (`/v2`), nuevos endpoints de consulta.
 
-## 9. Fases de implementación (alto nivel)
+## 9. API key interna del bot (aprovisionamiento)
+
+El bot debe **tener una API key creada y guardada a lo interno para su uso**. Decisión híbrida: no la usa en el camino caliente (responde con el `core` en memoria), pero queda aprovisionada y disponible.
+
+### 9.1 Modelo (reutiliza el existente)
+
+Las API keys ya viven en DynamoDB (partición `APIKEY_PK`, SK = `sha256(rawKey)`, formato `vh_live_*`), creadas por `ApiKeyRepo.create()` que devuelve la raw **una sola vez**; el `authorizer` valida `x-api-key` por hash + status `active` + rate-limit por key. La key del bot es **una key más** de ese modelo, con `consumerName` reservado (p. ej. `"telegram-bot"`).
+
+### 9.2 Aprovisionamiento idempotente
+
+Nuevo módulo `backend/src/data-api/botKey.ts` (o `shared/`), idempotente:
+
+1. Lee SSM SecureString `/venezuelahelp/bot/data-api-key`.
+2. **Si existe** → no hace nada (no se regenera; la raw solo se conoce una vez).
+3. **Si falta** → `ApiKeyRepo.create({ consumerName: "telegram-bot", email: "internal", requestId: "internal-bot", createdAt })` y guarda la `rawKey` en ese parámetro SSM (`SecureString`, `Overwrite:false`).
+
+Disparo: como paso de bootstrap del scraper (junto a `ensureSeedSources`, que ya corre cada 30 min y tiene acceso a DynamoDB) **o** como `AwsCustomResource` en el `ApiStack` al deploy. Se elige en el plan; preferencia por el bootstrap del scraper para no añadir custom resources.
+
+### 9.3 Lectura desde el bot
+
+Helper `getDataApiKey()` en `backend/src/telegram/secret.ts` (mismo patrón cacheado que `getTelegramToken`): `GetParameter` de `/venezuelahelp/bot/data-api-key` con `WithDecryption:true`. El bot lo expone vía `deps` pero **no lo invoca en el handler hoy** (uso futuro). Se deja un cliente HTTP fino opcional `callDataApi(path, params)` documentado para cuando se necesite.
+
+### 9.4 Permisos IAM
+
+- El componente que aprovisiona (scraper o custom resource) gana `ssm:GetParameter`+`ssm:PutParameter` sobre `/venezuelahelp/bot/data-api-key` y ya tiene RW a la tabla (para `ApiKeyRepo.create`).
+- El **Bot Lambda** gana `ssm:GetParameter` sobre `/venezuelahelp/bot/data-api-key` (lectura), análogo al token de Telegram.
+
+### 9.5 Seguridad
+
+- La raw key **nunca** se loguea ni se devuelve por ninguna ruta; vive solo en SSM SecureString y como hash en DynamoDB.
+- Revocable desde el admin (`ApiKeyRepo.revoke`) como cualquier otra; rotación = revocar + borrar el parámetro SSM y dejar que el aprovisionamiento recree.
+
+## 10. Fases de implementación (alto nivel)
 
 El plan detallado lo produce `writing-plans`. Esbozo:
 
@@ -180,5 +213,6 @@ El plan detallado lo produce `writing-plans`. Esbozo:
 2. **Migrar el bot** a importar del core; eliminar el código duplicado en `telegram/`; suite `telegram/` verde.
 3. **Migrar `data-api`** a `core.searchItems`; tests de la API + nuevo comportamiento de ranking.
 4. **Migrar `frontend-public`** al core; build del frontend; verificación visual.
-5. **Tests de paridad** bot/API/frontend + smoke en prod sobre el snapshot real.
-6. **Deploy** (Scraper no cambia; Bot, Api y Frontend stacks sí) y verificación en vivo.
+5. **Aprovisionar la API key interna del bot** (§9): módulo idempotente + helper de lectura + permisos IAM; tests del aprovisionamiento (crea si falta, no-op si existe).
+6. **Tests de paridad** bot/API/frontend + smoke en prod sobre el snapshot real.
+7. **Deploy** (Scraper, Bot, Api y Frontend stacks; Scraper cambia solo si el aprovisionamiento va en su bootstrap) y verificación en vivo.
