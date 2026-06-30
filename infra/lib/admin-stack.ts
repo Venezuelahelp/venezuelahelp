@@ -238,21 +238,29 @@ export class AdminStack extends Stack {
     // su nombre lleva un hash de contenido, así que una URL nunca cambia.
     // `prune: false` para no borrar los bundles viejos (un index.html que un
     // navegador aún tenga cacheado los seguirá encontrando en vez de dar 404).
-    new s3deploy.BucketDeployment(this, "DeployAdminAssets", {
-      sources: [s3deploy.Source.asset(adminDist, { exclude: ["index.html"] })],
-      destinationBucket: siteBucket,
-      cacheControl: [
-        s3deploy.CacheControl.fromString("public, max-age=31536000, immutable"),
-      ],
-      prune: false,
-    });
+    const deployAssets = new s3deploy.BucketDeployment(
+      this,
+      "DeployAdminAssets",
+      {
+        sources: [
+          s3deploy.Source.asset(adminDist, { exclude: ["index.html"] }),
+        ],
+        destinationBucket: siteBucket,
+        cacheControl: [
+          s3deploy.CacheControl.fromString(
+            "public, max-age=31536000, immutable",
+          ),
+        ],
+        prune: false,
+      },
+    );
 
     // index.html + config.json: SIN caché (el navegador revalida siempre). Sin
     // esto, el navegador conserva un index.html viejo que referencia bundles ya
     // borrados → 404 → admin en blanco hasta Cmd+Shift+R en cada deploy. Aquí
     // se invalida CloudFront (los assets, al ser inmutables/hasheados, no lo
     // necesitan).
-    new s3deploy.BucketDeployment(this, "DeployAdminHtml", {
+    const deployHtml = new s3deploy.BucketDeployment(this, "DeployAdminHtml", {
       sources: [
         s3deploy.Source.asset(adminDist, { exclude: ["assets/**"] }),
         s3deploy.Source.jsonData("config.json", {
@@ -270,6 +278,14 @@ export class AdminStack extends Stack {
       distribution,
       distributionPaths: ["/", "/index.html", "/config.json"],
     });
+
+    // El index.html (y su invalidación de CloudFront) deben subir SOLO después de
+    // que los bundles hasheados ya estén en S3. Sin este orden, CloudFormation
+    // puede correr ambos deployments en paralelo: si el index nuevo se publica y
+    // se invalida antes de que suban los /assets/*, el navegador pide un bundle
+    // inexistente → 404 → errorResponses lo reescribe a index.html(200) → el
+    // <script type=module> recibe HTML → pantalla en blanco (cacheada ~5 min).
+    deployHtml.node.addDependency(deployAssets);
 
     // ── Outputs ───────────────────────────────────────────────────────────────
     new CfnOutput(this, "ApiUrl", { value: api.apiEndpoint });

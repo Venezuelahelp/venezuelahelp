@@ -119,6 +119,25 @@ describe("AdminStack", () => {
     template().resourceCountIs("Custom::CDKBucketDeployment", 2);
   });
 
+  it("deploys index.html + invalidation only AFTER the assets are uploaded", () => {
+    // Sin esta dependencia, el deployment del index.html (que además dispara la
+    // invalidación de CloudFront) puede terminar ANTES de que suban los bundles
+    // hasheados → el index nuevo apunta a /assets/*.js que aún no existen → 404
+    // → CloudFront los reescribe a index.html(200) → pantalla en blanco ~5 min.
+    const deployments = template().findResources("Custom::CDKBucketDeployment");
+    const entries = Object.entries(deployments);
+    // El deployment del HTML es el que dispara la invalidación (DistributionId).
+    const html = entries.find(([, r]) => r.Properties?.DistributionId);
+    const assets = entries.find(([, r]) => !r.Properties?.DistributionId);
+    expect(html, "debe existir el deployment con invalidación").toBeDefined();
+    expect(assets, "debe existir el deployment de assets").toBeDefined();
+    const dependsOn = ([] as string[]).concat(html![1].DependsOn ?? []);
+    expect(
+      dependsOn,
+      "el deployment del index.html debe depender del de assets",
+    ).toContain(assets![0]);
+  });
+
   it("outputs AdminUrl", () => {
     const t = template();
     const outputs = t.findOutputs("*");
