@@ -80,3 +80,38 @@ describe("queryItems", () => {
     expect(r.items.length).toBeLessThanOrEqual(200);
   });
 });
+
+const snapAcopios: DataSnapshot = {
+  generatedAt: "t",
+  categories: {
+    acopios: [
+      {
+        category: "acopios",
+        sourceId: "s",
+        externalId: "1",
+        titulo: "Acopio Petare",
+        texto: "agua",
+      },
+      {
+        category: "acopios",
+        sourceId: "s",
+        externalId: "2",
+        titulo: "Centro Chacao",
+        texto: "comida",
+      },
+    ],
+  },
+};
+
+describe("queryItems (core)", () => {
+  it("rankea por relevancia y excluye no-coincidentes", () => {
+    const r = queryItems(snapAcopios, { q: "petare" });
+    expect(r.items[0].externalId).toBe("1");
+  });
+  it("pagina con cursor", () => {
+    const r = queryItems(snapAcopios, { limit: 1 });
+    expect(r.items).toHaveLength(1);
+    expect(r.total).toBe(2);
+    expect(r.nextCursor).toBeDefined();
+  });
+});
