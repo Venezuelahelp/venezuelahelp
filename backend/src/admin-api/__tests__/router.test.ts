@@ -32,6 +32,7 @@ function makeDeps(overrides: Partial<RouteDeps> = {}): RouteDeps {
     },
     itemRepo: {
       listByCategory: vi.fn().mockResolvedValue([]),
+      countByCategory: vi.fn().mockResolvedValue(0),
     },
     invokeScraper: vi.fn().mockResolvedValue(undefined),
     visitRepo: {
@@ -261,9 +262,10 @@ describe("admin-api router", () => {
       ];
       const deps = makeDeps({
         itemRepo: {
-          listByCategory: vi.fn().mockImplementation((cat) => {
-            if (cat === "reportes") return Promise.resolve(itemsMock);
-            return Promise.resolve([]);
+          listByCategory: vi.fn().mockResolvedValue([]),
+          countByCategory: vi.fn().mockImplementation((cat) => {
+            if (cat === "reportes") return Promise.resolve(itemsMock.length);
+            return Promise.resolve(0);
           }),
         },
       });

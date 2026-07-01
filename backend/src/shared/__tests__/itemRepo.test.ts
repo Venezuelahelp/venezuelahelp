@@ -120,3 +120,28 @@ describe("ItemRepo.listByCategory", () => {
     expect(items.map((i) => i.titulo)).toEqual(["b", "a"]);
   });
 });
+
+describe("ItemRepo.countByCategory", () => {
+  it("counts with Select=COUNT (no item materialization)", async () => {
+    ddbMock.on(QueryCommand).resolves({ Count: 42 });
+    const n = await new ItemRepo().countByCategory("desaparecidos");
+    expect(n).toBe(42);
+    const input = ddbMock.commandCalls(QueryCommand)[0].args[0].input;
+    expect(input.Select).toBe("COUNT");
+    expect(input.ExpressionAttributeValues).toMatchObject({
+      ":pk": "CAT#desaparecidos",
+    });
+  });
+
+  it("sums Count across paginated pages", async () => {
+    ddbMock
+      .on(QueryCommand)
+      .resolvesOnce({
+        Count: 1000,
+        LastEvaluatedKey: { PK: "CAT#desaparecidos", SK: "s#1" },
+      })
+      .resolvesOnce({ Count: 234 });
+    const n = await new ItemRepo().countByCategory("desaparecidos");
+    expect(n).toBe(1234);
+  });
+});

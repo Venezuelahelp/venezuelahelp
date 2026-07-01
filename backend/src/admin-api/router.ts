@@ -19,7 +19,7 @@ import type { RestConfig } from "@/connectors/restConfig";
 export interface RouteDeps {
   configRepo: Pick<ConfigRepo, "get" | "put">;
   sourceRepo: Pick<SourceRepo, "list" | "get" | "put" | "delete">;
-  itemRepo: Pick<ItemRepo, "listByCategory">;
+  itemRepo: Pick<ItemRepo, "listByCategory" | "countByCategory">;
   invokeScraper: () => Promise<void>;
   visitRepo: Pick<VisitRepo, "analytics">;
   tgUserRepo: Pick<TgUserRepo, "list" | "setBlocked">;
@@ -296,8 +296,8 @@ export async function route(
   if (method === "GET" && path === "/stats") {
     const countEntries = await Promise.all(
       CATEGORIES.map(async (cat) => {
-        const items = await deps.itemRepo.listByCategory(cat);
-        return [cat, items.length] as const;
+        const n = await deps.itemRepo.countByCategory(cat);
+        return [cat, n] as const;
       }),
     );
     const counts = Object.fromEntries(countEntries) as Record<
