@@ -39,11 +39,11 @@ Lee siempre el spec y el plan de la fase activa antes de implementar.
 
 ## Fuentes — estado y pendientes
 
-Hoy se scrapean **10** fuentes con datos (`backend/src/scraper/seed.ts`); una 11ª (`desaparecidosterremotovenezuela`) se siembra `blocked`+deshabilitada.
+Hoy se scrapean **11** fuentes con datos (`backend/src/scraper/seed.ts`); una 12ª (`desaparecidosterremotovenezuela`) se siembra `blocked`+deshabilitada.
 
-- **`rest` (preset)**: `sismovenezuela`, `usgs` (GeoJSON sismos VE), `vzlayuda` (Supabase, solicitudes+acopios), `sos-en-venezuela` (API Express, desaparecidos+hospitales+solicitudes), `localiza-pacientes` (Next.js `/api/hospitals`), `red-esperanza` (Supabase, ~33k desaparecidos+acopios+necesidades), `pacientesve` (Google Sheets, ~5.5k pacientes).
-- **bespoke (`registry.ts`)**: `terremotovenezuela`, `ninosvenezuela`, `hospitalesvenezuela`.
-- **`ai`**: `venezuela-te-busca` (su API REST pide API key → sin key solo 24 ítems; queda `ai` con outreach pendiente), y `cruz-roja-espana-dona` (landing de donación **estática**, sin datos).
+- **`rest` (preset)**: `usgs` (GeoJSON sismos VE), `vzlayuda` (Supabase, solicitudes+acopios), `sos-en-venezuela` (API Express, desaparecidos+hospitales+solicitudes), `localiza-pacientes` (Next.js `/api/hospitals`), `red-esperanza` (Supabase, ~33k desaparecidos+acopios+necesidades), `pacientesve` (Google Sheets, ~5.5k pacientes), `venezuela-te-busca` (Venezuela Reporta, `venezuelareporta.org`, API `/api/v1`: ~46k desaparecidos —cap 25k— + acopios).
+- **bespoke (`registry.ts`)**: `terremotovenezuela`, `ninosvenezuela`, `hospitalesvenezuela`, `sosvenezuela2026` (API propia abierta: `/api/reports` 1141 geo con categoría por fila + `/api/persons` ~52k paginado, best-effort ante 429 ~150 req/min).
+- **`ai`**: `cruz-roja-espana-dona` (landing de donación **estática**, sin datos). (Sin más fuentes `ai` con datos: `venezuela-te-busca` migró a `rest`.)
 
 > **6 fuentes `ai` que el operador agregó traían 0 ítems** (eran SPAs que el extractor HTML→Bedrock no puede leer). Se reconvirtieron a `rest` descubriendo su API real (chunks JS / Supabase anon key / Google Sheets). El alta vino del admin, así que `ensureSeedSources` las **repara** a `rest` por su `id` existente sin perder estado. <!-- /aprende 2026-06-29 -->
 
