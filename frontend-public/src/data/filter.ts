@@ -68,13 +68,28 @@ export function countBySource(
 export function sourcesForDisplay(
   sourceIds: string[],
   items: Item[],
-): { sourceId: string; count: number }[] {
-  const counts = new Map<string, number>();
+): { sourceId: string; count: number; cats: Category[] }[] {
+  const stats = new Map<
+    string,
+    { count: number; catCounts: Map<Category, number> }
+  >();
   for (const item of items) {
-    counts.set(item.sourceId, (counts.get(item.sourceId) ?? 0) + 1);
+    let s = stats.get(item.sourceId);
+    if (!s) {
+      s = { count: 0, catCounts: new Map() };
+      stats.set(item.sourceId, s);
+    }
+    s.count += 1;
+    s.catCounts.set(item.category, (s.catCounts.get(item.category) ?? 0) + 1);
   }
   return sourceIds
-    .map((sourceId) => ({ sourceId, count: counts.get(sourceId) ?? 0 }))
+    .map((sourceId) => {
+      const s = stats.get(sourceId);
+      const cats = s
+        ? [...s.catCounts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c)
+        : [];
+      return { sourceId, count: s?.count ?? 0, cats };
+    })
     .sort((a, b) => b.count - a.count);
 }
 

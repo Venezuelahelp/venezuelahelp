@@ -403,9 +403,16 @@ describe("filter functions", () => {
         texto: "x",
       },
       {
+        category: "acopios",
+        sourceId: "a",
+        externalId: "3",
+        titulo: "t",
+        texto: "x",
+      },
+      {
         category: "reportes",
         sourceId: "b",
-        externalId: "3",
+        externalId: "4",
         titulo: "t",
         texto: "x",
       },
@@ -414,14 +421,20 @@ describe("filter functions", () => {
     it("lists every configured source, sorted by item count descending", () => {
       const result = sourcesForDisplay(["b", "a"], items);
       expect(result).toEqual([
-        { sourceId: "a", count: 2 },
-        { sourceId: "b", count: 1 },
+        { sourceId: "a", count: 3, cats: ["reportes", "acopios"] },
+        { sourceId: "b", count: 1, cats: ["reportes"] },
       ]);
     });
 
-    it("includes configured sources with no items (count 0)", () => {
+    it("orders cats by frequency descending", () => {
+      // 'a' tiene 2 reportes y 1 acopio → reportes primero.
+      const [a] = sourcesForDisplay(["a"], items);
+      expect(a.cats).toEqual(["reportes", "acopios"]);
+    });
+
+    it("includes configured sources with no items (count 0, empty cats)", () => {
       const result = sourcesForDisplay(["a", "vacia"], items);
-      expect(result).toContainEqual({ sourceId: "vacia", count: 0 });
+      expect(result).toContainEqual({ sourceId: "vacia", count: 0, cats: [] });
     });
 
     it("ignores sourceIds present in items but absent from the directory", () => {
