@@ -18,6 +18,7 @@ import InfiniteList from "@/components/InfiniteList";
 import MapOverlay from "@/components/MapOverlay";
 import ViewToggle, { type View } from "@/components/ViewToggle";
 import Footer from "@/components/Footer";
+import SourcesPage from "@/components/SourcesPage";
 import Hero from "@/components/Hero";
 import LocatedMatches from "@/components/LocatedMatches";
 import AboutPage from "@/components/AboutPage";
@@ -103,6 +104,7 @@ export default function App() {
   const isInterpreters = route === "#/interpretes";
   const isApiAccess = route === "#/api";
   const isApiDocs = route === "#/api-docs";
+  const isFuentes = route === "#/fuentes";
 
   return (
     <div className={styles.page}>
@@ -118,6 +120,19 @@ export default function App() {
           <ApiAccessPage />
         ) : isInterpreters ? (
           <Interpreters />
+        ) : isFuentes ? (
+          loading || !data ? (
+            <Loading />
+          ) : (
+            <SourcesPage
+              sources={sourcesForDisplay(
+                Object.keys(data.sources ?? {}),
+                flatten(data),
+              )}
+              sourceDir={data.sources}
+              generatedAt={data.generatedAt}
+            />
+          )
         ) : (
           <>
             {loading && <Loading />}
@@ -134,13 +149,6 @@ export default function App() {
                 const catCounts = countByCategory(items);
                 const filtered = filterItems(items, query, active);
                 const located = filtered.filter((it) => it.ubicacion != null);
-                // Hero y Footer reflejan el directorio de fuentes del snapshot
-                // (= fuentes configuradas en el admin), no los sourceIds de los
-                // items, para no omitir fuentes sin datos ni colar ids huérfanos.
-                const displaySources = sourcesForDisplay(
-                  Object.keys(data.sources ?? {}),
-                  items,
-                );
                 // Clave para reiniciar la lista infinita (volver arriba) cuando
                 // cambian los filtros.
                 const filterKey = `${query}|${[...active].sort().join(",")}`;
@@ -271,10 +279,7 @@ export default function App() {
                       />
                     )}
 
-                    <Footer
-                      sources={displaySources}
-                      generatedAt={data.generatedAt}
-                    />
+                    <Footer />
                   </SourcesContext.Provider>
                 );
               })()}

@@ -217,7 +217,7 @@ describe("App integration", () => {
       error: null,
     });
     render(<App />);
-    // Hero renders "Datos actualizados: ..." with a formatted date
-    expect(screen.getByText(/Datos actualizados/i)).toBeInTheDocument();
+    // Hero renders "Última actualización · ..." with a formatted date
+    expect(screen.getByText(/Última actualización/i)).toBeInTheDocument();
   });
 });

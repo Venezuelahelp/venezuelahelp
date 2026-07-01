@@ -1,35 +1,14 @@
 import { WhatsappLogo, EnvelopeSimple } from "@phosphor-icons/react";
-import { formatDateTime } from "@/data/datetime";
-import SourceGrid from "@/components/SourceGrid";
-import type { Category } from "@/types";
 import styles from "./Footer.module.css";
 
 const WHATSAPP_URL = "https://wa.me/34645050484";
 const PHONE_DISPLAY = "+34 645 05 04 84";
 const EMAIL = "mserranolm@gmail.com";
 
-interface FooterProps {
-  sources: { sourceId: string; count: number; cats: Category[] }[];
-  generatedAt?: string;
-}
-
-export default function Footer({ sources, generatedAt }: FooterProps) {
-  const updated = formatDateTime(generatedAt);
+export default function Footer() {
   return (
-    <footer className={styles.footer} id="fuentes">
+    <footer className={styles.footer}>
       <div className={styles.inner}>
-        <h2 className={styles.title}>Fuentes monitoreadas</h2>
-        <p className={styles.sub}>
-          La información se centraliza <strong>cada ~30 min</strong> desde estas{" "}
-          {sources.length} páginas públicas de terceros:
-        </p>
-
-        <SourceGrid sources={sources} />
-
-        {updated && (
-          <p className={styles.updated}>Datos actualizados: {updated}</p>
-        )}
-
         <section className={styles.contact} aria-labelledby="footer-contacto">
           <div className={styles.contactText}>
             <h2 id="footer-contacto" className={styles.contactTitle}>
