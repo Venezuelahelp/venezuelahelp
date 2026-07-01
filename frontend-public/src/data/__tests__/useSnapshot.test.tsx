@@ -113,6 +113,38 @@ describe("useSnapshot", () => {
     expect(result.current.error).toBe("HTTP 404");
   });
 
+  it("revalidates on every fetch (cache: no-cache) so devices don't get stuck on a stale snapshot", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        headers: { get: () => "application/json" },
+        json: () =>
+          Promise.resolve({
+            generatedAt: "2026-06-30T23:28:43Z",
+            categories: {
+              reportes: [],
+              desaparecidos: [],
+              acopios: [],
+              edificios: [],
+              solicitudes: [],
+            },
+          }),
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock as any);
+
+    const { result } = renderHook(() => useSnapshot());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ cache: "no-cache" }),
+    );
+  });
+
   it("auto-refreshes the snapshot every minute", async () => {
     vi.useFakeTimers();
     const ok = (gen: string) =>

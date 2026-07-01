@@ -16,7 +16,11 @@ export function useSnapshot() {
 
     async function load(initial: boolean) {
       try {
-        const r = await fetch(URL);
+        // `no-cache`: revalidar con el servidor (If-None-Match/ETag) antes de
+        // usar la copia cacheada. Barato (un 304 cuando no cambió) y evita que
+        // un dispositivo se quede pegado a un snapshot viejo — p.ej. el móvil
+        // que mostraba "Match 0" al servir un snapshot previo a ese campo.
+        const r = await fetch(URL, { cache: "no-cache" });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         // CloudFront rewrites a 403 on the data path to index.html (HTTP 200);
         // reject an HTML body so it surfaces as a clear error, not a confusing
