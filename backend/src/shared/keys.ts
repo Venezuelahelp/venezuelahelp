@@ -3,9 +3,12 @@ import type { Category, NormalizedItem } from "@/shared/types";
 
 export const CONFIG_KEY = { PK: "CONFIG", SK: "GLOBAL" } as const;
 
-export function SOURCE_PK(id: string) {
-  return `SOURCE#${id}`;
-}
+// Fuentes: PARTICIÓN COMPARTIDA (PK fija) para listarlas con Query barato — NO
+// Scan. PK="SOURCE", SK=<id>. Antes era PK="SOURCE#<id>", SK="META" (una
+// partición por fuente), lo que obligaba a `list()` a hacer un Scan de toda la
+// tabla (~55k ítems CAT#) → ThrottlingException/500 en el admin al cargar varios
+// list() en paralelo. Mismo patrón que APIREQ/APIKEY.
+export const SOURCE_PK = "SOURCE";
 
 export function QA_PK(chatId: string) {
   return `QA#${chatId}`;
