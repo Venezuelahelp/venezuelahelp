@@ -47,9 +47,32 @@ export class ItemRepo {
       );
       items.push(...((res.Items ?? []) as unknown as StoredItem[]));
       ExclusiveStartKey = res.LastEvaluatedKey as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
     } while (ExclusiveStartKey);
     return items.sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt));
+  }
+
+  // Cuenta los ítems de una categoría SIN materializarlos. `listByCategory`
+  // trae y ordena decenas de miles de ítems (desaparecidos ≈ 45k) solo para
+  // hacer `.length`; usado ×5 en /stats eso reventaba el timeout de 30s del
+  // Lambda. Con `Select: "COUNT"` DynamoDB devuelve solo el conteo por página.
+  async countByCategory(category: Category): Promise<number> {
+    let count = 0;
+    let ExclusiveStartKey: Record<string, unknown> | undefined;
+    do {
+      const res = await ddb.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "PK = :pk",
+          ExpressionAttributeValues: { ":pk": `CAT#${category}` },
+          Select: "COUNT",
+          ExclusiveStartKey,
+        }),
+      );
+      count += res.Count ?? 0;
+      ExclusiveStartKey = res.LastEvaluatedKey as
+        Record<string, unknown> | undefined;
+    } while (ExclusiveStartKey);
+    return count;
   }
 }
