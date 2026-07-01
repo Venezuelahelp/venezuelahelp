@@ -7,6 +7,10 @@
   gap: 10px;
 }
 
+.grid > li {
+  display: flex;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -94,27 +98,27 @@ a.card:hover .url {
 }
 .chip[data-cat="reportes"] {
   color: var(--cat-reportes);
-  background: color-mix(in oklab, var(--cat-reportes) 12%, white);
+  background: color-mix(in oklab, var(--cat-reportes) 12%, var(--bg));
 }
 .chip[data-cat="desaparecidos"] {
   color: var(--cat-desaparecidos);
-  background: color-mix(in oklab, var(--cat-desaparecidos) 12%, white);
+  background: color-mix(in oklab, var(--cat-desaparecidos) 12%, var(--bg));
 }
 .chip[data-cat="acopios"] {
   color: var(--cat-acopios);
-  background: color-mix(in oklab, var(--cat-acopios) 12%, white);
+  background: color-mix(in oklab, var(--cat-acopios) 12%, var(--bg));
 }
 .chip[data-cat="edificios"] {
   color: var(--cat-edificios);
-  background: color-mix(in oklab, var(--cat-edificios) 12%, white);
+  background: color-mix(in oklab, var(--cat-edificios) 12%, var(--bg));
 }
 .chip[data-cat="solicitudes"] {
   color: var(--cat-solicitudes);
-  background: color-mix(in oklab, var(--cat-solicitudes) 12%, white);
+  background: color-mix(in oklab, var(--cat-solicitudes) 12%, var(--bg));
 }
 .chip[data-cat="hospitales"] {
   color: var(--cat-hospitales);
-  background: color-mix(in oklab, var(--cat-hospitales) 12%, white);
+  background: color-mix(in oklab, var(--cat-hospitales) 12%, var(--bg));
 }
 .more {
   color: var(--muted);

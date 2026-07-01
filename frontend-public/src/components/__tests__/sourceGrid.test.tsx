@@ -30,7 +30,8 @@ describe("SourceGrid", () => {
     expect(link).toHaveAttribute("href", "https://fuentea.com/");
     expect(link).toHaveAttribute("target", "_blank");
     expect(screen.getByText("https://fuentea.com/")).toBeInTheDocument();
-    expect(screen.getByText("1.234")).toBeInTheDocument();
+    const expectedCount = new Intl.NumberFormat("es").format(1234);
+    expect(screen.getByText(expectedCount)).toBeInTheDocument();
   });
 
   it("uses the google favicon service with the source domain", () => {
