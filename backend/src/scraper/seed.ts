@@ -98,6 +98,18 @@ const SEED: Source[] = [
     enabled: true,
   },
   {
+    // Agregador con API JSON propia y abierta. /api/reports (mapa en vivo:
+    // edificios/acopios/reportes con geo) + /api/persons/list (~52k
+    // desaparecidos/localizados, paginado). Conector bespoke jsonApi (categoría
+    // por fila). Espejo de desaparecidosvenezuela.com/terremotovenezuela.com →
+    // el dedup colapsa solapes y suma corroboración. <!-- /aprende 2026-07-01 -->
+    id: "sosvenezuela2026",
+    nombre: "SOS Venezuela 2026",
+    url: "https://sosvenezuela2026.com/",
+    connector: "jsonApi",
+    enabled: true,
+  },
+  {
     // Fuente conocida pero BLOQUEADA: su API (desaparecidos-terremoto-api.
     // theempire.tech) exige x-recaptcha-token (reCAPTCHA v3) verificado en
     // backend → sin conector HTTP simple. Se siembra deshabilitada y marcada
