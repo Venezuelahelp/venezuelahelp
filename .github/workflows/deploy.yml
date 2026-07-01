@@ -10,8 +10,17 @@ on:
         required: true
 
 permissions:
-  id-token: write  # OIDC token for AWS
-  contents: write  # create tags and releases
+  id-token: write # OIDC token for AWS
+  contents: write # create tags and releases
+
+# Serializa los deploys: dos merges a main casi simultáneos lanzaban dos
+# `cdk deploy --all` a la vez que chocaban en FrontendStack (UPDATE_IN_PROGRESS).
+# cancel-in-progress: false → un run nuevo ESPERA a que termine el actual (no lo
+# cancela a mitad, que dejaría stacks a medio actualizar). Como cdk despliega el
+# HEAD acumulado de main, el run en cola cubre igual los cambios intermedios.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
 
 jobs:
   test:
