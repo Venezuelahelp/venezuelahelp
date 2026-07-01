@@ -1,0 +1,123 @@
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+a.card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md, 0 8px 24px oklch(0.2 0.02 255 / 0.12));
+  transform: translateY(-2px);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.favicon {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  flex: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+.name {
+  font-weight: 700;
+  color: var(--ink-strong);
+  font-size: 14.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.count {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.url {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--primary-strong);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+a.card:hover .url {
+  text-decoration: underline;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chip {
+  font-size: 10.5px;
+  font-weight: 650;
+  padding: 2px 7px;
+  border-radius: 999px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.chip[data-cat="reportes"] {
+  color: var(--cat-reportes);
+  background: color-mix(in oklab, var(--cat-reportes) 12%, white);
+}
+.chip[data-cat="desaparecidos"] {
+  color: var(--cat-desaparecidos);
+  background: color-mix(in oklab, var(--cat-desaparecidos) 12%, white);
+}
+.chip[data-cat="acopios"] {
+  color: var(--cat-acopios);
+  background: color-mix(in oklab, var(--cat-acopios) 12%, white);
+}
+.chip[data-cat="edificios"] {
+  color: var(--cat-edificios);
+  background: color-mix(in oklab, var(--cat-edificios) 12%, white);
+}
+.chip[data-cat="solicitudes"] {
+  color: var(--cat-solicitudes);
+  background: color-mix(in oklab, var(--cat-solicitudes) 12%, white);
+}
+.chip[data-cat="hospitales"] {
+  color: var(--cat-hospitales);
+  background: color-mix(in oklab, var(--cat-hospitales) 12%, white);
+}
+.more {
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
