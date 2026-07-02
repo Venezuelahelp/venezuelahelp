@@ -57,6 +57,7 @@ describe("handler", () => {
       "/config",
       undefined,
       expect.any(Object),
+      expect.any(Object),
     );
   });
 
@@ -76,7 +77,43 @@ describe("handler", () => {
       "/config",
       payload,
       expect.any(Object),
+      expect.any(Object),
     );
+  });
+
+  it("pasa queryStringParameters al router como 5º argumento", async () => {
+    const handler = await load();
+    const event = {
+      requestContext: { http: { method: "GET" } },
+      rawPath: "/items/search",
+      queryStringParameters: { q: "ana", limit: "10" },
+    };
+
+    await handler(event, { route: stubRoute });
+
+    expect(stubRoute).toHaveBeenCalledWith(
+      "GET",
+      "/items/search",
+      undefined,
+      expect.any(Object),
+      { q: "ana", limit: "10" },
+    );
+  });
+
+  it("cablea qaLogRepo, scrapeRunRepo, snapshotUpdatedAt y searchSnapshot en las deps", async () => {
+    const handler = await load();
+    const event = {
+      requestContext: { http: { method: "GET" } },
+      rawPath: "/config",
+    };
+
+    await handler(event, { route: stubRoute });
+
+    const deps = stubRoute.mock.calls[0][3];
+    expect(deps.qaLogRepo).toBeDefined();
+    expect(deps.scrapeRunRepo).toBeDefined();
+    expect(typeof deps.snapshotUpdatedAt).toBe("function");
+    expect(typeof deps.searchSnapshot).toBe("function");
   });
 
   it("audit-logs mutating requests with the authenticated actor", async () => {
