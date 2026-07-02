@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FilterBar from "@/components/FilterBar";
-import { CATEGORY_META, CATEGORY_ORDER } from "@/data/categories";
+import { CATEGORY_META, FILTER_CATEGORY_ORDER } from "@/data/categories";
 import type { Category } from "@/types";
 
 const counts: Record<Category, number> = {
@@ -54,9 +54,9 @@ describe("FilterBar", () => {
     expect(onQuery).toHaveBeenCalledWith("r");
   });
 
-  it("renders a chip button for every category in CATEGORY_ORDER", () => {
+  it("renders a chip button for every category in FILTER_CATEGORY_ORDER", () => {
     renderBar();
-    for (const cat of CATEGORY_ORDER) {
+    for (const cat of FILTER_CATEGORY_ORDER) {
       expect(
         screen.getByRole("button", {
           name: new RegExp(CATEGORY_META[cat].label, "i"),
@@ -65,12 +65,22 @@ describe("FilterBar", () => {
     }
   });
 
+  it("does not offer 'reportes' as a filter option (#51)", () => {
+    renderBar();
+    expect(FILTER_CATEGORY_ORDER).not.toContain("reportes");
+    expect(
+      screen.queryByRole("button", {
+        name: new RegExp(`^${CATEGORY_META["reportes"].label}`, "i"),
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("each category chip shows its count", () => {
     renderBar();
-    const reportesBtn = screen.getByRole("button", {
-      name: new RegExp(CATEGORY_META["reportes"].label, "i"),
+    const acopiosBtn = screen.getByRole("button", {
+      name: new RegExp(CATEGORY_META["acopios"].label, "i"),
     });
-    expect(reportesBtn).toHaveTextContent("10");
+    expect(acopiosBtn).toHaveTextContent("8");
   });
 
   it("clicking a category chip calls onToggle with that category", async () => {
@@ -78,24 +88,24 @@ describe("FilterBar", () => {
     const user = userEvent.setup();
     renderBar({ onToggle });
     const btn = screen.getByRole("button", {
-      name: new RegExp(CATEGORY_META["reportes"].label, "i"),
+      name: new RegExp(CATEGORY_META["acopios"].label, "i"),
     });
     await user.click(btn);
-    expect(onToggle).toHaveBeenCalledWith("reportes");
+    expect(onToggle).toHaveBeenCalledWith("acopios");
   });
 
   it("inactive chip has aria-pressed='false'", () => {
     renderBar();
     const btn = screen.getByRole("button", {
-      name: new RegExp(CATEGORY_META["reportes"].label, "i"),
+      name: new RegExp(CATEGORY_META["acopios"].label, "i"),
     });
     expect(btn).toHaveAttribute("aria-pressed", "false");
   });
 
   it("active chip has aria-pressed='true'", () => {
-    renderBar({ active: new Set<Category>(["reportes"]) });
+    renderBar({ active: new Set<Category>(["acopios"]) });
     const btn = screen.getByRole("button", {
-      name: new RegExp(CATEGORY_META["reportes"].label, "i"),
+      name: new RegExp(CATEGORY_META["acopios"].label, "i"),
     });
     expect(btn).toHaveAttribute("aria-pressed", "true");
   });

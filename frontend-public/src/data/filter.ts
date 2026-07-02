@@ -62,6 +62,26 @@ export function hasStatusClass(items: Item[]): boolean {
   return items.some((i) => i.statusClass !== undefined);
 }
 
+/**
+ * Desglose de desaparecidos por `statusClass` (#50/#54): cuántos siguen en
+ * búsqueda vs. localizados. Base para el Hero, que muestra los pendientes como
+ * dato prominente y los localizados como contexto. Feature-detect: un snapshot
+ * viejo sin `statusClass` devuelve 0/0 → el Hero cae al total sin desglose.
+ */
+export function countByStatus(items: Item[]): {
+  buscando: number;
+  localizado: number;
+} {
+  let buscando = 0;
+  let localizado = 0;
+  for (const it of items) {
+    if (it.category !== "desaparecidos") continue;
+    if (it.statusClass === "buscando") buscando++;
+    else if (it.statusClass === "localizado") localizado++;
+  }
+  return { buscando, localizado };
+}
+
 function groupByCategory(items: Item[]): Record<string, Item[]> {
   const out: Record<string, Item[]> = {};
   for (const it of items) (out[it.category] ??= []).push(it);

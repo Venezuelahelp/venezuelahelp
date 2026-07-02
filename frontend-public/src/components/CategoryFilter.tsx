@@ -1,6 +1,6 @@
 import { Handshake } from "@phosphor-icons/react";
 import type { Category } from "@/types";
-import { CATEGORY_META, CATEGORY_ORDER } from "@/data/categories";
+import { CATEGORY_META, FILTER_CATEGORY_ORDER } from "@/data/categories";
 import styles from "./CategoryFilter.module.css";
 
 interface Props {
@@ -38,7 +38,7 @@ export default function CategoryFilter({
         role="group"
         aria-label="Filtrar por categoría"
       >
-        {CATEGORY_ORDER.map((cat) => {
+        {FILTER_CATEGORY_ORDER.map((cat) => {
           const meta = CATEGORY_META[cat];
           const Icon = meta.icon;
           const isActive = active.has(cat);

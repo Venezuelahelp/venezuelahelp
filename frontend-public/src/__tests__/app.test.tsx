@@ -186,23 +186,25 @@ describe("App integration", () => {
       screen.getAllByText("Persona desaparecida en Valencia").length,
     ).toBeGreaterThan(0);
 
-    // Toggle "Reportes" chip in FilterBar (aria-pressed button)
+    // Toggle "Desaparecidos" chip in FilterBar (aria-pressed button).
+    // 'reportes' ya no es opción de filtro (#51), así que filtramos por otra
+    // categoría con chip.
     const chips = screen
-      .getAllByRole("button", { name: /Reportes/i })
+      .getAllByRole("button", { name: /Desaparecidos/i })
       .filter((btn) => btn.getAttribute("aria-pressed") !== null);
     // use the first chip found (FilterBar chip)
     await userEvent.click(chips[0]);
 
     await waitFor(() => {
       expect(
-        screen.getAllByText("Edificio colapsado en Caracas").length,
+        screen.getAllByText("Persona desaparecida en Valencia").length,
       ).toBeGreaterThan(0);
     });
 
-    // Valencia (desaparecidos) should be gone everywhere
-    expect(
-      screen.queryAllByText("Persona desaparecida en Valencia"),
-    ).toHaveLength(0);
+    // Caracas (reportes) should be gone everywhere
+    expect(screen.queryAllByText("Edificio colapsado en Caracas")).toHaveLength(
+      0,
+    );
   });
 
   it("always shows the Header with wordmark", () => {
@@ -413,6 +415,56 @@ describe("App integration", () => {
       render(<App />);
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(screen.queryByRole("alert")).toBeNull();
+    });
+  });
+
+  describe("modo match + búsqueda por nombre (#53)", () => {
+    const SNAPSHOT_MATCHES: Snapshot = {
+      ...SNAPSHOT,
+      matches: [
+        {
+          nombre: "Ana Castillo Ramos",
+          signal: "nombre-fuerte",
+          locatedSourcesCount: 1,
+          missing: { sourceId: "A", texto: "buscada en Chacao" },
+          located: { sourceId: "B", texto: "vista a salvo", sources: ["B"] },
+        },
+        {
+          nombre: "Juan Perez Lopez",
+          signal: "nombre-fuerte",
+          locatedSourcesCount: 2,
+          missing: { sourceId: "A", texto: "buscado en Valencia" },
+          located: { sourceId: "C", texto: "ingresado", sources: ["C"] },
+        },
+      ],
+    };
+
+    function matchChip() {
+      return screen
+        .getAllByRole("button", { name: /Match/i })
+        .filter((b) => b.getAttribute("aria-pressed") !== null)[0];
+    }
+
+    it("al entrar en match y escribir un nombre filtra los matches", async () => {
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT_MATCHES,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+
+      await userEvent.click(matchChip());
+      // Ambos matches visibles con query vacío.
+      expect(screen.getByText("Ana Castillo Ramos")).toBeInTheDocument();
+      expect(screen.getByText("Juan Perez Lopez")).toBeInTheDocument();
+
+      const input = screen.getByRole("searchbox", { name: /buscar/i });
+      await userEvent.type(input, "juan");
+
+      await waitFor(() => {
+        expect(screen.queryByText("Ana Castillo Ramos")).toBeNull();
+      });
+      expect(screen.getByText("Juan Perez Lopez")).toBeInTheDocument();
     });
   });
 

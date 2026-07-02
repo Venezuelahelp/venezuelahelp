@@ -55,6 +55,16 @@ export const CATEGORY_ORDER: Category[] = (
   Object.keys(CATEGORY_META) as Category[]
 ).sort((a, b) => CATEGORY_META[a].order - CATEGORY_META[b].order);
 
+/**
+ * Categorías que se ofrecen como opción en el selector de filtros del público.
+ * Es CATEGORY_ORDER menos `reportes`: la categoría sigue existiendo en los
+ * datos (snapshot, conteos, mapa y API pública) pero NO se muestra como chip de
+ * filtro (#51). Mantener aparte de CATEGORY_ORDER evita dejar ítems huérfanos.
+ */
+export const FILTER_CATEGORY_ORDER: Category[] = CATEGORY_ORDER.filter(
+  (c) => c !== "reportes",
+);
+
 // Equivalentes hex de los tokens --cat-* (OKLCH) para contextos que no resuelven
 // custom properties de CSS (el HTML de los marcadores de Leaflet). Mantener en
 // sync con DESIGN.md / tokens.css.

@@ -24,4 +24,37 @@ describe("LocatedMatches", () => {
     render(<LocatedMatches matches={[{ ...base, locatedSourcesCount: 3 }]} />);
     expect(screen.getByText(/corroborada por 3 fuentes/i)).toBeInTheDocument();
   });
+
+  describe("filtrado por nombre (#53)", () => {
+    const ana: LocatedMatch = { ...base, nombre: "Ana Castillo Ramos" };
+    const juan: LocatedMatch = { ...base, nombre: "Juan Perez Lopez" };
+
+    it("query vacío muestra todos los matches", () => {
+      render(<LocatedMatches matches={[ana, juan]} query="" />);
+      expect(screen.getByText("Ana Castillo Ramos")).toBeInTheDocument();
+      expect(screen.getByText("Juan Perez Lopez")).toBeInTheDocument();
+    });
+
+    it("filtra por nombre (acento/mayúsculas indiferentes)", () => {
+      render(<LocatedMatches matches={[ana, juan]} query="JUÁN" />);
+      expect(screen.getByText("Juan Perez Lopez")).toBeInTheDocument();
+      expect(screen.queryByText("Ana Castillo Ramos")).toBeNull();
+    });
+
+    it("el orden de los tokens es indiferente", () => {
+      render(<LocatedMatches matches={[ana, juan]} query="castillo ana" />);
+      expect(screen.getByText("Ana Castillo Ramos")).toBeInTheDocument();
+      expect(screen.queryByText("Juan Perez Lopez")).toBeNull();
+    });
+
+    it("sin coincidencias muestra un aviso (no oculta la sección entera)", () => {
+      render(<LocatedMatches matches={[ana, juan]} query="zzzz" />);
+      expect(screen.queryByText("Ana Castillo Ramos")).toBeNull();
+      expect(screen.queryByText("Juan Perez Lopez")).toBeNull();
+      // La sección sigue viva (título + aviso de sin resultados).
+      expect(
+        screen.getByRole("region", { name: /posibles localizaciones/i }),
+      ).toBeInTheDocument();
+    });
+  });
 });

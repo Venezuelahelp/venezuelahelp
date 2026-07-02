@@ -24,6 +24,28 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Móvil: el scroll vertical dentro de la sección colapsa el viewport. Pasamos
+   a un carrusel horizontal — cada tarjeta ocupa casi todo el ancho y no se
+   aplasta. En desktop no cambia nada. */
+@media (max-width: 560px) {
+  .list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 6px;
+    scroll-snap-type: x mandatory;
+  }
+  .cardGreen,
+  .cardBlue {
+    flex: 0 0 auto;
+    width: 85%;
+    min-width: 260px;
+    scroll-snap-align: start;
+  }
+}
 .cardGreen,
 .cardBlue {
   border: 1px solid var(--border);
