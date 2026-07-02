@@ -115,6 +115,7 @@ export type AgentKind = "saludo" | "respuesta" | "rechazado";
 export interface AgentResult {
   reply: string;
   kind: AgentKind;
+  intent: string; // "agent_<herramienta>"; fuera_de_tema → "agent_rechazado"
   itemsUsed: string[];
   tokensIn: number;
   tokensOut: number;
@@ -155,6 +156,7 @@ export async function answerWithTools(
     return {
       reply: GREETING,
       kind: "saludo",
+      intent: "agent_saludar",
       itemsUsed: [],
       tokensIn,
       tokensOut,
@@ -165,6 +167,7 @@ export async function answerWithTools(
     return {
       reply: OFF_TOPIC,
       kind: "rechazado",
+      intent: "agent_rechazado",
       itemsUsed: [],
       tokensIn,
       tokensOut,
@@ -178,6 +181,7 @@ export async function answerWithTools(
         zona: str(args.zona),
       }),
       kind: "respuesta",
+      intent: "agent_contar",
       itemsUsed: [],
       tokensIn,
       tokensOut,
@@ -194,6 +198,7 @@ export async function answerWithTools(
     return {
       reply: formatList(category, total, page, zona),
       kind: "respuesta",
+      intent: "agent_listar",
       itemsUsed: page.map((i) => key(i)),
       tokensIn,
       tokensOut,
@@ -212,6 +217,7 @@ export async function answerWithTools(
     return {
       reply: NO_DATA,
       kind: "respuesta",
+      intent: "agent_buscar",
       itemsUsed: [],
       tokensIn,
       tokensOut,
@@ -227,6 +233,7 @@ export async function answerWithTools(
     return {
       reply: withLocatedNotice(named, snap),
       kind: "respuesta",
+      intent: "agent_buscar",
       itemsUsed: named.map((i) => key(i)),
       tokensIn,
       tokensOut,
@@ -240,6 +247,7 @@ export async function answerWithTools(
   return {
     reply: ans.text.trim() || NO_DATA,
     kind: "respuesta",
+    intent: "agent_buscar",
     itemsUsed: items.map((i) => key(i)),
     tokensIn: tokensIn + ans.tokensIn,
     tokensOut: tokensOut + ans.tokensOut,
