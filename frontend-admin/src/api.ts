@@ -9,6 +9,9 @@ import type {
   ApiAccessRequest,
   ApiKey,
   ApproveResult,
+  QaLogEntry,
+  SearchResult,
+  ScrapeRun,
 } from "@/types";
 
 interface ApiDeps {
@@ -46,6 +49,13 @@ interface Api {
   rejectApiRequest(id: string): Promise<void>;
   getApiKeys(): Promise<ApiKey[]>;
   revokeApiKey(id: string): Promise<void>;
+  getQaLogs(chatId: number, limit?: number): Promise<QaLogEntry[]>;
+  searchItems(params: {
+    q?: string;
+    category?: string;
+    limit?: number;
+  }): Promise<SearchResult>;
+  getScrapeRuns(limit?: number): Promise<ScrapeRun[]>;
 }
 
 export function createApi(
@@ -175,6 +185,26 @@ export function createApi(
         `/api-keys/${encodeURIComponent(id)}/revoke`,
         "POST",
       );
+    },
+
+    getQaLogs(chatId: number, limit = 50): Promise<QaLogEntry[]> {
+      return request<QaLogEntry[]>(`/qa-logs/${chatId}?limit=${limit}`, "GET");
+    },
+
+    searchItems(params: {
+      q?: string;
+      category?: string;
+      limit?: number;
+    }): Promise<SearchResult> {
+      const qs = new URLSearchParams();
+      if (params.q) qs.set("q", params.q);
+      if (params.category) qs.set("category", params.category);
+      qs.set("limit", String(params.limit ?? 50));
+      return request<SearchResult>(`/items/search?${qs.toString()}`, "GET");
+    },
+
+    getScrapeRuns(limit = 10): Promise<ScrapeRun[]> {
+      return request<ScrapeRun[]>(`/scrape-runs?limit=${limit}`, "GET");
     },
   };
 }
