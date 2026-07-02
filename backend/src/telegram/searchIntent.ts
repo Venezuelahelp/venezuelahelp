@@ -1,4 +1,4 @@
-import { normalize } from "@venezuelahelp/core";
+import { normalize, STOP } from "@venezuelahelp/core";
 
 // Patrón traído de alo-ai-engine (IntentClassifier regex-first): detectar de
 // forma determinista y barata una intención SIN el dato necesario, para pedirlo
@@ -158,6 +158,37 @@ export function bareCategoryAction(question: string): string | null {
     }
   }
   return action;
+}
+
+// Un nombre propio suelto tiene entre 2 y 4 palabras (nombre[s] + apellido[s]).
+const NAME_MIN_TOKENS = 2;
+const NAME_MAX_TOKENS = 4;
+
+/**
+ * True cuando el mensaje TIENE PINTA de un nombre propio suelto (p. ej. "Robeth
+ * Enrique", "Ana Pérez"): 2–4 palabras, todas alfabéticas, sin signos de
+ * interrogación y sin ninguna palabra que delate una pregunta/comando/categoría
+ * (interrogativos y artículos de STOP, verbos de búsqueda, genéricos de persona,
+ * o nombres de categoría). Es un PRE-FILTRO barato: no confirma que la persona
+ * exista, solo evita disparar la búsqueda por nombre ante preguntas ("dónde hay
+ * agua" tiene "donde"/"hay") o mensajes fuera de tema ("cuéntame un chiste"
+ * tiene "un"). El llamador debe confirmar con una búsqueda real antes de
+ * responder, para que un off-topic sin match caiga al router y se rechace.
+ */
+export function looksLikePersonName(question: string): boolean {
+  if (/[?¿]/.test(question)) return false;
+  const toks = normalize(question).split(" ").filter(Boolean);
+  if (toks.length < NAME_MIN_TOKENS || toks.length > NAME_MAX_TOKENS)
+    return false;
+  return toks.every(
+    (t) =>
+      /^[a-z]+$/.test(t) &&
+      !STOP.has(t) &&
+      !SEARCH_VERBS.has(t) &&
+      !GENERIC.has(t) &&
+      !CATEGORY_WORD_TO_ACTION[t] &&
+      !CATEGORY_FILLER.has(t),
+  );
 }
 
 /** Mensaje cuando, ya con el nombre, no aparece nadie en los reportes. */

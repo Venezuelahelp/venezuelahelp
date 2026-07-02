@@ -72,14 +72,14 @@ const TOOLS: ToolSpec[] = [
   {
     name: "buscar",
     description:
-      "Busca ítems relevantes por palabras clave para responder una pregunta concreta (p. ej. '¿dónde hay agua en Petare?'). Úsalo cuando NO sea una lista ni un conteo.",
+      "Busca ítems relevantes por palabras clave para responder una pregunta concreta (p. ej. '¿dónde hay agua en Petare?'). TAMBIÉN sirve para buscar a UNA PERSONA por su nombre: si el mensaje es solo un nombre y apellido (p. ej. 'Robeth Enrique', 'Ana Pérez'), es una búsqueda de persona desaparecida, NO fuera de tema. Úsalo cuando NO sea una lista ni un conteo.",
     inputSchema: {
       type: "object",
       properties: {
         consulta: {
           type: "string",
           description:
-            "La consulta de búsqueda (palabras clave o la pregunta).",
+            "La consulta de búsqueda: palabras clave, la pregunta, o el nombre de la persona a buscar.",
         },
         category: { type: "string", enum: CATEGORIES },
       },
