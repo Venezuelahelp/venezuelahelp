@@ -14,11 +14,17 @@ const COUNTS: Record<Category, number> = {
 };
 
 describe("Hero", () => {
-  it("no longer renders the editorial headline (removed per #57)", () => {
+  it("renders a visually-hidden h1 for SEO/accessibility (no visible headline)", () => {
     render(
       <Hero total={6} counts={COUNTS} generatedAt="2026-06-26T18:00:00Z" />,
     );
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    // Hay un h1 accesible (aunque oculto visualmente vía .srOnly) con keywords.
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: /terremoto de Venezuela/i,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("links to the Telegram bot safely", () => {

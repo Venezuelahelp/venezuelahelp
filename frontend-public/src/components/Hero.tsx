@@ -41,6 +41,13 @@ export default function Hero({
       <div className={styles.inner}>
         <div className={styles.grid}>
           <div className={styles.lead}>
+            {/* h1 oculto para lectores de pantalla y SEO: la home no muestra
+                un titular visible, pero necesita un encabezado principal. */}
+            <h1 className={styles.srOnly}>
+              VenezuelaHelp — Información del terremoto de Venezuela: personas
+              desaparecidas, centros de acopio, edificios dañados, hospitales y
+              solicitudes de ayuda, de fuentes públicas.
+            </h1>
             <span className={styles.pill}>
               <span className={styles.pulse} aria-hidden="true" />
               Actualizado con fuentes públicas
