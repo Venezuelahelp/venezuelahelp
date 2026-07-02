@@ -6,6 +6,7 @@ import type { VisitRepo } from "@/shared/repos/visitRepo";
 import type { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import type { ApiRequestRepo } from "@/shared/repos/apiRequestRepo";
 import type { ApiKeyRepo } from "@/shared/repos/apiKeyRepo";
+import type { QaLogRepo } from "@/shared/repos/qaLogRepo";
 import { assertPublicHttpUrl } from "@/connectors/ssrf";
 import { runRestSource } from "@/connectors/restEngine";
 import { fetchJson } from "@/connectors/http";
@@ -25,6 +26,8 @@ export interface RouteDeps {
   tgUserRepo: Pick<TgUserRepo, "list" | "setBlocked">;
   apiRequestRepo: Pick<ApiRequestRepo, "list" | "get" | "setStatus">;
   apiKeyRepo: Pick<ApiKeyRepo, "list" | "create" | "revoke">;
+  // Visor de Q&A del bot: Query por PK=QA#<chatId>, sin Scan.
+  qaLogRepo: Pick<QaLogRepo, "listByChat">;
   // Actor (email Cognito) para el audit de aprobación/revocación, y reloj
   // inyectable para timestamps determinísticos en tests.
   actor: string;
@@ -149,11 +152,20 @@ function slugify(s: string): string {
   );
 }
 
+// Parsea ?limit= con default y techo (los endpoints de lectura del admin
+// nunca devuelven páginas sin acotar).
+function parseLimit(raw: string | undefined, def: number, max: number): number {
+  const n = Number.parseInt(raw ?? "", 10);
+  if (!Number.isFinite(n) || n < 1) return def;
+  return Math.min(n, max);
+}
+
 export async function route(
   method: string,
   path: string,
   body: unknown,
   deps: RouteDeps,
+  query: Record<string, string | undefined> = {},
 ): Promise<RouteResult> {
   const segments = path.split("/");
   // segments[0] is "" (before leading slash)
@@ -290,6 +302,15 @@ export async function route(
       block ? "Bloqueado desde el admin" : undefined,
     );
     return { status: 200, body: { chatId, blocked: block } };
+  }
+
+  // GET /qa-logs/{chatId} — últimas interacciones Q&A de un chat del bot
+  const qaLogsM = path.match(/^\/qa-logs\/([^/]+)$/);
+  if (method === "GET" && qaLogsM) {
+    const chatId = decodeURIComponent(qaLogsM[1]);
+    const limit = parseLimit(query.limit, 50, 200);
+    const logs = await deps.qaLogRepo.listByChat(chatId, limit);
+    return { status: 200, body: logs };
   }
 
   // GET /stats
