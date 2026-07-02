@@ -185,4 +185,9 @@ export interface QaLogEntry {
   modelo: string;
   costoEstimado: number;
   flagged: boolean;
+  // Rama del handler que produjo la respuesta (telemetría; Bloque C1):
+  // greeting | bare_search | pending_search | help_cry | help_guide |
+  // bare_category | agent_saludar|contar|listar|buscar|rechazado |
+  // agent_error_fallback | rag_count | rag_retrieve
+  intent?: string;
 }
