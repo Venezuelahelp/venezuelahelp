@@ -58,4 +58,10 @@ describe("renderList", () => {
     expect(link).toBeDefined();
     expect(link?.text).toMatch(/ver original/i);
   });
+
+  it("continúa la numeración desde startIndex (páginas siguientes)", () => {
+    const { text } = renderList([sinGeo], undefined, 8);
+    expect(text).toContain("9. Punto sin ubicación");
+    expect(text).not.toContain("1. Punto sin ubicación");
+  });
 });
