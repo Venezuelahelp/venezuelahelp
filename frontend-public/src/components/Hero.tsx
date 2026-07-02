@@ -40,12 +40,6 @@ export default function Hero({
               La información del terremoto, reunida en un solo lugar.
             </h1>
 
-            <p className={styles.lede}>
-              Reportes, personas desaparecidas, centros de acopio, edificios
-              dañados y solicitudes de ayuda, recopilados de fuentes públicas.
-              Pregunta lo que necesites al bot de Telegram en lenguaje natural.
-            </p>
-
             <div className={styles.actions}>
               <a
                 href={TELEGRAM_URL}

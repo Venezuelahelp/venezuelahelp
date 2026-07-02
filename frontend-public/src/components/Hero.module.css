@@ -86,15 +86,6 @@
   max-width: 18ch;
 }
 
-.lede {
-  margin: 16px 0 0;
-  color: var(--ink);
-  font-size: clamp(1rem, 1.6vw, 1.15rem);
-  max-width: 54ch;
-  line-height: 1.6;
-  text-wrap: pretty;
-}
-
 .actions {
   display: flex;
   flex-wrap: wrap;
