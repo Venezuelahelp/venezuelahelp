@@ -123,3 +123,54 @@ describe("locationPrompt / LOCATION_ACTIONS", () => {
     expect(flat.some((b: any) => b.text === "Ver sin ubicación")).toBe(true);
   });
 });
+
+describe("categoryScreen — paginación «Ver más»", () => {
+  const bigSnap: Snapshot = {
+    generatedAt: "t",
+    categories: {
+      solicitudes: Array.from({ length: 20 }, (_, i) =>
+        item({
+          category: "solicitudes",
+          externalId: String(i),
+          titulo: `Solicitud ${i + 1}`,
+        }),
+      ),
+    },
+  };
+
+  it("con más de 8 ítems añade «Ver más» con el offset siguiente (≤64 bytes)", () => {
+    const r = categoryScreen("voluntariado", bigSnap);
+    const flat = (r.replyMarkup as any).inline_keyboard.flat();
+    const more = flat.find((b: any) => b.text.includes("Ver más"));
+    expect(more).toBeTruthy();
+    expect(more.callback_data).toBe("more:voluntariado:8");
+    expect(more.callback_data.length).toBeLessThanOrEqual(64);
+  });
+
+  it("offset=8 pinta la 2ª página con numeración continua", () => {
+    const r = categoryScreen("voluntariado", bigSnap, undefined, 8);
+    expect(r.text).toContain("9. Solicitud 9");
+    expect(r.text).not.toContain("1. Solicitud 1\n");
+    const flat = (r.replyMarkup as any).inline_keyboard.flat();
+    const more = flat.find((b: any) => b.text.includes("Ver más"));
+    expect(more.callback_data).toBe("more:voluntariado:16");
+  });
+
+  it("en la última página no ofrece «Ver más» pero sí Volver", () => {
+    const r = categoryScreen("voluntariado", bigSnap, undefined, 16);
+    const flat = (r.replyMarkup as any).inline_keyboard.flat();
+    expect(flat.some((b: any) => b.text.includes("Ver más"))).toBe(false);
+    expect(flat.some((b: any) => b.text.includes("Volver"))).toBe(true);
+  });
+
+  it("offset más allá del final muestra el vacío sin lanzar", () => {
+    const r = categoryScreen("voluntariado", bigSnap, undefined, 999);
+    expect(r.text.toLowerCase()).toContain("no hay registros");
+  });
+
+  it("con 8 o menos ítems NO muestra «Ver más» (regresión)", () => {
+    const r = categoryScreen("voluntariado", snap); // 1 solicitud en el fixture
+    const flat = (r.replyMarkup as any).inline_keyboard.flat();
+    expect(flat.some((b: any) => b.text.includes("Ver más"))).toBe(false);
+  });
+});

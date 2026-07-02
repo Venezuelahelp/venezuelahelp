@@ -15,11 +15,12 @@ import { formatList } from "@/telegram/format";
 import { buildUserText } from "@/telegram/prompt";
 import { buildMatchIndex, locatedNotice } from "@/telegram/locatedNotice";
 import type { PublicItem, Snapshot } from "@/telegram/types";
+import type { QaIntent } from "@/shared/types";
 
 // Fallback que GUÍA en vez de cortar (patrón "Data Boundary" + tono de
 // alo-ai-engine): cuando no hay datos para la consulta, orienta sobre qué sí
-// puede responder, sin inventar.
-const NO_DATA =
+// puede responder, sin inventar. Compartido con el fallback RAG del handler.
+export const NO_DATA_GUIDE =
   "No encontré información sobre eso. Puedo ayudarte a buscar una persona por su nombre, o a ver centros de acopio, refugios, hospitales y solicitudes de ayuda. ¿Qué necesitas? 🔎";
 
 // Respuestas fijas (sin Bedrock) para saludo y rechazo de fuera-de-tema.
@@ -115,6 +116,8 @@ export type AgentKind = "saludo" | "respuesta" | "rechazado";
 export interface AgentResult {
   reply: string;
   kind: AgentKind;
+  // "agent_<herramienta>"; fuera_de_tema → "agent_rechazado".
+  intent: QaIntent;
   itemsUsed: string[];
   tokensIn: number;
   tokensOut: number;
@@ -155,6 +158,7 @@ export async function answerWithTools(
     return {
       reply: GREETING,
       kind: "saludo",
+      intent: "agent_saludar",
       itemsUsed: [],
       tokensIn,
       tokensOut,
@@ -165,6 +169,7 @@ export async function answerWithTools(
     return {
       reply: OFF_TOPIC,
       kind: "rechazado",
+      intent: "agent_rechazado",
       itemsUsed: [],
       tokensIn,
       tokensOut,
@@ -178,6 +183,7 @@ export async function answerWithTools(
         zona: str(args.zona),
       }),
       kind: "respuesta",
+      intent: "agent_contar",
       itemsUsed: [],
       tokensIn,
       tokensOut,
@@ -194,6 +200,7 @@ export async function answerWithTools(
     return {
       reply: formatList(category, total, page, zona),
       kind: "respuesta",
+      intent: "agent_listar",
       itemsUsed: page.map((i) => key(i)),
       tokensIn,
       tokensOut,
@@ -210,8 +217,9 @@ export async function answerWithTools(
   }
   if (items.length === 0) {
     return {
-      reply: NO_DATA,
+      reply: NO_DATA_GUIDE,
       kind: "respuesta",
+      intent: "agent_buscar",
       itemsUsed: [],
       tokensIn,
       tokensOut,
@@ -227,6 +235,7 @@ export async function answerWithTools(
     return {
       reply: withLocatedNotice(named, snap),
       kind: "respuesta",
+      intent: "agent_buscar",
       itemsUsed: named.map((i) => key(i)),
       tokensIn,
       tokensOut,
@@ -238,8 +247,9 @@ export async function answerWithTools(
     buildUserText(question, items),
   );
   return {
-    reply: ans.text.trim() || NO_DATA,
+    reply: ans.text.trim() || NO_DATA_GUIDE,
     kind: "respuesta",
+    intent: "agent_buscar",
     itemsUsed: items.map((i) => key(i)),
     tokensIn: tokensIn + ans.tokensIn,
     tokensOut: tokensOut + ans.tokensOut,

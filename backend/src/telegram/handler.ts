@@ -3,6 +3,7 @@ import { QaLogRepo } from "@/shared/repos/qaLogRepo";
 import { RateLimitRepo } from "@/shared/repos/rateLimitRepo";
 import { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import { logger } from "@/shared/logger";
+import type { QaIntent } from "@/shared/types";
 import { getTelegramToken, getWebhookSecret } from "@/telegram/secret";
 import {
   getMe,
@@ -25,6 +26,7 @@ import {
   answerWithTools,
   answerPersonSearch,
   GREETING,
+  NO_DATA_GUIDE,
 } from "@/telegram/agent";
 import {
   isBareSearchIntent,
@@ -53,8 +55,6 @@ import type { TgCallbackQuery, TgMessage, TgUpdate } from "@/telegram/types";
 
 const FALLBACK =
   "Disculpa, estoy con mucha demanda ahora mismo. Intenta de nuevo en un momento.";
-const NO_DATA =
-  "No tengo ese dato en la información del terremoto que tengo disponible.";
 const RATE_LIMITED =
   "Estás enviando preguntas muy rápido. Espera un momento y vuelve a intentar. 🙏";
 const HELP_GUIDE = [
@@ -68,6 +68,21 @@ const HELP_GUIDE = [
 
 const BLOCKED_MSG =
   "🚫 Estás bloqueado y no puedo responder tus consultas. Si crees que es un error, contacta a los creadores de VenezuelaHelp para que te desbloqueen.";
+
+const INVALID_LOCATION =
+  "📍 Esa ubicación no parece válida. Vuelve a compartirla con el botón «📍 Compartir ubicación», por favor.";
+
+// Rango WGS84 + descarte de (0,0) ("Null Island": GPS sin señal). SIN geocerca
+// de Venezuela: la diáspora consulta desde el exterior.
+function validCoords(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180 &&
+    !(lat === 0 && lng === 0)
+  );
+}
 
 // Saludos PUROS (el mensaje completo es el saludo): pre-check determinista para
 // no depender del LLM en lo más común. Un mensaje mixto ("hola, necesito agua")
@@ -391,6 +406,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "greeting",
       );
       return ok();
     }
@@ -415,6 +431,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "pending_search",
       );
       return ok();
     }
@@ -440,6 +457,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "bare_search",
       );
       return ok();
     }
@@ -461,6 +479,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "help_cry",
       );
       return ok();
     }
@@ -478,6 +497,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "help_guide",
       );
       return ok();
     }
@@ -501,6 +521,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "bare_category",
       );
       return ok();
     }
@@ -539,11 +560,15 @@ export async function handler(
         config.bedrockModelId,
         r.tokensIn,
         r.tokensOut,
+        r.intent,
       );
       return ok();
     } catch (e) {
-      logger.warn("agente tool-use falló; usando RAG clásico", {
+      // Fin de la degradación silenciosa: error estructurado + intent para
+      // correlacionar en CloudWatch con las filas QaLog rag_* que siguen.
+      logger.error("agente tool-use falló; degradando a RAG clásico", {
         chatId,
+        intent: "agent_error_fallback",
         error: e instanceof Error ? e.message : String(e),
       });
     }
@@ -552,21 +577,32 @@ export async function handler(
     const count = countAnswer(question, snap);
     if (count) {
       await d.sendMessage(token, chatId, count);
-      await logQa(d, chatId, question, count, [], config.bedrockModelId, 0, 0);
-      return ok();
-    }
-    const items = retrieve(question, snap);
-    if (items.length === 0) {
-      await d.sendMessage(token, chatId, NO_DATA);
       await logQa(
         d,
         chatId,
         question,
-        NO_DATA,
+        count,
         [],
         config.bedrockModelId,
         0,
         0,
+        "rag_count",
+      );
+      return ok();
+    }
+    const items = retrieve(question, snap);
+    if (items.length === 0) {
+      await d.sendMessage(token, chatId, NO_DATA_GUIDE);
+      await logQa(
+        d,
+        chatId,
+        question,
+        NO_DATA_GUIDE,
+        [],
+        config.bedrockModelId,
+        0,
+        0,
+        "rag_retrieve",
       );
       return ok();
     }
@@ -575,7 +611,7 @@ export async function handler(
       config.systemPrompt,
       buildUserText(question, items),
     );
-    const reply = ans.text.trim() || NO_DATA;
+    const reply = ans.text.trim() || NO_DATA_GUIDE;
     await d.sendMessage(token, chatId, reply);
     await logQa(
       d,
@@ -586,6 +622,7 @@ export async function handler(
       config.bedrockModelId,
       ans.tokensIn,
       ans.tokensOut,
+      "rag_retrieve",
     );
     return ok();
   } catch (err) {
@@ -619,6 +656,32 @@ async function handleCallback(
       await d.sendMessage(token, chatId, nav.text, {
         replyMarkup: nav.replyMarkup,
       });
+    } else if (data.startsWith("more:")) {
+      // Paginación «Ver más»: more:<action>:<offset>. Reutiliza la ubicación
+      // fresca del MenuState; si caducó, loc=undefined → lista por trust sin
+      // distancia (mismo degrade que "Ver sin ubicación"), sin error.
+      const [, action = "", offsetRaw = ""] = data.split(":");
+      const offset = /^\d+$/.test(offsetRaw)
+        ? Number.parseInt(offsetRaw, 10)
+        : NaN;
+      if (
+        LOCATION_ACTIONS.has(action) &&
+        Number.isInteger(offset) &&
+        offset > 0
+      ) {
+        const state = await safeGetState(d, chatId);
+        const loc = freshLoc(state, Date.now());
+        const snap = await d.loadSnapshot();
+        const screen = categoryScreen(action, snap, loc, offset);
+        await d.sendMessage(token, chatId, screen.text, {
+          replyMarkup: screen.replyMarkup,
+        });
+      } else {
+        const home = homeScreen();
+        await d.sendMessage(token, chatId, home.text, {
+          replyMarkup: home.replyMarkup,
+        });
+      }
     } else if (LOCATION_ACTIONS.has(data)) {
       const state = await safeGetState(d, chatId);
       const loc = freshLoc(state, Date.now());
@@ -674,6 +737,10 @@ async function handleLocation(
     lat: msg.location!.latitude,
     lng: msg.location!.longitude,
   };
+  if (!validCoords(loc.lat, loc.lng)) {
+    await d.sendMessage(token, chatId, INVALID_LOCATION);
+    return ok();
+  }
   const state = await safeGetState(d, chatId);
   try {
     await d.menuState.setLocation(
@@ -718,6 +785,7 @@ async function logQa(
   modelo: string,
   tokensIn: number,
   tokensOut: number,
+  intent: QaIntent,
 ): Promise<void> {
   await d.qaLogRepo.append({
     chatId: String(chatId),
@@ -730,6 +798,7 @@ async function logQa(
     modelo,
     costoEstimado: 0,
     flagged: false,
+    intent,
   });
 }
 
