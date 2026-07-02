@@ -186,6 +186,7 @@ export type QaIntent =
   | "greeting"
   | "bare_search"
   | "pending_search"
+  | "name_search"
   | "help_cry"
   | "help_guide"
   | "bare_category"

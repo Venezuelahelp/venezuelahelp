@@ -31,6 +31,7 @@ import {
 import {
   isBareSearchIntent,
   bareCategoryAction,
+  looksLikePersonName,
   ASK_FOR_NAME,
   notFoundByName,
 } from "@/telegram/searchIntent";
@@ -527,6 +528,32 @@ export async function handler(
     }
 
     const snap = await d.loadSnapshot();
+
+    // Nombre propio suelto ("Robeth Enrique"): tras el saludo, el usuario suele
+    // mandar solo el nombre. Sin verbo de búsqueda ni pendingSearch, iría al
+    // router LLM, que puede clasificar un nombre pelado como fuera_de_tema
+    // (strike + rechazo). Si el mensaje TIENE PINTA de nombre y APARECE en los
+    // datos, lo resolvemos de forma determinista antes del router. Si no hay
+    // match, cae al router → un off-topic real sigue rechazándose con su strike.
+    if (looksLikePersonName(question)) {
+      const foundByName = answerPersonSearch(question, snap);
+      if (foundByName) {
+        await d.sendMessage(token, chatId, foundByName.reply);
+        await safeResetStrikes(d, chatId);
+        await logQa(
+          d,
+          chatId,
+          question,
+          foundByName.reply,
+          foundByName.itemsUsed,
+          config.bedrockModelId,
+          0,
+          0,
+          "name_search",
+        );
+        return ok();
+      }
+    }
 
     // Agente: el modelo enruta el mensaje a una herramienta (saludar/
     // fuera_de_tema/contar/listar/buscar) sobre el snapshot COMPLETO. Aplica

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   isBareSearchIntent,
   bareCategoryAction,
+  looksLikePersonName,
   notFoundByName,
 } from "@/telegram/searchIntent";
 
@@ -55,6 +56,40 @@ describe("bareCategoryAction", () => {
     expect(bareCategoryAction("hola")).toBeNull();
     expect(bareCategoryAction("buscar a una persona")).toBeNull();
     expect(bareCategoryAction("")).toBeNull();
+  });
+});
+
+describe("looksLikePersonName", () => {
+  it("reconoce un nombre propio suelto (2–4 palabras)", () => {
+    expect(looksLikePersonName("Robeth Enrique")).toBe(true);
+    expect(looksLikePersonName("Ana Perez")).toBe(true);
+    expect(looksLikePersonName("Maria Jose Rodriguez")).toBe(true);
+    expect(looksLikePersonName("Robeth Enrique Perez Lopez")).toBe(true);
+  });
+
+  it("NO dispara para preguntas (interrogativos o signos)", () => {
+    expect(looksLikePersonName("dónde hay agua")).toBe(false);
+    expect(looksLikePersonName("¿quién eres?")).toBe(false);
+    expect(looksLikePersonName("cuántos desaparecidos hay")).toBe(false);
+  });
+
+  it("NO dispara para mensajes fuera de tema ni comandos de búsqueda", () => {
+    expect(looksLikePersonName("cuéntame un chiste")).toBe(false);
+    expect(looksLikePersonName("buscar a Juan")).toBe(false);
+    expect(looksLikePersonName("háblame de política")).toBe(false);
+  });
+
+  it("NO dispara para categorías ni longitudes fuera de rango", () => {
+    expect(looksLikePersonName("refugios")).toBe(false); // 1 palabra
+    expect(looksLikePersonName("acopios refugios")).toBe(false); // categoría
+    expect(looksLikePersonName("")).toBe(false);
+    expect(looksLikePersonName("uno dos tres cuatro cinco palabras aqui")).toBe(
+      false,
+    ); // >4 palabras
+  });
+
+  it("NO dispara si hay dígitos (no es un nombre)", () => {
+    expect(looksLikePersonName("calle 5")).toBe(false);
   });
 });
 
