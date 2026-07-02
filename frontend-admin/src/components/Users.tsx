@@ -1,4 +1,6 @@
-import type { TgUser } from "@/types";
+import { useState } from "react";
+import type { QaLogEntry, TgUser } from "@/types";
+import { QaLogDrawer } from "@/components/QaLogDrawer";
 import styles from "./Users.module.css";
 
 interface UsersProps {
@@ -9,6 +11,9 @@ interface UsersProps {
   // fila en curso para deshabilitar su botón mientras se procesa.
   onToggleBlock?: (user: TgUser) => void;
   busyChatId?: number;
+  // Visor de Q&A: si está presente, click en una fila abre el drawer con las
+  // últimas interacciones de ese chat.
+  onLoadQa?: (chatId: number) => Promise<QaLogEntry[]>;
 }
 
 function formatTs(iso: string): string {
@@ -42,7 +47,10 @@ export function Users({
   refreshing,
   onToggleBlock,
   busyChatId,
+  onLoadQa,
 }: UsersProps) {
+  const [selected, setSelected] = useState<TgUser | null>(null);
+
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -86,7 +94,11 @@ export function Users({
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.chatId}>
+                <tr
+                  key={u.chatId}
+                  onClick={onLoadQa ? () => setSelected(u) : undefined}
+                  className={onLoadQa ? styles.rowClickable : undefined}
+                >
                   <td>
                     <div className={styles.name}>{u.nombre || "—"}</div>
                     {u.username && (
@@ -116,7 +128,10 @@ export function Users({
                         type="button"
                         className={styles.blockButton}
                         disabled={busyChatId === u.chatId}
-                        onClick={() => onToggleBlock(u)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleBlock(u);
+                        }}
                       >
                         {busyChatId === u.chatId
                           ? "…"
@@ -131,6 +146,13 @@ export function Users({
             </tbody>
           </table>
         </div>
+      )}
+      {selected && onLoadQa && (
+        <QaLogDrawer
+          user={selected}
+          loadQa={onLoadQa}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );

@@ -47,4 +47,32 @@ describe("Users", () => {
     fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
     expect(onRefresh).toHaveBeenCalledOnce();
   });
+
+  it("abre el drawer de Q&A al hacer click en una fila", async () => {
+    const onLoadQa = vi.fn().mockResolvedValue([]);
+    render(<Users users={users} onLoadQa={onLoadQa} />);
+    fireEvent.click(screen.getByText("Ana P"));
+    expect(onLoadQa).toHaveBeenCalledWith(1);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("cierra el drawer con su botón Cerrar", async () => {
+    const onLoadQa = vi.fn().mockResolvedValue([]);
+    render(<Users users={users} onLoadQa={onLoadQa} />);
+    fireEvent.click(screen.getByText("Ana P"));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("el botón de bloqueo NO abre el drawer (stopPropagation)", () => {
+    const onLoadQa = vi.fn().mockResolvedValue([]);
+    const onToggleBlock = vi.fn();
+    render(
+      <Users users={users} onLoadQa={onLoadQa} onToggleBlock={onToggleBlock} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Bloquear" }));
+    expect(onToggleBlock).toHaveBeenCalledOnce();
+    expect(onLoadQa).not.toHaveBeenCalled();
+  });
 });

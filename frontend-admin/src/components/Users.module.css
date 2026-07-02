@@ -203,3 +203,7 @@
   opacity: 0.6;
   cursor: default;
 }
+
+.rowClickable {
+  cursor: pointer;
+}
