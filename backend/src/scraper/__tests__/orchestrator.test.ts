@@ -61,6 +61,8 @@ describe("runScrape", () => {
       runAiSource,
       fetchText: vi.fn(),
       extract: vi.fn(),
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     const res = await runScrape("2026-06-26T00:00:00Z", deps as any);
     expect(runAiSource).toHaveBeenCalled();
@@ -107,6 +109,8 @@ describe("runScrape", () => {
       seed: vi.fn(async () => {}),
       runRestSource,
       fetchJson: vi.fn(),
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     await runScrape("2026-06-29T00:00:00Z", deps as any);
     expect(runRestSource).toHaveBeenCalled();
@@ -144,6 +148,8 @@ describe("runScrape", () => {
       seed: vi.fn(async () => {}),
       runRestSource,
       fetchJson: vi.fn(),
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     await runScrape("2026-06-29T00:00:00Z", deps as any);
     const persisted = sourceRepo.put.mock.calls[0][0];
@@ -175,6 +181,8 @@ describe("runScrape", () => {
       seed: vi.fn(async () => {}),
       runRestSource,
       fetchJson: vi.fn(),
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     await runScrape("2026-06-29T00:00:00Z", deps as any);
     const persisted = sourceRepo.put.mock.calls[0][0];
@@ -208,6 +216,8 @@ describe("runScrape", () => {
                 throw new Error("boom");
               },
             },
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     const results = await runScrape("2026-06-25T00:00:00Z", deps as any);
     const okRes = results.find((r) => r.sourceId === "ok")!;
