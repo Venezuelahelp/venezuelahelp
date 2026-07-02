@@ -1,4 +1,4 @@
-import type { Category, StatusFilter } from "@/types";
+import type { Category, SortMode, StatusFilter } from "@/types";
 import CategoryFilter from "@/components/CategoryFilter";
 import styles from "./FilterBar.module.css";
 
@@ -18,6 +18,9 @@ interface FilterBarProps {
   statusFilter?: StatusFilter;
   onStatusFilter?: (s: StatusFilter) => void;
   showStatusFilter?: boolean;
+  /** Ordenación de resultados (default "relevancia"). */
+  sort?: SortMode;
+  onSort?: (s: SortMode) => void;
 }
 
 export default function FilterBar({
@@ -35,6 +38,8 @@ export default function FilterBar({
   statusFilter = "todos",
   onStatusFilter,
   showStatusFilter = false,
+  sort = "relevancia",
+  onSort,
 }: FilterBarProps) {
   const hasFilters = query.trim().length > 0 || active.size > 0 || matchActive;
 
@@ -102,6 +107,21 @@ export default function FilterBar({
             </>
           )}
         </p>
+        {!matchActive && onSort && (
+          <label className={styles.sortLabel}>
+            Ordenar:
+            <select
+              className={styles.sortSelect}
+              aria-label="Ordenar resultados"
+              value={sort}
+              onChange={(e) => onSort(e.target.value as SortMode)}
+            >
+              <option value="relevancia">Relevancia</option>
+              <option value="recientes">Más recientes</option>
+              <option value="corroborados">Más corroborados</option>
+            </select>
+          </label>
+        )}
         {hasFilters && (
           <button type="button" className={styles.clear} onClick={onClear}>
             Limpiar filtros

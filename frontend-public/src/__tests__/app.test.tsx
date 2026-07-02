@@ -302,4 +302,51 @@ describe("App integration", () => {
     await userEvent.click(desaparecidosChips()[0]);
     expect(screen.queryByRole("group", { name: /por estado/i })).toBeNull();
   });
+
+  it("ordena por 'Más recientes' con el selector", async () => {
+    const snap: Snapshot = {
+      ...SNAPSHOT,
+      categories: {
+        ...SNAPSHOT.categories,
+        reportes: [
+          {
+            ...SNAPSHOT.categories.reportes[0],
+            lastSeenAt: "2026-06-28T00:00:00Z",
+          },
+        ],
+        desaparecidos: [
+          {
+            ...SNAPSHOT.categories.desaparecidos[0],
+            lastSeenAt: "2026-07-01T00:00:00Z",
+          },
+        ],
+      },
+    };
+    mockUseSnapshot.mockReturnValue({
+      data: snap,
+      loading: false,
+      error: null,
+    });
+    const { container } = render(<App />);
+    // Escopar al <ul role="list"> del ItemList: el panel de resumen del Hero
+    // también renderiza un <ul><li> nativo (conteos por categoría) sin
+    // role="list" explícito, así que getAllByRole("listitem") a secas
+    // devolvería también esas filas.
+    const resultsList = () =>
+      within(container.querySelector('ul[role="list"]')!);
+
+    // Orden por defecto (relevancia = orden de flatten): reportes primero.
+    let rows = resultsList().getAllByRole("listitem");
+    expect(rows[0].textContent).toContain("Edificio colapsado en Caracas");
+
+    const select = screen.getAllByRole("combobox", {
+      name: /ordenar resultados/i,
+    })[0];
+    await userEvent.selectOptions(select, "recientes");
+
+    await waitFor(() => {
+      rows = resultsList().getAllByRole("listitem");
+      expect(rows[0].textContent).toContain("Persona desaparecida en Valencia");
+    });
+  });
 });

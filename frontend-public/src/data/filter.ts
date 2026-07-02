@@ -1,4 +1,4 @@
-import type { Category, Item, Snapshot, StatusFilter } from "@/types";
+import type { Category, Item, Snapshot, SortMode, StatusFilter } from "@/types";
 import { CATEGORY_ORDER } from "./categories";
 import { normalize, filterUsable, searchItems } from "@venezuelahelp/core";
 
@@ -42,6 +42,19 @@ export function filterItems(
     categories: groupByCategory(byStatus),
   };
   return searchItems(snap, { q: query }) as Item[];
+}
+
+// Ordenación client-side. "relevancia" preserva el orden actual (flatten /
+// ranking de búsqueda); las otras copian el array (nunca mutan la entrada).
+export function sortItems(items: Item[], sort: SortMode): Item[] {
+  if (sort === "relevancia") return items;
+  const byDate = (a: Item, b: Item) =>
+    (b.lastSeenAt ?? "").localeCompare(a.lastSeenAt ?? "");
+  if (sort === "recientes") return [...items].sort(byDate);
+  return [...items].sort((a, b) => {
+    const d = (b.sourcesCount ?? 0) - (a.sourcesCount ?? 0);
+    return d !== 0 ? d : byDate(a, b);
+  });
 }
 
 /** Feature-detect: el snapshot vivo trae statusClass (los pre-deploy no). */

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useSnapshot } from "@/data/useSnapshot";
 import { useRevealOnScrollUp } from "@/hooks/useRevealOnScrollUp";
 import { sendBeacon } from "@/track";
@@ -8,9 +8,10 @@ import {
   countByCategory,
   sourcesForDisplay,
   hasStatusClass,
+  sortItems,
 } from "@/data/filter";
 import { SourcesContext } from "@/data/sources";
-import type { Category, StatusFilter } from "@/types";
+import type { Category, SortMode, StatusFilter } from "@/types";
 
 import { MapTrifold } from "@phosphor-icons/react";
 import Header from "@/components/Header";
@@ -42,6 +43,7 @@ export default function App() {
   const [matchView, setMatchView] = useState(false);
   // Sub-filtro de status dentro de desaparecidos ("todos" | "buscando" | "localizado").
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [sort, setSort] = useState<SortMode>("relevancia");
   const [view, setView] = useState<View>("lista");
   const [route, setRoute] = useState<string>(
     typeof window !== "undefined" ? window.location.hash : "",
@@ -112,6 +114,21 @@ export default function App() {
   const isApiDocs = route === "#/api-docs";
   const isFuentes = route === "#/fuentes";
 
+  // Derivados memoizados: flatten/filtrado/orden sobre ~66k ítems canónicos
+  // no deben recalcularse en cada render (spec E4/E5).
+  const items = useMemo(() => (data ? flatten(data) : []), [data]);
+  const catCounts = useMemo(() => countByCategory(items), [items]);
+  const snapshotHasStatus = useMemo(() => hasStatusClass(items), [items]);
+  const filtered = useMemo(
+    () => filterItems(items, query, active, statusFilter),
+    [items, query, active, statusFilter],
+  );
+  const sorted = useMemo(() => sortItems(filtered, sort), [filtered, sort]);
+  const located = useMemo(
+    () => sorted.filter((it) => it.ubicacion != null),
+    [sorted],
+  );
+
   return (
     <div className={styles.page}>
       {showSplash && <Splash onDone={() => setShowSplash(false)} />}
@@ -151,19 +168,9 @@ export default function App() {
               !loading &&
               !error &&
               (() => {
-                const items = flatten(data);
-                const catCounts = countByCategory(items);
-                const snapshotHasStatus = hasStatusClass(items);
-                const filtered = filterItems(
-                  items,
-                  query,
-                  active,
-                  statusFilter,
-                );
-                const located = filtered.filter((it) => it.ubicacion != null);
                 // Clave para reiniciar la lista infinita (volver arriba) cuando
                 // cambian los filtros.
-                const filterKey = `${query}|${[...active].sort().join(",")}|${statusFilter}`;
+                const filterKey = `${query}|${[...active].sort().join(",")}|${statusFilter}|${sort}`;
                 const matches = data.matches ?? [];
                 const matchCount = matches.length;
 
@@ -203,6 +210,8 @@ export default function App() {
                           showStatusFilter={
                             active.has("desaparecidos") && snapshotHasStatus
                           }
+                          sort={sort}
+                          onSort={setSort}
                         />
                       </div>
                     </div>
@@ -230,6 +239,8 @@ export default function App() {
                           showStatusFilter={
                             active.has("desaparecidos") && snapshotHasStatus
                           }
+                          sort={sort}
+                          onSort={setSort}
                         />
 
                         {!matchView && filtered.length > 0 && (
@@ -250,7 +261,7 @@ export default function App() {
                       ) : (
                         <div className={styles.results}>
                           {view === "lista" ? (
-                            <InfiniteList key={filterKey} items={filtered} />
+                            <InfiniteList key={filterKey} items={sorted} />
                           ) : (
                             <section
                               className={styles.mapSection}
@@ -263,7 +274,7 @@ export default function App() {
                                   </div>
                                 }
                               >
-                                <MapView items={filtered} scrollWheelZoom />
+                                <MapView items={sorted} scrollWheelZoom />
                               </Suspense>
                             </section>
                           )}
@@ -293,7 +304,7 @@ export default function App() {
 
                     {mapOpen && (
                       <MapOverlay
-                        items={filtered}
+                        items={sorted}
                         active={active}
                         onToggle={onToggle}
                         counts={catCounts}

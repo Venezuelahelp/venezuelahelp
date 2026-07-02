@@ -6,6 +6,7 @@ import {
   countByCategory,
   sourcesForDisplay,
   hasStatusClass,
+  sortItems,
 } from "../filter";
 import type { Category, Item, Snapshot } from "@/types";
 
@@ -548,5 +549,61 @@ describe("filter functions", () => {
       const result = sourcesForDisplay(["a"], items);
       expect(result.map((s) => s.sourceId)).toEqual(["a"]);
     });
+  });
+});
+
+describe("sortItems", () => {
+  const it1: Item = {
+    category: "reportes",
+    sourceId: "s1",
+    externalId: "1",
+    titulo: "Viejo corroborado",
+    texto: "t",
+    lastSeenAt: "2026-06-28T00:00:00Z",
+    sourcesCount: 3,
+  };
+  const it2: Item = {
+    category: "reportes",
+    sourceId: "s1",
+    externalId: "2",
+    titulo: "Reciente solitario",
+    texto: "t",
+    lastSeenAt: "2026-07-01T00:00:00Z",
+    sourcesCount: 1,
+  };
+  const it3: Item = {
+    category: "reportes",
+    sourceId: "s1",
+    externalId: "3",
+    titulo: "Sin fechas ni fuentes",
+    texto: "t",
+  };
+
+  it("'relevancia' devuelve el orden de entrada intacto (misma referencia)", () => {
+    const arr = [it1, it2, it3];
+    expect(sortItems(arr, "relevancia")).toBe(arr);
+  });
+
+  it("'recientes' ordena por lastSeenAt desc; ausentes al final", () => {
+    expect(
+      sortItems([it3, it1, it2], "recientes").map((i) => i.externalId),
+    ).toEqual(["2", "1", "3"]);
+  });
+
+  it("'corroborados' ordena por sourcesCount desc con empate por lastSeenAt", () => {
+    const it4: Item = {
+      ...it1,
+      externalId: "4",
+      lastSeenAt: "2026-07-02T00:00:00Z",
+    };
+    expect(
+      sortItems([it2, it1, it4, it3], "corroborados").map((i) => i.externalId),
+    ).toEqual(["4", "1", "2", "3"]);
+  });
+
+  it("no muta la entrada", () => {
+    const arr = [it1, it2];
+    sortItems(arr, "recientes");
+    expect(arr.map((i) => i.externalId)).toEqual(["1", "2"]);
   });
 });

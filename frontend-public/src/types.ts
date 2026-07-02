@@ -46,6 +46,9 @@ export interface Item {
 /** Sub-filtro de status para la categoría desaparecidos. */
 export type StatusFilter = "todos" | "buscando" | "localizado";
 
+/** Ordenación client-side de los resultados. */
+export type SortMode = "relevancia" | "recientes" | "corroborados";
+
 export interface SourceInfo {
   nombre: string;
   url?: string;
