@@ -49,6 +49,33 @@ describe("ItemList corroboración", () => {
   });
 });
 
+describe("ItemList statusClass", () => {
+  it('muestra "Localizado" (verde) cuando statusClass="localizado"', () => {
+    render(<ItemList items={[{ ...items[1], statusClass: "localizado" }]} />);
+    expect(screen.getByText("Localizado")).toBeInTheDocument();
+  });
+
+  it('muestra "Buscando" (neutro) cuando statusClass="buscando"', () => {
+    render(<ItemList items={[{ ...items[1], statusClass: "buscando" }]} />);
+    expect(screen.getByText("Buscando")).toBeInTheDocument();
+  });
+
+  it("no muestra chip sin statusClass (snapshot viejo o status no mapeado)", () => {
+    render(<ItemList items={[items[1]]} />);
+    expect(screen.queryByText("Localizado")).toBeNull();
+    expect(screen.queryByText("Buscando")).toBeNull();
+  });
+
+  it("el detalle también muestra el chip al abrir la ficha", async () => {
+    render(<ItemList items={[{ ...items[1], statusClass: "buscando" }]} />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Busco a María Rodríguez/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Buscando")).toBeInTheDocument();
+  });
+});
+
 describe("ItemList", () => {
   it("renders a list element", () => {
     render(<ItemList items={items} />);

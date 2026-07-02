@@ -54,6 +54,23 @@ function Corroboration({ item }: { item: Item }) {
   );
 }
 
+// Chip de estado (solo desaparecidos): el backend emite statusClass canónico
+// (classifyLocated); aquí no se interpreta el status crudo de la fuente.
+function StatusChip({ item }: { item: Item }) {
+  if (item.statusClass === "localizado") {
+    return (
+      <span className={`${styles.statusChip} ${styles.statusLocated}`}>
+        <CheckCircle aria-hidden="true" size={13} weight="fill" />
+        Localizado
+      </span>
+    );
+  }
+  if (item.statusClass === "buscando") {
+    return <span className={styles.statusChip}>Buscando</span>;
+  }
+  return null;
+}
+
 function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
   const fecha = formatDateTime(item.firstSeenAt);
   const titleId = "item-detail-title";
@@ -79,6 +96,7 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
               {item.ubicacion.nombre}
             </span>
           )}
+          <StatusChip item={item} />
           <Corroboration item={item} />
         </div>
 
@@ -173,6 +191,7 @@ export default function ItemList({ items }: ItemListProps) {
                         sourceUrl={item.sourceUrl}
                       />
                     </span>
+                    <StatusChip item={item} />
                     <Corroboration item={item} />
                   </div>
                 </div>

@@ -37,6 +37,10 @@ export interface Item {
   isCanonical?: boolean;
   /** Si es duplicado, la clave del ítem canónico. */
   dupOf?: string;
+  /** Clase canónica del status (solo desaparecidos; emitida por el enrichment
+   *  del backend). El frontend NUNCA parsea `status` crudo: usa solo este campo.
+   *  Ausente en snapshots viejos → feature-detect. */
+  statusClass?: "buscando" | "localizado";
 }
 
 export interface SourceInfo {

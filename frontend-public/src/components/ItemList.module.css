@@ -253,3 +253,25 @@
   padding: 1px 8px;
   white-space: nowrap;
 }
+
+/* Chip de estado (desaparecidos): verde = localizado, neutro = buscando.
+   Mismos trazos que .corrobora para consistencia visual. */
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.statusLocated {
+  color: #067647;
+  background: #ecfdf3;
+  border-color: #abefc6;
+}
