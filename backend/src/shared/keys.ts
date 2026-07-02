@@ -35,6 +35,10 @@ export const TGUSER_PK = "TGUSER";
 export const APIREQ_PK = "APIREQ";
 export const APIKEY_PK = "APIKEY";
 
+// Historial de corridas del scraper: PARTICIÓN COMPARTIDA (PK fija) para
+// listar con Query barato — NO Scan. PK="SCRAPERUN", SK=<ts ISO del inicio>.
+export const SCRAPERUN_PK = "SCRAPERUN";
+
 export function itemKey(
   category: Category,
   sourceId: string,
