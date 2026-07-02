@@ -432,4 +432,12 @@ describe("App (integration)", () => {
       expect(screen.getByLabelText(/correo/i)).toBeInTheDocument();
     });
   });
+
+  it("muestra el tab Buscar con su buscador", async () => {
+    const { deps } = buildDeps(vi.fn().mockResolvedValue("token"));
+    render(<App deps={deps} />);
+    const tab = await screen.findByRole("button", { name: "Buscar" });
+    await userEvent.click(tab);
+    expect(await screen.findByRole("searchbox")).toBeInTheDocument();
+  });
 });
