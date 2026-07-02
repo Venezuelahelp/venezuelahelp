@@ -77,4 +77,31 @@ describe("QaLogDrawer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("cierra con la tecla Escape", async () => {
+    const onClose = vi.fn();
+    const loadQa = vi.fn().mockResolvedValue([]);
+    render(<QaLogDrawer user={user} loadQa={loadQa} onClose={onClose} />);
+    await screen.findByText("Este usuario aún no tiene interacciones.");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("cierra al hacer click en el backdrop", async () => {
+    const onClose = vi.fn();
+    const loadQa = vi.fn().mockResolvedValue([]);
+    render(<QaLogDrawer user={user} loadQa={loadQa} onClose={onClose} />);
+    await screen.findByText("Este usuario aún no tiene interacciones.");
+    fireEvent.click(screen.getByTestId("qa-log-backdrop"));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("NO cierra al hacer click dentro del panel", async () => {
+    const onClose = vi.fn();
+    const loadQa = vi.fn().mockResolvedValue([]);
+    render(<QaLogDrawer user={user} loadQa={loadQa} onClose={onClose} />);
+    await screen.findByText("Este usuario aún no tiene interacciones.");
+    fireEvent.click(screen.getByRole("dialog"));
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
