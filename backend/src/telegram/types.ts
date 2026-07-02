@@ -52,6 +52,8 @@ export interface PublicItem {
   dupOf?: string;
   sourcesCount?: number;
   trustReasons?: string[];
+  // Clase canónica del status (solo desaparecidos; snapshots viejos no la traen).
+  statusClass?: "buscando" | "localizado";
 }
 
 export interface Snapshot {

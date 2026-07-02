@@ -1,15 +1,19 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useSnapshot } from "@/data/useSnapshot";
 import { useRevealOnScrollUp } from "@/hooks/useRevealOnScrollUp";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { sendBeacon } from "@/track";
 import {
   flatten,
   filterItems,
   countByCategory,
   sourcesForDisplay,
+  hasStatusClass,
+  sortItems,
 } from "@/data/filter";
 import { SourcesContext } from "@/data/sources";
-import type { Category } from "@/types";
+import { parseItemRoute, findItem } from "@/data/route";
+import type { Category, SortMode, StatusFilter } from "@/types";
 
 import { MapTrifold } from "@phosphor-icons/react";
 import Header from "@/components/Header";
@@ -19,6 +23,7 @@ import MapOverlay from "@/components/MapOverlay";
 import ViewToggle, { type View } from "@/components/ViewToggle";
 import Footer from "@/components/Footer";
 import SourcesPage from "@/components/SourcesPage";
+import { ItemDetail } from "@/components/ItemList";
 import Hero from "@/components/Hero";
 import LocatedMatches from "@/components/LocatedMatches";
 import AboutPage from "@/components/AboutPage";
@@ -36,9 +41,14 @@ const MapView = lazy(() => import("@/components/MapView"));
 export default function App() {
   const { data, loading, error } = useSnapshot();
   const [query, setQuery] = useState("");
+  // La búsqueda filtra ~66k ítems: debounce para no recalcular por tecla.
+  const debouncedQuery = useDebouncedValue(query, 300);
   const [active, setActive] = useState<Set<Category>>(new Set());
   // Vista "Match": muestra el cruce buscado↔localizado en vez de la lista normal.
   const [matchView, setMatchView] = useState(false);
+  // Sub-filtro de status dentro de desaparecidos ("todos" | "buscando" | "localizado").
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [sort, setSort] = useState<SortMode>("relevancia");
   const [view, setView] = useState<View>("lista");
   const [route, setRoute] = useState<string>(
     typeof window !== "undefined" ? window.location.hash : "",
@@ -70,6 +80,7 @@ export default function App() {
   function onToggle(cat: Category) {
     // Elegir una categoría sale de la vista Match (son excluyentes).
     setMatchView(false);
+    if (cat === "desaparecidos" && active.has(cat)) setStatusFilter("todos");
     setActive((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) {
@@ -89,6 +100,7 @@ export default function App() {
       if (next) {
         setActive(new Set());
         setQuery("");
+        setStatusFilter("todos");
       }
       return next;
     });
@@ -98,6 +110,7 @@ export default function App() {
     setQuery("");
     setActive(new Set());
     setMatchView(false);
+    setStatusFilter("todos");
   }
 
   const isAbout = route === "#/quienes-somos";
@@ -105,6 +118,29 @@ export default function App() {
   const isApiAccess = route === "#/api";
   const isApiDocs = route === "#/api-docs";
   const isFuentes = route === "#/fuentes";
+
+  // Deeplink por ítem: #/item/<sourceId>/<externalId>. No coincide con ningún
+  // flag de página → App renderiza la rama home y superpone el modal.
+  const itemRoute = parseItemRoute(route);
+  const deepItem =
+    itemRoute && data
+      ? findItem(data, itemRoute.sourceId, itemRoute.externalId)
+      : null;
+
+  // Derivados memoizados: flatten/filtrado/orden sobre ~66k ítems canónicos
+  // no deben recalcularse en cada render (spec E4/E5).
+  const items = useMemo(() => (data ? flatten(data) : []), [data]);
+  const catCounts = useMemo(() => countByCategory(items), [items]);
+  const snapshotHasStatus = useMemo(() => hasStatusClass(items), [items]);
+  const filtered = useMemo(
+    () => filterItems(items, debouncedQuery, active, statusFilter),
+    [items, debouncedQuery, active, statusFilter],
+  );
+  const sorted = useMemo(() => sortItems(filtered, sort), [filtered, sort]);
+  const located = useMemo(
+    () => sorted.filter((it) => it.ubicacion != null),
+    [sorted],
+  );
 
   return (
     <div className={styles.page}>
@@ -145,18 +181,31 @@ export default function App() {
               !loading &&
               !error &&
               (() => {
-                const items = flatten(data);
-                const catCounts = countByCategory(items);
-                const filtered = filterItems(items, query, active);
-                const located = filtered.filter((it) => it.ubicacion != null);
                 // Clave para reiniciar la lista infinita (volver arriba) cuando
                 // cambian los filtros.
-                const filterKey = `${query}|${[...active].sort().join(",")}`;
+                const filterKey = `${debouncedQuery}|${[...active].sort().join(",")}|${statusFilter}|${sort}`;
                 const matches = data.matches ?? [];
                 const matchCount = matches.length;
 
                 return (
                   <SourcesContext.Provider value={data.sources}>
+                    {itemRoute && !deepItem && (
+                      <div className={styles.deepMiss} role="alert">
+                        <span>
+                          No encontramos esa ficha. Puede que la fuente la haya
+                          retirado o que el enlace esté incompleto.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            window.location.hash = "#/";
+                          }}
+                        >
+                          Entendido
+                        </button>
+                      </div>
+                    )}
+
                     <Hero
                       total={items.length}
                       counts={catCounts}
@@ -186,6 +235,13 @@ export default function App() {
                           matchActive={matchView}
                           onToggleMatch={onToggleMatch}
                           matchCount={matchCount}
+                          statusFilter={statusFilter}
+                          onStatusFilter={setStatusFilter}
+                          showStatusFilter={
+                            active.has("desaparecidos") && snapshotHasStatus
+                          }
+                          sort={sort}
+                          onSort={setSort}
                         />
                       </div>
                     </div>
@@ -208,6 +264,13 @@ export default function App() {
                           matchActive={matchView}
                           onToggleMatch={onToggleMatch}
                           matchCount={matchCount}
+                          statusFilter={statusFilter}
+                          onStatusFilter={setStatusFilter}
+                          showStatusFilter={
+                            active.has("desaparecidos") && snapshotHasStatus
+                          }
+                          sort={sort}
+                          onSort={setSort}
                         />
 
                         {!matchView && filtered.length > 0 && (
@@ -224,11 +287,20 @@ export default function App() {
                       {matchView ? (
                         <LocatedMatches matches={matches} />
                       ) : filtered.length === 0 ? (
-                        <Empty query={query} />
+                        <Empty
+                          query={debouncedQuery}
+                          onClear={
+                            debouncedQuery.trim().length > 0 ||
+                            active.size > 0 ||
+                            statusFilter !== "todos"
+                              ? onClear
+                              : undefined
+                          }
+                        />
                       ) : (
                         <div className={styles.results}>
                           {view === "lista" ? (
-                            <InfiniteList key={filterKey} items={filtered} />
+                            <InfiniteList key={filterKey} items={sorted} />
                           ) : (
                             <section
                               className={styles.mapSection}
@@ -241,7 +313,7 @@ export default function App() {
                                   </div>
                                 }
                               >
-                                <MapView items={filtered} scrollWheelZoom />
+                                <MapView items={sorted} scrollWheelZoom />
                               </Suspense>
                             </section>
                           )}
@@ -271,7 +343,7 @@ export default function App() {
 
                     {mapOpen && (
                       <MapOverlay
-                        items={filtered}
+                        items={sorted}
                         active={active}
                         onToggle={onToggle}
                         counts={catCounts}
@@ -280,6 +352,15 @@ export default function App() {
                     )}
 
                     <Footer />
+
+                    {deepItem && (
+                      <ItemDetail
+                        item={deepItem}
+                        onClose={() => {
+                          window.location.hash = "#/";
+                        }}
+                      />
+                    )}
                   </SourcesContext.Provider>
                 );
               })()}

@@ -96,6 +96,11 @@ export interface ItemEnrichment {
   sourcesCount: number;
   trust: TrustLevel;
   trustReasons: string[];
+  // Solo en `desaparecidos`: clase canónica del status crudo, calculada con
+  // classifyLocated (matchLocated.ts) al construir el snapshot. "otro" no se
+  // emite (campo ausente). El frontend/bot usan SOLO este campo, nunca
+  // parsean `status` crudo.
+  statusClass?: "buscando" | "localizado";
 }
 
 // Moderación del bot: cuántos mensajes fuera de tema / no permitidos seguidos

@@ -1,4 +1,4 @@
-import type { Category, Item, Snapshot } from "@/types";
+import type { Category, Item, Snapshot, SortMode, StatusFilter } from "@/types";
 import { CATEGORY_ORDER } from "./categories";
 import { normalize, filterUsable, searchItems } from "@venezuelahelp/core";
 
@@ -17,22 +17,49 @@ export function flatten(snap: Snapshot): Item[] {
   return result;
 }
 
-// Filtra por categorías activas (multi-select) + query con el MISMO ranking que
-// el bot/API. Sin query, mantiene el orden de `flatten`.
+// Filtra por categorías activas (multi-select) + sub-filtro de status
+// (desaparecidos) + query con el MISMO ranking que el bot/API. Sin query,
+// mantiene el orden de `flatten`. El status compara SOLO statusClass (campo
+// canónico del enrichment); nunca se parsea el status crudo aquí.
 export function filterItems(
   items: Item[],
   query: string,
   active: Set<Category>,
+  status: StatusFilter = "todos",
 ): Item[] {
   const byCat =
     active.size > 0 ? items.filter((i) => active.has(i.category)) : items;
-  if (!query.trim()) return byCat;
-  // searchItems espera un Snapshot; envolvemos los ítems ya filtrados por cat.
+  const byStatus =
+    status === "todos"
+      ? byCat
+      : byCat.filter(
+          (i) => i.category !== "desaparecidos" || i.statusClass === status,
+        );
+  if (!query.trim()) return byStatus;
+  // searchItems espera un Snapshot; envolvemos los ítems ya filtrados.
   const snap = {
     generatedAt: "",
-    categories: groupByCategory(byCat),
+    categories: groupByCategory(byStatus),
   };
   return searchItems(snap, { q: query }) as Item[];
+}
+
+// Ordenación client-side. "relevancia" preserva el orden actual (flatten /
+// ranking de búsqueda); las otras copian el array (nunca mutan la entrada).
+export function sortItems(items: Item[], sort: SortMode): Item[] {
+  if (sort === "relevancia") return items;
+  const byDate = (a: Item, b: Item) =>
+    (b.lastSeenAt ?? "").localeCompare(a.lastSeenAt ?? "");
+  if (sort === "recientes") return [...items].sort(byDate);
+  return [...items].sort((a, b) => {
+    const d = (b.sourcesCount ?? 0) - (a.sourcesCount ?? 0);
+    return d !== 0 ? d : byDate(a, b);
+  });
+}
+
+/** Feature-detect: el snapshot vivo trae statusClass (los pre-deploy no). */
+export function hasStatusClass(items: Item[]): boolean {
+  return items.some((i) => i.statusClass !== undefined);
 }
 
 function groupByCategory(items: Item[]): Record<string, Item[]> {

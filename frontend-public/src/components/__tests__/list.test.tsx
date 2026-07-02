@@ -1,5 +1,6 @@
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import ItemList from "@/components/ItemList";
 import { Empty, ErrorState, Loading } from "@/components/States";
 import type { Item } from "@/types";
@@ -46,6 +47,117 @@ describe("ItemList corroboración", () => {
   it("no muestra la insignia con una sola fuente", () => {
     render(<ItemList items={[{ ...items[0], sourcesCount: 1 }]} />);
     expect(screen.queryByText(/fuentes/i)).toBeNull();
+  });
+});
+
+describe("ItemList statusClass", () => {
+  it('muestra "Localizado" (verde) cuando statusClass="localizado"', () => {
+    render(<ItemList items={[{ ...items[1], statusClass: "localizado" }]} />);
+    expect(screen.getByText("Localizado")).toBeInTheDocument();
+  });
+
+  it('muestra "Buscando" (neutro) cuando statusClass="buscando"', () => {
+    render(<ItemList items={[{ ...items[1], statusClass: "buscando" }]} />);
+    expect(screen.getByText("Buscando")).toBeInTheDocument();
+  });
+
+  it("no muestra chip sin statusClass (snapshot viejo o status no mapeado)", () => {
+    render(<ItemList items={[items[1]]} />);
+    expect(screen.queryByText("Localizado")).toBeNull();
+    expect(screen.queryByText("Buscando")).toBeNull();
+  });
+
+  it("el detalle también muestra el chip al abrir la ficha", async () => {
+    render(<ItemList items={[{ ...items[1], statusClass: "buscando" }]} />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Busco a María Rodríguez/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Buscando")).toBeInTheDocument();
+  });
+});
+
+describe("ItemDetail — Actualizado y status crudo", () => {
+  it("muestra 'Actualizado:' cuando lastSeenAt difiere de firstSeenAt", async () => {
+    render(
+      <ItemList
+        items={[
+          {
+            ...items[0],
+            firstSeenAt: "2026-06-26T12:00:00Z",
+            lastSeenAt: "2026-07-01T09:30:00Z",
+          },
+        ]}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edificio colapsado/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/Registrado:/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Actualizado:/i)).toBeInTheDocument();
+  });
+
+  it("omite 'Actualizado:' cuando coincide con la fecha de registro", async () => {
+    render(
+      <ItemList
+        items={[
+          {
+            ...items[0],
+            firstSeenAt: "2026-06-26T12:00:00Z",
+            lastSeenAt: "2026-06-26T12:00:00Z",
+          },
+        ]}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edificio colapsado/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByText(/Actualizado:/i)).toBeNull();
+  });
+
+  it("muestra el status crudo de la fuente en cualquier categoría", async () => {
+    render(<ItemList items={[{ ...items[0], status: "en_revision" }]} />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edificio colapsado/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(/Estado según la fuente:/i),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText("en_revision")).toBeInTheDocument();
+  });
+
+  it("omite la fila de status crudo cuando la fuente no lo trae", async () => {
+    render(<ItemList items={[items[0]]} />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edificio colapsado/i }),
+    );
+    expect(screen.queryByText(/Estado según la fuente:/i)).toBeNull();
+  });
+});
+
+describe("ItemDetail — Copiar enlace", () => {
+  it("copia el deeplink del ítem y confirma", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    // Después de userEvent.setup(): pisa el stub de clipboard de user-event.
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(<ItemList items={[items[1]]} />);
+    await user.click(
+      screen.getByRole("button", { name: /Busco a María Rodríguez/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /copiar enlace/i }));
+
+    expect(writeText).toHaveBeenCalledWith(
+      expect.stringContaining("#/item/wa/202"),
+    );
+    expect(await screen.findByText("Enlace copiado")).toBeInTheDocument();
   });
 });
 

@@ -1,11 +1,18 @@
 import { useState, lazy, Suspense } from "react";
 import type { Item } from "@/types";
-import { MapPin, Clock, CaretRight, CheckCircle } from "@phosphor-icons/react";
+import {
+  MapPin,
+  Clock,
+  CaretRight,
+  CheckCircle,
+  LinkSimple,
+} from "@phosphor-icons/react";
 import Badge from "@/components/Badge";
 import Source from "@/components/Source";
 import Modal from "@/components/Modal";
 import { CATEGORY_META } from "@/data/categories";
 import { formatDateShort, formatDateTime } from "@/data/datetime";
+import { itemHash } from "@/data/route";
 import styles from "./ItemList.module.css";
 
 // Leaflet es pesado; el mini-mapa del detalle se carga solo al abrir un caso
@@ -54,8 +61,64 @@ function Corroboration({ item }: { item: Item }) {
   );
 }
 
-function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
+// Chip de estado (solo desaparecidos): el backend emite statusClass canónico
+// (classifyLocated); aquí no se interpreta el status crudo de la fuente.
+function StatusChip({ item }: { item: Item }) {
+  if (item.statusClass === "localizado") {
+    return (
+      <span className={`${styles.statusChip} ${styles.statusLocated}`}>
+        <CheckCircle aria-hidden="true" size={13} weight="fill" />
+        Localizado
+      </span>
+    );
+  }
+  if (item.statusClass === "buscando") {
+    return <span className={styles.statusChip}>Buscando</span>;
+  }
+  return null;
+}
+
+// "Copiar enlace": deeplink #/item/<sourceId>/<externalId> del ítem.
+// navigator.clipboard con fallback a execCommand (http / navegadores viejos).
+function CopyLinkButton({ item }: { item: Item }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    const url = `${window.location.origin}${window.location.pathname}${itemHash(item)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <button type="button" className={styles.copyLink} onClick={copy}>
+      <LinkSimple aria-hidden="true" size={14} weight="bold" />
+      {copied ? "Enlace copiado" : "Copiar enlace"}
+    </button>
+  );
+}
+
+export function ItemDetail({
+  item,
+  onClose,
+}: {
+  item: Item;
+  onClose: () => void;
+}) {
   const fecha = formatDateTime(item.firstSeenAt);
+  const actualizado = formatDateTime(item.lastSeenAt);
   const titleId = "item-detail-title";
 
   return (
@@ -73,12 +136,19 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
               Registrado: {fecha}
             </span>
           )}
+          {actualizado && actualizado !== fecha && (
+            <span className={styles.detailMetaItem}>
+              <Clock aria-hidden="true" size={14} />
+              Actualizado: {actualizado}
+            </span>
+          )}
           {item.ubicacion?.nombre && (
             <span className={styles.detailMetaItem}>
               <MapPin aria-hidden="true" size={14} weight="fill" />
               {item.ubicacion.nombre}
             </span>
           )}
+          <StatusChip item={item} />
           <Corroboration item={item} />
         </div>
 
@@ -103,8 +173,15 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
 
         {item.texto && <p className={styles.detailText}>{item.texto}</p>}
 
+        {item.status && (
+          <p className={styles.detailStatus}>
+            Estado según la fuente: <strong>{item.status}</strong>
+          </p>
+        )}
+
         <div className={styles.detailFoot}>
           <Source sourceId={item.sourceId} sourceUrl={item.sourceUrl} />
+          <CopyLinkButton item={item} />
         </div>
       </div>
     </Modal>
@@ -173,6 +250,7 @@ export default function ItemList({ items }: ItemListProps) {
                         sourceUrl={item.sourceUrl}
                       />
                     </span>
+                    <StatusChip item={item} />
                     <Corroboration item={item} />
                   </div>
                 </div>

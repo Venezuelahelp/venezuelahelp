@@ -1,4 +1,5 @@
 import { clusterize } from "@/enrichment/cluster";
+import { classifyLocated } from "@/enrichment/matchLocated";
 import { scoreTrust } from "@/enrichment/trust";
 import type {
   EnrichmentConfig,
@@ -43,6 +44,10 @@ export function enrichItems(
         sources?.get(it.sourceId),
         cfg,
       );
+      // Clase canónica del status (solo desaparecidos). classifyLocated es la
+      // ÚNICA fuente de verdad de la normalización; "otro" → campo ausente.
+      const statusClass =
+        it.category === "desaparecidos" ? classifyLocated(it) : "otro";
       out.push({
         ...it,
         clusterKey,
@@ -51,6 +56,7 @@ export function enrichItems(
         sourcesCount,
         trust,
         trustReasons,
+        ...(statusClass !== "otro" ? { statusClass } : {}),
       });
     }
   }

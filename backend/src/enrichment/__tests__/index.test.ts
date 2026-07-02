@@ -110,3 +110,70 @@ describe("enrichItems", () => {
     expect("trust" in a).toBe(false);
   });
 });
+
+describe("enrichItems — statusClass (desaparecidos)", () => {
+  it('emite statusClass "buscando" para status de búsqueda (no_encontrado)', () => {
+    const out = enrichItems(
+      [
+        item({
+          category: "desaparecidos",
+          status: "no_encontrado",
+          ubicacion: undefined,
+        }),
+      ],
+      CFG,
+    );
+    expect(out[0].statusClass).toBe("buscando");
+  });
+
+  it('emite statusClass "localizado" para status de hallazgo (encontrado)', () => {
+    const out = enrichItems(
+      [
+        item({
+          category: "desaparecidos",
+          status: "encontrado",
+          ubicacion: undefined,
+        }),
+      ],
+      CFG,
+    );
+    expect(out[0].statusClass).toBe("localizado");
+  });
+
+  it('respeta el default por fuente: venezuela-te-busca sin status → "buscando"', () => {
+    const out = enrichItems(
+      [
+        item({
+          category: "desaparecidos",
+          sourceId: "venezuela-te-busca",
+          status: undefined,
+          ubicacion: undefined,
+        }),
+      ],
+      CFG,
+    );
+    expect(out[0].statusClass).toBe("buscando");
+  });
+
+  it('NO emite el campo cuando classifyLocated da "otro" (fallecido)', () => {
+    const out = enrichItems(
+      [
+        item({
+          category: "desaparecidos",
+          status: "fallecido",
+          ubicacion: undefined,
+        }),
+      ],
+      CFG,
+    );
+    expect("statusClass" in out[0]).toBe(false);
+  });
+
+  it("NO emite el campo fuera de desaparecidos aunque el status sea clasificable", () => {
+    const out = enrichItems(
+      [item({ category: "reportes", status: "encontrado" })],
+      CFG,
+    );
+    expect("statusClass" in out[0]).toBe(false);
+  });
+});
