@@ -94,13 +94,13 @@ export default function App() {
   }
 
   // El chip "Match" no filtra por categoría: muestra el cruce de localizaciones.
-  // Al activarlo limpiamos categorías y búsqueda (no aplican a los matches).
+  // Al activarlo limpiamos categorías/status, pero NO la búsqueda: dentro del
+  // modo match el query filtra los matches por nombre (#53).
   function onToggleMatch() {
     setMatchView((prev) => {
       const next = !prev;
       if (next) {
         setActive(new Set());
-        setQuery("");
         setStatusFilter("todos");
       }
       return next;
@@ -288,7 +288,10 @@ export default function App() {
                       </div>
 
                       {matchView ? (
-                        <LocatedMatches matches={matches} />
+                        <LocatedMatches
+                          matches={matches}
+                          query={debouncedQuery}
+                        />
                       ) : filtered.length === 0 ? (
                         <Empty
                           query={debouncedQuery}

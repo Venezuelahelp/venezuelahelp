@@ -418,6 +418,56 @@ describe("App integration", () => {
     });
   });
 
+  describe("modo match + búsqueda por nombre (#53)", () => {
+    const SNAPSHOT_MATCHES: Snapshot = {
+      ...SNAPSHOT,
+      matches: [
+        {
+          nombre: "Ana Castillo Ramos",
+          signal: "nombre-fuerte",
+          locatedSourcesCount: 1,
+          missing: { sourceId: "A", texto: "buscada en Chacao" },
+          located: { sourceId: "B", texto: "vista a salvo", sources: ["B"] },
+        },
+        {
+          nombre: "Juan Perez Lopez",
+          signal: "nombre-fuerte",
+          locatedSourcesCount: 2,
+          missing: { sourceId: "A", texto: "buscado en Valencia" },
+          located: { sourceId: "C", texto: "ingresado", sources: ["C"] },
+        },
+      ],
+    };
+
+    function matchChip() {
+      return screen
+        .getAllByRole("button", { name: /Match/i })
+        .filter((b) => b.getAttribute("aria-pressed") !== null)[0];
+    }
+
+    it("al entrar en match y escribir un nombre filtra los matches", async () => {
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT_MATCHES,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+
+      await userEvent.click(matchChip());
+      // Ambos matches visibles con query vacío.
+      expect(screen.getByText("Ana Castillo Ramos")).toBeInTheDocument();
+      expect(screen.getByText("Juan Perez Lopez")).toBeInTheDocument();
+
+      const input = screen.getByRole("searchbox", { name: /buscar/i });
+      await userEvent.type(input, "juan");
+
+      await waitFor(() => {
+        expect(screen.queryByText("Ana Castillo Ramos")).toBeNull();
+      });
+      expect(screen.getByText("Juan Perez Lopez")).toBeInTheDocument();
+    });
+  });
+
   it("empty state con filtros ofrece 'Limpiar filtros' y restaura la lista", async () => {
     mockUseSnapshot.mockReturnValue({
       data: SNAPSHOT,
