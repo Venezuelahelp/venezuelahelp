@@ -740,4 +740,38 @@ describe("telegram handler", () => {
       }
     });
   });
+
+  describe("validación de coordenadas (handleLocation)", () => {
+    it.each([
+      [91, -66.9],
+      [-90.01, -66.9],
+      [10.5, 181],
+      [10.5, -180.5],
+      [0, 0],
+    ])(
+      "ubicación inválida (%s, %s) → pide reintentar y NO persiste",
+      async (lat, lng) => {
+        const d = deps();
+        await handler(locationEvent(lat, lng), d as any);
+        expect(d.menuState.setLocation).not.toHaveBeenCalled();
+        expect(d.loadSnapshot).not.toHaveBeenCalled();
+        expect(d.sendMessage).toHaveBeenCalledWith(
+          "TOK",
+          9,
+          expect.stringMatching(/ubicación no parece válida/i),
+        );
+      },
+    );
+
+    it("coordenadas límite válidas (-90, 180) SÍ se persisten", async () => {
+      const d = deps();
+      await handler(locationEvent(-90, 180), d as any);
+      expect(d.menuState.setLocation).toHaveBeenCalledWith(
+        9,
+        -90,
+        180,
+        expect.any(String),
+      );
+    });
+  });
 });

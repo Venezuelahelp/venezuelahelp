@@ -68,6 +68,21 @@ const HELP_GUIDE = [
 const BLOCKED_MSG =
   "🚫 Estás bloqueado y no puedo responder tus consultas. Si crees que es un error, contacta a los creadores de VenezuelaHelp para que te desbloqueen.";
 
+const INVALID_LOCATION =
+  "📍 Esa ubicación no parece válida. Vuelve a compartirla con el botón «📍 Compartir ubicación», por favor.";
+
+// Rango WGS84 + descarte de (0,0) ("Null Island": GPS sin señal). SIN geocerca
+// de Venezuela: la diáspora consulta desde el exterior.
+function validCoords(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180 &&
+    !(lat === 0 && lng === 0)
+  );
+}
+
 // Saludos PUROS (el mensaje completo es el saludo): pre-check determinista para
 // no depender del LLM en lo más común. Un mensaje mixto ("hola, necesito agua")
 // NO matchea (ancla a fin) y va al router, que lo clasifica como pregunta.
@@ -695,6 +710,10 @@ async function handleLocation(
     lat: msg.location!.latitude,
     lng: msg.location!.longitude,
   };
+  if (!validCoords(loc.lat, loc.lng)) {
+    await d.sendMessage(token, chatId, INVALID_LOCATION);
+    return ok();
+  }
   const state = await safeGetState(d, chatId);
   try {
     await d.menuState.setLocation(
