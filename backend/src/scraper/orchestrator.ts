@@ -1,5 +1,6 @@
 import { SourceRepo } from "@/shared/repos/sourceRepo";
 import { ItemRepo } from "@/shared/repos/itemRepo";
+import { ScrapeRunRepo } from "@/shared/repos/scrapeRunRepo";
 import { getConnector as defaultGetConnector } from "@/connectors/registry";
 import { ensureSeedSources } from "@/scraper/seed";
 import {
@@ -10,6 +11,7 @@ import { runRestSource as defaultRunRestSource } from "@/connectors/restEngine";
 import { fetchJson as defaultFetchJson } from "@/connectors/http";
 import { safeFetchText } from "@/connectors/ssrf";
 import { askBedrockTool as defaultExtract } from "@/telegram/bedrock";
+import { logger } from "@/shared/logger";
 import type { Source } from "@/shared/types";
 
 export interface SourceResult {
@@ -31,6 +33,8 @@ interface Deps {
   fetchJson: typeof defaultFetchJson;
   fetchText: (url: string) => Promise<string>;
   extract: typeof defaultExtract;
+  scrapeRunRepo: Pick<ScrapeRunRepo, "put">;
+  nowMs: () => number;
 }
 
 // Bounded concurrency for upserts: each upsert is a Get + conditional Put
@@ -124,6 +128,30 @@ export async function runScrape(
     }
     await sourceRepo.put(next);
     results.push(result);
+  }
+  // Historial de scrapes (best-effort): resuelve el "fire-and-forget" — el
+  // admin ve cuándo terminó de verdad cada corrida. Un fallo al guardar el
+  // historial NO puede romper el scrape que acaba de completarse.
+  const scrapeRunRepo = deps?.scrapeRunRepo ?? new ScrapeRunRepo();
+  const nowMs = deps?.nowMs ?? Date.now;
+  try {
+    const failed = results.filter((r) => r.error);
+    await scrapeRunRepo.put({
+      ts: now,
+      durationMs: Math.max(0, nowMs() - Date.parse(now)),
+      sourcesTotal: results.length,
+      sourcesOk: results.length - failed.length,
+      sourcesError: failed.length,
+      created: results.reduce((n, r) => n + r.created, 0),
+      updated: results.reduce((n, r) => n + r.updated, 0),
+      unchanged: results.reduce((n, r) => n + r.unchanged, 0),
+      errors: failed.slice(0, 10).map((r) => ({
+        sourceId: r.sourceId,
+        error: (r.error ?? "").slice(0, 300),
+      })),
+    });
+  } catch (err) {
+    logger.warn("no se pudo guardar el historial del scrape", { err });
   }
   return results;
 }
