@@ -100,6 +100,9 @@ function buildMockApi() {
     getApiKeys: vi.fn().mockResolvedValue([]),
     revokeApiKey: vi.fn().mockResolvedValue(undefined),
     setTgUserBlocked: vi.fn().mockResolvedValue({ chatId: 1, blocked: true }),
+    getQaLogs: vi.fn().mockResolvedValue([]),
+    searchItems: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    getScrapeRuns: vi.fn().mockResolvedValue([]),
   };
 }
 
@@ -428,5 +431,13 @@ describe("App (integration)", () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/correo/i)).toBeInTheDocument();
     });
+  });
+
+  it("muestra el tab Buscar con su buscador", async () => {
+    const { deps } = buildDeps(vi.fn().mockResolvedValue("token"));
+    render(<App deps={deps} />);
+    const tab = await screen.findByRole("button", { name: "Buscar" });
+    await userEvent.click(tab);
+    expect(await screen.findByRole("searchbox")).toBeInTheDocument();
   });
 });

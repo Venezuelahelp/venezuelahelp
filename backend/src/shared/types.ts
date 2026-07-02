@@ -210,3 +210,24 @@ export interface QaLogEntry {
   flagged: boolean;
   intent?: QaIntent;
 }
+
+// Resumen de una corrida del scraper (historial de observabilidad del admin).
+// Vive en la partición compartida SCRAPERUN con TTL de 30 días.
+export interface ScrapeRunError {
+  sourceId: string;
+  error: string;
+}
+
+export interface ScrapeRun {
+  // ISO del INICIO de la corrida (el mismo `now` que recibe runScrape).
+  ts: string;
+  durationMs: number;
+  sourcesTotal: number;
+  sourcesOk: number;
+  sourcesError: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  // Acotado: máx. 10 fuentes fallidas, mensajes recortados a 300 chars.
+  errors: ScrapeRunError[];
+}

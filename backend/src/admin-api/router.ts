@@ -6,6 +6,8 @@ import type { VisitRepo } from "@/shared/repos/visitRepo";
 import type { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import type { ApiRequestRepo } from "@/shared/repos/apiRequestRepo";
 import type { ApiKeyRepo } from "@/shared/repos/apiKeyRepo";
+import type { QaLogRepo } from "@/shared/repos/qaLogRepo";
+import type { ScrapeRunRepo } from "@/shared/repos/scrapeRunRepo";
 import { assertPublicHttpUrl } from "@/connectors/ssrf";
 import { runRestSource } from "@/connectors/restEngine";
 import { fetchJson } from "@/connectors/http";
@@ -15,6 +17,7 @@ import {
   type NormalizedItem,
 } from "@/shared/types";
 import type { RestConfig } from "@/connectors/restConfig";
+import type { QueryResult } from "@/data-api/query";
 
 export interface RouteDeps {
   configRepo: Pick<ConfigRepo, "get" | "put">;
@@ -25,6 +28,10 @@ export interface RouteDeps {
   tgUserRepo: Pick<TgUserRepo, "list" | "setBlocked">;
   apiRequestRepo: Pick<ApiRequestRepo, "list" | "get" | "setStatus">;
   apiKeyRepo: Pick<ApiKeyRepo, "list" | "create" | "revoke">;
+  // Visor de Q&A del bot: Query por PK=QA#<chatId>, sin Scan.
+  qaLogRepo: Pick<QaLogRepo, "listByChat">;
+  // Historial de scrapes: Query sobre la partición SCRAPERUN, nunca Scan.
+  scrapeRunRepo: Pick<ScrapeRunRepo, "list">;
   // Actor (email Cognito) para el audit de aprobación/revocación, y reloj
   // inyectable para timestamps determinísticos en tests.
   actor: string;
@@ -34,6 +41,16 @@ export interface RouteDeps {
   probeRest?: (
     rest: RestConfig,
   ) => Promise<{ items: NormalizedItem[]; endpointStats: EndpointStat[] }>;
+  // Edad del snapshot público (LastModified en S3). Opcional y con contrato
+  // "nunca lanza": si falta o devuelve undefined, /stats sale sin la clave.
+  snapshotUpdatedAt?: () => Promise<string | undefined>;
+  // Búsqueda sobre el snapshot público (mismo engine que el data-api /v1).
+  // Inyectado para que el router no conozca el fetch HTTP del snapshot.
+  searchSnapshot?: (params: {
+    q?: string;
+    category?: string;
+    limit?: number;
+  }) => Promise<QueryResult>;
 }
 
 export interface RouteResult {
@@ -137,6 +154,12 @@ const patchSourceConfigSchema = z
     message: "se requiere 'enabled' o 'rest'",
   });
 
+const itemsSearchQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  category: z.enum(CATEGORIES).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
 function slugify(s: string): string {
   return (
     s
@@ -149,11 +172,20 @@ function slugify(s: string): string {
   );
 }
 
+// Parsea ?limit= con default y techo (los endpoints de lectura del admin
+// nunca devuelven páginas sin acotar).
+function parseLimit(raw: string | undefined, def: number, max: number): number {
+  const n = Number.parseInt(raw ?? "", 10);
+  if (!Number.isFinite(n) || n < 1) return def;
+  return Math.min(n, max);
+}
+
 export async function route(
   method: string,
   path: string,
   body: unknown,
   deps: RouteDeps,
+  query: Record<string, string | undefined> = {},
 ): Promise<RouteResult> {
   const segments = path.split("/");
   // segments[0] is "" (before leading slash)
@@ -292,6 +324,46 @@ export async function route(
     return { status: 200, body: { chatId, blocked: block } };
   }
 
+  // GET /qa-logs/{chatId} — últimas interacciones Q&A de un chat del bot
+  const qaLogsM = path.match(/^\/qa-logs\/([^/]+)$/);
+  if (method === "GET" && qaLogsM) {
+    const chatId = decodeURIComponent(qaLogsM[1]);
+    const limit = parseLimit(query.limit, 50, 200);
+    const logs = await deps.qaLogRepo.listByChat(chatId, limit);
+    return { status: 200, body: logs };
+  }
+
+  // GET /items/search — búsqueda de ítems sobre el snapshot (no toca DynamoDB)
+  if (method === "GET" && path === "/items/search") {
+    const parsed = itemsSearchQuerySchema.safeParse({
+      q: query.q,
+      category: query.category,
+      limit: query.limit,
+    });
+    if (!parsed.success) {
+      return {
+        status: 400,
+        body: { error: "invalid query", issues: parsed.error.issues },
+      };
+    }
+    const result = await deps.searchSnapshot?.({
+      q: parsed.data.q,
+      category: parsed.data.category,
+      limit: parsed.data.limit ?? 50,
+    });
+    if (!result) {
+      return { status: 500, body: { error: "searchSnapshot not configured" } };
+    }
+    return { status: 200, body: result };
+  }
+
+  // GET /scrape-runs — historial de corridas del scraper
+  if (method === "GET" && path === "/scrape-runs") {
+    const limit = parseLimit(query.limit, 10, 50);
+    const runs = await deps.scrapeRunRepo.list(limit);
+    return { status: 200, body: runs };
+  }
+
   // GET /stats
   if (method === "GET" && path === "/stats") {
     const countEntries = await Promise.all(
@@ -316,7 +388,17 @@ export async function route(
       lastFetched: s.lastFetched,
       endpointStats: s.endpointStats,
     }));
-    return { status: 200, body: { counts, sources } };
+    const snapshotUpdatedAt = deps.snapshotUpdatedAt
+      ? await deps.snapshotUpdatedAt()
+      : undefined;
+    return {
+      status: 200,
+      body: {
+        counts,
+        sources,
+        ...(snapshotUpdatedAt ? { snapshotUpdatedAt } : {}),
+      },
+    };
   }
 
   // POST /sources — tipo "ai" (default, pega una URL) o "rest" (API JSON

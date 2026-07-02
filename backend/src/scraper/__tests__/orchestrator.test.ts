@@ -61,6 +61,8 @@ describe("runScrape", () => {
       runAiSource,
       fetchText: vi.fn(),
       extract: vi.fn(),
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     const res = await runScrape("2026-06-26T00:00:00Z", deps as any);
     expect(runAiSource).toHaveBeenCalled();
@@ -107,6 +109,8 @@ describe("runScrape", () => {
       seed: vi.fn(async () => {}),
       runRestSource,
       fetchJson: vi.fn(),
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     await runScrape("2026-06-29T00:00:00Z", deps as any);
     expect(runRestSource).toHaveBeenCalled();
@@ -144,6 +148,8 @@ describe("runScrape", () => {
       seed: vi.fn(async () => {}),
       runRestSource,
       fetchJson: vi.fn(),
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     await runScrape("2026-06-29T00:00:00Z", deps as any);
     const persisted = sourceRepo.put.mock.calls[0][0];
@@ -175,6 +181,8 @@ describe("runScrape", () => {
       seed: vi.fn(async () => {}),
       runRestSource,
       fetchJson: vi.fn(),
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     await runScrape("2026-06-29T00:00:00Z", deps as any);
     const persisted = sourceRepo.put.mock.calls[0][0];
@@ -208,6 +216,8 @@ describe("runScrape", () => {
                 throw new Error("boom");
               },
             },
+      scrapeRunRepo: { put: vi.fn(async () => {}) },
+      nowMs: () => 0,
     };
     const results = await runScrape("2026-06-25T00:00:00Z", deps as any);
     const okRes = results.find((r) => r.sourceId === "ok")!;
@@ -217,5 +227,63 @@ describe("runScrape", () => {
     expect(itemRepo.upsert).toHaveBeenCalledTimes(1);
     // estado persistido para ambas fuentes
     expect(deps.sourceRepo.put).toHaveBeenCalledTimes(2);
+  });
+
+  describe("historial de scrapes (ScrapeRun)", () => {
+    const okConnector = {
+      fetchItems: async () => [
+        {
+          category: "reportes" as const,
+          sourceId: "ok",
+          externalId: "1",
+          titulo: "t",
+          texto: "x",
+          raw: {},
+        },
+      ],
+    };
+
+    it("persiste un resumen de la corrida al terminar", async () => {
+      const put = vi.fn(async () => {});
+      const deps = {
+        sourceRepo: srcRepo([ok, bad]),
+        itemRepo: { upsert: vi.fn(async () => "created" as const) },
+        seed: vi.fn(async () => {}),
+        getConnector: (id: string) => (id === "ok" ? okConnector : undefined),
+        scrapeRunRepo: { put },
+        nowMs: () => Date.parse("2026-07-02T00:05:00Z"),
+      };
+      await runScrape("2026-07-02T00:00:00Z", deps as any);
+      expect(put).toHaveBeenCalledOnce();
+      expect((put as any).mock.calls[0][0]).toMatchObject({
+        ts: "2026-07-02T00:00:00Z",
+        durationMs: 300000,
+        sourcesTotal: 2,
+        sourcesOk: 1,
+        sourcesError: 1,
+        created: 1,
+        updated: 0,
+        unchanged: 0,
+        errors: [{ sourceId: "bad", error: "no connector for bad" }],
+      });
+    });
+
+    it("un fallo al guardar el historial NO rompe el scrape (best-effort)", async () => {
+      const deps = {
+        sourceRepo: srcRepo([ok]),
+        itemRepo: { upsert: vi.fn(async () => "created" as const) },
+        seed: vi.fn(async () => {}),
+        getConnector: () => okConnector,
+        scrapeRunRepo: {
+          put: vi.fn(async () => {
+            throw new Error("ddb caído");
+          }),
+        },
+        nowMs: () => Date.now(),
+      };
+      const results = await runScrape("2026-07-02T00:00:00Z", deps as any);
+      expect(results).toHaveLength(1);
+      expect(results[0].error).toBeUndefined();
+    });
   });
 });

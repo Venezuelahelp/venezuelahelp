@@ -8,6 +8,11 @@ import { VisitRepo } from "@/shared/repos/visitRepo";
 import { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import { ApiRequestRepo } from "@/shared/repos/apiRequestRepo";
 import { ApiKeyRepo } from "@/shared/repos/apiKeyRepo";
+import { QaLogRepo } from "@/shared/repos/qaLogRepo";
+import { ScrapeRunRepo } from "@/shared/repos/scrapeRunRepo";
+import { getSnapshotUpdatedAt } from "@/admin-api/snapshotHead";
+import { loadSnapshot } from "@/data-api/snapshot";
+import { queryItems } from "@/data-api/query";
 import { logger } from "@/shared/logger";
 
 const CORS = {
@@ -23,6 +28,7 @@ export interface HandlerEvent {
   };
   rawPath: string;
   pathParameters?: Record<string, string>;
+  queryStringParameters?: Record<string, string | undefined>;
   body?: string;
 }
 
@@ -69,6 +75,16 @@ export async function handler(
     tgUserRepo: new TgUserRepo(),
     apiRequestRepo: new ApiRequestRepo(),
     apiKeyRepo: new ApiKeyRepo(),
+    qaLogRepo: new QaLogRepo(),
+    scrapeRunRepo: new ScrapeRunRepo(),
+    // Nunca lanza: HeadObject con try/catch dentro del módulo.
+    snapshotUpdatedAt: () => getSnapshotUpdatedAt(),
+    // Mismo engine y misma URL pública que el data-api /v1 (SNAPSHOT_URL).
+    searchSnapshot: async (params: {
+      q?: string;
+      category?: string;
+      limit?: number;
+    }) => queryItems(await loadSnapshot(), params),
     actor: actorFrom(event),
     now: () => new Date().toISOString(),
     invokeScraper: () =>
@@ -83,7 +99,13 @@ export async function handler(
   };
 
   try {
-    const result = await routeFn(method, event.rawPath, parsedBody, routeDeps);
+    const result = await routeFn(
+      method,
+      event.rawPath,
+      parsedBody,
+      routeDeps,
+      event.queryStringParameters ?? {},
+    );
     // Audit trail: registra cada mutación admin (quién, qué, resultado) en
     // CloudWatch. Las lecturas (GET) no se auditan.
     if (MUTATING.has(method)) {

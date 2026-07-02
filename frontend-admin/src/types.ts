@@ -55,6 +55,7 @@ export interface Source {
 
 export interface Stats {
   counts: Record<string, number>;
+  snapshotUpdatedAt?: string;
   sources: Array<{
     id: string;
     nombre: string;
@@ -146,4 +147,59 @@ export interface ApproveResult {
   request: ApiAccessRequest;
   apiKey: ApiKey;
   rawKey: string;
+}
+
+// ── Observabilidad (Bloques A y B) ──────────────────────────────────────────
+
+// Interacción Q&A del bot (lo que devuelve GET /qa-logs/{chatId}).
+// `intent` llega cuando el Bloque C (telemetría del bot) esté desplegado.
+export interface QaLogEntry {
+  ts: string;
+  pregunta: string;
+  respuesta: string;
+  intent?: string;
+  itemsUsados: string[];
+  tokensIn: number;
+  tokensOut: number;
+  modelo: string;
+  costoEstimado: number;
+  flagged: boolean;
+}
+
+// Ítem del snapshot tal como lo devuelve GET /items/search.
+export interface SearchItem {
+  category: string;
+  sourceId: string;
+  externalId: string;
+  titulo: string;
+  texto: string;
+  ubicacion?: { lat: number; lng: number; nombre?: string };
+  status?: string;
+  sourceUrl?: string;
+  trust?: string;
+  isCanonical?: boolean;
+  sourcesCount?: number;
+}
+
+export interface SearchResult {
+  items: SearchItem[];
+  total: number;
+  nextCursor?: string;
+}
+
+export interface ScrapeRunError {
+  sourceId: string;
+  error: string;
+}
+
+export interface ScrapeRun {
+  ts: string;
+  durationMs: number;
+  sourcesTotal: number;
+  sourcesOk: number;
+  sourcesError: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  errors: ScrapeRunError[];
 }

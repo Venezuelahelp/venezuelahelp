@@ -6,6 +6,7 @@ import { Config } from "@/components/Config";
 import { Analytics } from "@/components/Analytics";
 import { Users } from "@/components/Users";
 import { ApiRequests } from "@/components/ApiRequests";
+import { Search } from "@/components/Search";
 import {
   loadRuntimeConfig as defaultLoadConfig,
   type RuntimeConfig,
@@ -24,11 +25,13 @@ import type {
   TgUser,
   ApiAccessRequest,
   ApiKey,
+  ScrapeRun,
 } from "@/types";
 import styles from "./App.module.css";
 
 type ApiClient = ReturnType<typeof defaultCreateApi>;
-type Tab = "dashboard" | "analytics" | "users" | "sources" | "config" | "api";
+type Tab =
+  "dashboard" | "analytics" | "users" | "search" | "sources" | "config" | "api";
 
 export interface AppDeps {
   loadRuntimeConfig?: () => Promise<RuntimeConfig>;
@@ -69,6 +72,7 @@ export default function App({ deps = {} }: AppProps) {
     null,
   );
   const [apiKeys, setApiKeys] = useState<ApiKey[] | null>(null);
+  const [scrapeRuns, setScrapeRuns] = useState<ScrapeRun[] | null>(null);
   const [scraping, setScraping] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -89,7 +93,7 @@ export default function App({ deps = {} }: AppProps) {
 
   async function loadData(api: ApiClient, isCancelled: () => boolean) {
     try {
-      const [s, src, cfg, an, users, reqs, keys] = await Promise.all([
+      const [s, src, cfg, an, users, reqs, keys, runs] = await Promise.all([
         api.getStats(),
         api.getSources(),
         api.getConfig(),
@@ -97,6 +101,8 @@ export default function App({ deps = {} }: AppProps) {
         api.getTgUsers(),
         api.getApiRequests(),
         api.getApiKeys(),
+        // Best-effort: si la ruta nueva falla, el admin carga igual.
+        api.getScrapeRuns().catch(() => [] as ScrapeRun[]),
       ]);
       if (isCancelled()) return;
       setStats(s);
@@ -106,6 +112,7 @@ export default function App({ deps = {} }: AppProps) {
       setTgUsers(users);
       setApiRequests(reqs);
       setApiKeys(keys);
+      setScrapeRuns(runs);
     } catch {
       if (!isCancelled()) setError("Error al cargar los datos.");
     }
@@ -155,6 +162,7 @@ export default function App({ deps = {} }: AppProps) {
     setTgUsers(null);
     setApiRequests(null);
     setApiKeys(null);
+    setScrapeRuns(null);
   }
 
   async function refreshApiProgram() {
@@ -245,13 +253,15 @@ export default function App({ deps = {} }: AppProps) {
     setRefreshing(true);
     setError(null);
     try {
-      const [s, src] = await Promise.all([
+      const [s, src, runs] = await Promise.all([
         apiRef.current.getStats(),
         apiRef.current.getSources(),
+        apiRef.current.getScrapeRuns().catch(() => [] as ScrapeRun[]),
       ]);
       if (mountedRef.current) {
         setStats(s);
         setSources(src);
+        setScrapeRuns(runs);
       }
     } catch {
       if (mountedRef.current) setError("No se pudieron actualizar los datos.");
@@ -409,6 +419,7 @@ export default function App({ deps = {} }: AppProps) {
     dashboard: "Dashboard",
     analytics: "Analítica",
     users: "Usuarios",
+    search: "Buscar",
     sources: "Fuentes",
     config: "Config",
     api: "API",
@@ -460,6 +471,8 @@ export default function App({ deps = {} }: AppProps) {
               stats={stats}
               onRefresh={() => void handleRefreshStats()}
               refreshing={refreshing}
+              scrapeRateMin={config?.scrapeRateMin}
+              scrapeRuns={scrapeRuns}
             />
           ) : (
             <div className={styles.loading} role="status">
@@ -488,12 +501,28 @@ export default function App({ deps = {} }: AppProps) {
               refreshing={refreshing}
               onToggleBlock={(u) => void handleToggleBlock(u)}
               busyChatId={busyBlockChatId}
+              onLoadQa={(chatId) =>
+                apiRef.current
+                  ? apiRef.current.getQaLogs(chatId)
+                  : Promise.reject(new Error("API not initialized"))
+              }
             />
           ) : (
             <div className={styles.loading} role="status">
               Cargando usuarios…
             </div>
           ))}
+
+        {activeTab === "search" && (
+          <Search
+            onSearch={(p) =>
+              apiRef.current
+                ? apiRef.current.searchItems(p)
+                : Promise.reject(new Error("API not initialized"))
+            }
+            sources={sources}
+          />
+        )}
 
         {activeTab === "sources" &&
           (sources ? (
