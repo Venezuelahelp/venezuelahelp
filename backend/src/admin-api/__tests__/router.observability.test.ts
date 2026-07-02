@@ -142,4 +142,34 @@ describe("admin-api router — observabilidad", () => {
       expect(res.status).toBe(400);
     });
   });
+
+  describe("GET /scrape-runs", () => {
+    const run = {
+      ts: "2026-07-02T00:28:00.000Z",
+      durationMs: 660000,
+      sourcesTotal: 11,
+      sourcesOk: 10,
+      sourcesError: 1,
+      created: 12,
+      updated: 340,
+      unchanged: 45000,
+      errors: [{ sourceId: "bad", error: "HTTP 500" }],
+    };
+
+    it("lista las últimas corridas (default 10)", async () => {
+      const list = vi.fn().mockResolvedValue([run]);
+      const deps = makeDeps({ scrapeRunRepo: { list } });
+      const res = await route("GET", "/scrape-runs", null, deps);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([run]);
+      expect(list).toHaveBeenCalledWith(10);
+    });
+
+    it("respeta ?limit= acotado a 50", async () => {
+      const list = vi.fn().mockResolvedValue([]);
+      const deps = makeDeps({ scrapeRunRepo: { list } });
+      await route("GET", "/scrape-runs", null, deps, { limit: "100" });
+      expect(list).toHaveBeenCalledWith(50);
+    });
+  });
 });

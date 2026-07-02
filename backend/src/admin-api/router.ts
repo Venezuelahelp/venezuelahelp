@@ -7,6 +7,7 @@ import type { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import type { ApiRequestRepo } from "@/shared/repos/apiRequestRepo";
 import type { ApiKeyRepo } from "@/shared/repos/apiKeyRepo";
 import type { QaLogRepo } from "@/shared/repos/qaLogRepo";
+import type { ScrapeRunRepo } from "@/shared/repos/scrapeRunRepo";
 import { assertPublicHttpUrl } from "@/connectors/ssrf";
 import { runRestSource } from "@/connectors/restEngine";
 import { fetchJson } from "@/connectors/http";
@@ -29,6 +30,8 @@ export interface RouteDeps {
   apiKeyRepo: Pick<ApiKeyRepo, "list" | "create" | "revoke">;
   // Visor de Q&A del bot: Query por PK=QA#<chatId>, sin Scan.
   qaLogRepo: Pick<QaLogRepo, "listByChat">;
+  // Historial de scrapes: Query sobre la partición SCRAPERUN, nunca Scan.
+  scrapeRunRepo: Pick<ScrapeRunRepo, "list">;
   // Actor (email Cognito) para el audit de aprobación/revocación, y reloj
   // inyectable para timestamps determinísticos en tests.
   actor: string;
@@ -352,6 +355,13 @@ export async function route(
       return { status: 500, body: { error: "searchSnapshot not configured" } };
     }
     return { status: 200, body: result };
+  }
+
+  // GET /scrape-runs — historial de corridas del scraper
+  if (method === "GET" && path === "/scrape-runs") {
+    const limit = parseLimit(query.limit, 10, 50);
+    const runs = await deps.scrapeRunRepo.list(limit);
+    return { status: 200, body: runs };
   }
 
   // GET /stats
