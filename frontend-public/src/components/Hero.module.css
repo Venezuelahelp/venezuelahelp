@@ -75,17 +75,6 @@
   }
 }
 
-.title {
-  margin: 0;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  color: var(--ink-strong);
-  font-size: clamp(2rem, 5.2vw, 3.3rem);
-  line-height: 1.06;
-  text-wrap: balance;
-  max-width: 18ch;
-}
-
 .actions {
   display: flex;
   flex-wrap: wrap;

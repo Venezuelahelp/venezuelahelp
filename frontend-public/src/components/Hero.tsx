@@ -46,10 +46,6 @@ export default function Hero({
               Actualizado con fuentes públicas
             </span>
 
-            <h1 className={styles.title}>
-              La información del terremoto, reunida en un solo lugar.
-            </h1>
-
             <div className={styles.actions}>
               <a
                 href={TELEGRAM_URL}
