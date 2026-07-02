@@ -1,11 +1,18 @@
 import { useState, lazy, Suspense } from "react";
 import type { Item } from "@/types";
-import { MapPin, Clock, CaretRight, CheckCircle } from "@phosphor-icons/react";
+import {
+  MapPin,
+  Clock,
+  CaretRight,
+  CheckCircle,
+  LinkSimple,
+} from "@phosphor-icons/react";
 import Badge from "@/components/Badge";
 import Source from "@/components/Source";
 import Modal from "@/components/Modal";
 import { CATEGORY_META } from "@/data/categories";
 import { formatDateShort, formatDateTime } from "@/data/datetime";
+import { itemHash } from "@/data/route";
 import styles from "./ItemList.module.css";
 
 // Leaflet es pesado; el mini-mapa del detalle se carga solo al abrir un caso
@@ -71,7 +78,45 @@ function StatusChip({ item }: { item: Item }) {
   return null;
 }
 
-function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
+// "Copiar enlace": deeplink #/item/<sourceId>/<externalId> del ítem.
+// navigator.clipboard con fallback a execCommand (http / navegadores viejos).
+function CopyLinkButton({ item }: { item: Item }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    const url = `${window.location.origin}${window.location.pathname}${itemHash(item)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <button type="button" className={styles.copyLink} onClick={copy}>
+      <LinkSimple aria-hidden="true" size={14} weight="bold" />
+      {copied ? "Enlace copiado" : "Copiar enlace"}
+    </button>
+  );
+}
+
+export function ItemDetail({
+  item,
+  onClose,
+}: {
+  item: Item;
+  onClose: () => void;
+}) {
   const fecha = formatDateTime(item.firstSeenAt);
   const actualizado = formatDateTime(item.lastSeenAt);
   const titleId = "item-detail-title";
@@ -136,6 +181,7 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
 
         <div className={styles.detailFoot}>
           <Source sourceId={item.sourceId} sourceUrl={item.sourceUrl} />
+          <CopyLinkButton item={item} />
         </div>
       </div>
     </Modal>

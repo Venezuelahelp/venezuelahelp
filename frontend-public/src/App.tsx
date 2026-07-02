@@ -12,6 +12,7 @@ import {
   sortItems,
 } from "@/data/filter";
 import { SourcesContext } from "@/data/sources";
+import { parseItemRoute, findItem } from "@/data/route";
 import type { Category, SortMode, StatusFilter } from "@/types";
 
 import { MapTrifold } from "@phosphor-icons/react";
@@ -22,6 +23,7 @@ import MapOverlay from "@/components/MapOverlay";
 import ViewToggle, { type View } from "@/components/ViewToggle";
 import Footer from "@/components/Footer";
 import SourcesPage from "@/components/SourcesPage";
+import { ItemDetail } from "@/components/ItemList";
 import Hero from "@/components/Hero";
 import LocatedMatches from "@/components/LocatedMatches";
 import AboutPage from "@/components/AboutPage";
@@ -117,6 +119,14 @@ export default function App() {
   const isApiDocs = route === "#/api-docs";
   const isFuentes = route === "#/fuentes";
 
+  // Deeplink por ítem: #/item/<sourceId>/<externalId>. No coincide con ningún
+  // flag de página → App renderiza la rama home y superpone el modal.
+  const itemRoute = parseItemRoute(route);
+  const deepItem =
+    itemRoute && data
+      ? findItem(data, itemRoute.sourceId, itemRoute.externalId)
+      : null;
+
   // Derivados memoizados: flatten/filtrado/orden sobre ~66k ítems canónicos
   // no deben recalcularse en cada render (spec E4/E5).
   const items = useMemo(() => (data ? flatten(data) : []), [data]);
@@ -179,6 +189,23 @@ export default function App() {
 
                 return (
                   <SourcesContext.Provider value={data.sources}>
+                    {itemRoute && !deepItem && (
+                      <div className={styles.deepMiss} role="alert">
+                        <span>
+                          No encontramos esa ficha. Puede que la fuente la haya
+                          retirado o que el enlace esté incompleto.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            window.location.hash = "#/";
+                          }}
+                        >
+                          Entendido
+                        </button>
+                      </div>
+                    )}
+
                     <Hero
                       total={items.length}
                       counts={catCounts}
@@ -316,6 +343,15 @@ export default function App() {
                     )}
 
                     <Footer />
+
+                    {deepItem && (
+                      <ItemDetail
+                        item={deepItem}
+                        onClose={() => {
+                          window.location.hash = "#/";
+                        }}
+                      />
+                    )}
                   </SourcesContext.Provider>
                 );
               })()}

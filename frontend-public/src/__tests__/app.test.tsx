@@ -88,6 +88,7 @@ const SNAPSHOT: Snapshot = {
 describe("App integration", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    window.location.hash = "";
   });
 
   it("shows loading state when loading=true", () => {
@@ -349,6 +350,69 @@ describe("App integration", () => {
     await waitFor(() => {
       rows = resultsList().getAllByRole("listitem");
       expect(rows[0].textContent).toContain("Persona desaparecida en Valencia");
+    });
+  });
+
+  describe("deeplink #/item", () => {
+    it("abre la home con el modal de detalle de la ficha", async () => {
+      window.location.hash = "#/item/src-2/ext-2";
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        within(dialog).getByText("Persona desaparecida en Valencia"),
+      ).toBeInTheDocument();
+      // La home sigue debajo (no es una página aparte).
+      expect(screen.getByText(/Última actualización/i)).toBeInTheDocument();
+    });
+
+    it("ficha inexistente → aviso 'No encontramos esa ficha' + home normal", () => {
+      window.location.hash = "#/item/src-x/no-existe";
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /No encontramos esa ficha/i,
+      );
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(
+        screen.getAllByText("Edificio colapsado en Caracas").length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("cerrar el modal restaura #/ y desmonta el detalle", async () => {
+      window.location.hash = "#/item/src-2/ext-2";
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: /cerrar/i }),
+      );
+      await waitFor(() => expect(window.location.hash).toBe("#/"));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    });
+
+    it("no rompe las páginas existentes (#/fuentes sigue siendo Fuentes)", () => {
+      window.location.hash = "#/fuentes";
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByRole("alert")).toBeNull();
     });
   });
 });
