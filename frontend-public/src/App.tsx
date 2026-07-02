@@ -7,6 +7,7 @@ import {
   flatten,
   filterItems,
   countByCategory,
+  countByStatus,
   sourcesForDisplay,
   hasStatusClass,
   sortItems,
@@ -131,6 +132,7 @@ export default function App() {
   // no deben recalcularse en cada render (spec E4/E5).
   const items = useMemo(() => (data ? flatten(data) : []), [data]);
   const catCounts = useMemo(() => countByCategory(items), [items]);
+  const statusCounts = useMemo(() => countByStatus(items), [items]);
   const snapshotHasStatus = useMemo(() => hasStatusClass(items), [items]);
   const filtered = useMemo(
     () => filterItems(items, debouncedQuery, active, statusFilter),
@@ -211,6 +213,7 @@ export default function App() {
                       counts={catCounts}
                       generatedAt={data.generatedAt}
                       matchCount={matchCount}
+                      desaparecidosStatus={statusCounts}
                     />
 
                     {/* Barra fija de respaldo: reaparece al subir cuando los

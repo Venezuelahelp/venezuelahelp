@@ -212,6 +212,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Sub-dato de contexto (p.ej. "N localizados" bajo desaparecidos, #50/#54). */
+.statSub {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--cat-acopios);
+}
+
 .statTrack {
   height: 6px;
   border-radius: 999px;

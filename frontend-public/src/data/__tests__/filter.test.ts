@@ -4,6 +4,7 @@ import {
   flatten,
   filterItems,
   countByCategory,
+  countByStatus,
   sourcesForDisplay,
   hasStatusClass,
   sortItems,
@@ -471,6 +472,44 @@ describe("filter functions", () => {
         "localizado",
       );
       expect(out.map((i) => i.externalId)).toEqual(["1"]);
+    });
+  });
+
+  describe("countByStatus (desglose desaparecidos #50/#54)", () => {
+    const desap = (statusClass?: "buscando" | "localizado"): Item => ({
+      category: "desaparecidos",
+      sourceId: "s1",
+      externalId: Math.random().toString(),
+      titulo: "Maria Perez",
+      texto: "t",
+      ...(statusClass ? { statusClass } : {}),
+    });
+
+    it("cuenta buscando y localizado solo sobre desaparecidos", () => {
+      const items: Item[] = [
+        desap("buscando"),
+        desap("buscando"),
+        desap("localizado"),
+        {
+          category: "acopios",
+          sourceId: "s2",
+          externalId: "a1",
+          titulo: "Acopio",
+          texto: "t",
+        },
+      ];
+      expect(countByStatus(items)).toEqual({ buscando: 2, localizado: 1 });
+    });
+
+    it("ignora desaparecidos sin statusClass (snapshot viejo → 0/0)", () => {
+      expect(countByStatus([desap(), desap()])).toEqual({
+        buscando: 0,
+        localizado: 0,
+      });
+    });
+
+    it("array vacío → 0/0", () => {
+      expect(countByStatus([])).toEqual({ buscando: 0, localizado: 0 });
     });
   });
 

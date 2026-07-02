@@ -13,6 +13,9 @@ interface HeroProps {
   generatedAt?: string;
   /** Posibles localizaciones (cruce buscado↔localizado). No suma al total. */
   matchCount?: number;
+  /** Desglose de desaparecidos por estado (#50/#54). Si ambos son 0 (snapshot
+   *  viejo sin statusClass) el desglose se oculta y se muestra solo el total. */
+  desaparecidosStatus?: { buscando: number; localizado: number };
 }
 
 export default function Hero({
@@ -20,11 +23,18 @@ export default function Hero({
   counts,
   generatedAt,
   matchCount = 0,
+  desaparecidosStatus,
 }: HeroProps) {
   const updated = formatDateTime(generatedAt);
   // Escala las barras respecto a la categoría más numerosa (no al total): así
   // la categoría líder llena la barra y las pequeñas siguen siendo visibles.
   const max = Math.max(1, ...CATEGORY_ORDER.map((c) => counts[c] ?? 0));
+  // Desglose de desaparecidos (#50/#54): solo si el snapshot trae statusClass
+  // (feature-detect: 0/0 ⇒ snapshot viejo ⇒ se muestra el total como antes).
+  const showStatus = Boolean(
+    desaparecidosStatus &&
+    (desaparecidosStatus.buscando > 0 || desaparecidosStatus.localizado > 0),
+  );
 
   return (
     <section className={styles.hero}>
@@ -92,7 +102,13 @@ export default function Hero({
               )}
               {CATEGORY_ORDER.map((cat) => {
                 const meta = CATEGORY_META[cat];
-                const n = counts[cat] ?? 0;
+                // #50/#54: en desaparecidos, cuando hay statusClass, el número
+                // prominente son los pendientes (en búsqueda) y los localizados
+                // van como sub-dato de contexto.
+                const withStatus = cat === "desaparecidos" && showStatus;
+                const n = withStatus
+                  ? desaparecidosStatus!.buscando
+                  : (counts[cat] ?? 0);
                 const pct = Math.round((n / max) * 100);
                 const color = `var(${meta.colorVar})`;
                 return (
@@ -108,6 +124,11 @@ export default function Hero({
                       </span>
                       <span className={styles.statCount}>{n}</span>
                     </div>
+                    {withStatus && (
+                      <span className={styles.statSub}>
+                        {desaparecidosStatus!.localizado} localizados
+                      </span>
+                    )}
                     <span className={styles.statTrack} aria-hidden="true">
                       <span
                         className={styles.statFill}

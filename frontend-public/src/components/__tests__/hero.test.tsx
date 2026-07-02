@@ -51,8 +51,48 @@ describe("Hero", () => {
   });
 
   it("omits the date gracefully when generatedAt is missing", () => {
-    expect(() =>
-      render(<Hero total={0} counts={COUNTS} />),
-    ).not.toThrow();
+    expect(() => render(<Hero total={0} counts={COUNTS} />)).not.toThrow();
+  });
+
+  describe("desglose de desaparecidos (#50/#54)", () => {
+    const DESAP_COUNTS: Record<Category, number> = {
+      ...COUNTS,
+      desaparecidos: 10,
+    };
+
+    it("muestra los localizados y usa los pendientes como conteo prominente", () => {
+      render(
+        <Hero
+          total={16}
+          counts={DESAP_COUNTS}
+          desaparecidosStatus={{ buscando: 7, localizado: 3 }}
+        />,
+      );
+      // "N localizados" como sub-dato de contexto.
+      expect(screen.getByText(/3 localizados/i)).toBeInTheDocument();
+      // El conteo prominente de desaparecidos = pendientes (en búsqueda), no el total.
+      const row = screen.getByText("Desaparecidos").closest("li")!;
+      expect(row).toHaveTextContent("7");
+    });
+
+    it("feature-detect: sin statusClass (0/0) NO muestra desglose, cae al total", () => {
+      render(
+        <Hero
+          total={16}
+          counts={DESAP_COUNTS}
+          desaparecidosStatus={{ buscando: 0, localizado: 0 }}
+        />,
+      );
+      expect(screen.queryByText(/localizados/i)).toBeNull();
+      const row = screen.getByText("Desaparecidos").closest("li")!;
+      expect(row).toHaveTextContent("10");
+    });
+
+    it("sin la prop desaparecidosStatus se comporta como antes (solo total)", () => {
+      render(<Hero total={16} counts={DESAP_COUNTS} />);
+      expect(screen.queryByText(/localizados/i)).toBeNull();
+      const row = screen.getByText("Desaparecidos").closest("li")!;
+      expect(row).toHaveTextContent("10");
+    });
   });
 });
