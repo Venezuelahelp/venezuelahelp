@@ -3,6 +3,7 @@ import { QaLogRepo } from "@/shared/repos/qaLogRepo";
 import { RateLimitRepo } from "@/shared/repos/rateLimitRepo";
 import { TgUserRepo } from "@/shared/repos/tgUserRepo";
 import { logger } from "@/shared/logger";
+import type { QaIntent } from "@/shared/types";
 import { getTelegramToken, getWebhookSecret } from "@/telegram/secret";
 import {
   getMe,
@@ -660,7 +661,9 @@ async function handleCallback(
       // fresca del MenuState; si caducó, loc=undefined → lista por trust sin
       // distancia (mismo degrade que "Ver sin ubicación"), sin error.
       const [, action = "", offsetRaw = ""] = data.split(":");
-      const offset = Number.parseInt(offsetRaw, 10);
+      const offset = /^\d+$/.test(offsetRaw)
+        ? Number.parseInt(offsetRaw, 10)
+        : NaN;
       if (
         LOCATION_ACTIONS.has(action) &&
         Number.isInteger(offset) &&
@@ -782,7 +785,7 @@ async function logQa(
   modelo: string,
   tokensIn: number,
   tokensOut: number,
-  intent: string,
+  intent: QaIntent,
 ): Promise<void> {
   await d.qaLogRepo.append({
     chatId: String(chatId),

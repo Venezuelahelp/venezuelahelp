@@ -167,7 +167,7 @@ describe("telegram handler", () => {
     expect(d.askBedrock).not.toHaveBeenCalled();
     const reply = (d.sendMessage as any).mock.calls[0][2] as string;
     expect(reply).toContain("No encontré información");
-    expect(reply).not.toContain("No tengo esse dato");
+    expect(reply).not.toContain("No tengo ese dato");
   });
 
   it("'buscar a una persona' (sin nombre) → pide el nombre y guarda pendingSearch", async () => {
@@ -847,15 +847,18 @@ describe("telegram handler", () => {
       expect(d.menuState.setPending).not.toHaveBeenCalled(); // no re-pide ubicación
     });
 
-    it.each([["more:refugios:zzz"], ["more:noexiste:8"], ["more:refugios:-8"]])(
-      "more: malformado (%s) cae a home sin lanzar",
-      async (data) => {
-        const d = deps();
-        await handler(callbackEvent(data), d as any);
-        const [, , text] = (d.sendMessage as any).mock.calls[0];
-        expect(text).toContain("VenezuelaHelp"); // homeScreen
-        expect(d.answerCallbackQuery).toHaveBeenCalledWith("TOK", "cb1");
-      },
-    );
+    it.each([
+      ["more:refugios:zzz"],
+      ["more:noexiste:8"],
+      ["more:refugios:-8"],
+      ["more:refugios:8.5"],
+      ["more:refugios:8abc"],
+    ])("more: malformado (%s) cae a home sin lanzar", async (data) => {
+      const d = deps();
+      await handler(callbackEvent(data), d as any);
+      const [, , text] = (d.sendMessage as any).mock.calls[0];
+      expect(text).toContain("VenezuelaHelp"); // homeScreen
+      expect(d.answerCallbackQuery).toHaveBeenCalledWith("TOK", "cb1");
+    });
   });
 });

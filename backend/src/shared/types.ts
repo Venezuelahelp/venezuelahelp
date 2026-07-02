@@ -174,6 +174,24 @@ export interface LocatedMatch {
   };
 }
 
+// Rama del handler que produjo la respuesta (telemetría; Bloque C1).
+// Nota: "agent_error_fallback" NO forma parte de esta unión — ese valor solo
+// va al log estructurado de CloudWatch (logger.error), nunca a QaLogEntry.
+export type QaIntent =
+  | "greeting"
+  | "bare_search"
+  | "pending_search"
+  | "help_cry"
+  | "help_guide"
+  | "bare_category"
+  | "agent_saludar"
+  | "agent_rechazado"
+  | "agent_contar"
+  | "agent_listar"
+  | "agent_buscar"
+  | "rag_count"
+  | "rag_retrieve";
+
 export interface QaLogEntry {
   chatId: string;
   ts: string;
@@ -185,9 +203,5 @@ export interface QaLogEntry {
   modelo: string;
   costoEstimado: number;
   flagged: boolean;
-  // Rama del handler que produjo la respuesta (telemetría; Bloque C1):
-  // greeting | bare_search | pending_search | help_cry | help_guide |
-  // bare_category | agent_saludar|contar|listar|buscar|rechazado |
-  // agent_error_fallback | rag_count | rag_retrieve
-  intent?: string;
+  intent?: QaIntent;
 }

@@ -15,6 +15,7 @@ import { formatList } from "@/telegram/format";
 import { buildUserText } from "@/telegram/prompt";
 import { buildMatchIndex, locatedNotice } from "@/telegram/locatedNotice";
 import type { PublicItem, Snapshot } from "@/telegram/types";
+import type { QaIntent } from "@/shared/types";
 
 // Fallback que GUÍA en vez de cortar (patrón "Data Boundary" + tono de
 // alo-ai-engine): cuando no hay datos para la consulta, orienta sobre qué sí
@@ -115,7 +116,8 @@ export type AgentKind = "saludo" | "respuesta" | "rechazado";
 export interface AgentResult {
   reply: string;
   kind: AgentKind;
-  intent: string; // "agent_<herramienta>"; fuera_de_tema → "agent_rechazado"
+  // "agent_<herramienta>"; fuera_de_tema → "agent_rechazado".
+  intent: QaIntent;
   itemsUsed: string[];
   tokensIn: number;
   tokensOut: number;
