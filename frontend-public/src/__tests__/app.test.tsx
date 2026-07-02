@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, type MockedFunction } from "vitest";
 
@@ -219,5 +219,87 @@ describe("App integration", () => {
     render(<App />);
     // Hero renders "Última actualización · ..." with a formatted date
     expect(screen.getByText(/Última actualización/i)).toBeInTheDocument();
+  });
+
+  const SNAPSHOT_STATUS: Snapshot = {
+    ...SNAPSHOT,
+    categories: {
+      ...SNAPSHOT.categories,
+      desaparecidos: [
+        {
+          ...SNAPSHOT.categories.desaparecidos[0],
+          statusClass: "buscando",
+        },
+        {
+          category: "desaparecidos",
+          sourceId: "src-2",
+          externalId: "ext-9",
+          titulo: "Pedro Gomez localizado",
+          texto: "Reportado a salvo en Caracas.",
+          statusClass: "localizado",
+        },
+      ],
+    },
+  };
+
+  // Chips de categoría = botones con aria-pressed (los badges de la lista son spans).
+  function desaparecidosChips() {
+    return screen
+      .getAllByRole("button", { name: /Desaparecidos/i })
+      .filter((btn) => btn.getAttribute("aria-pressed") !== null);
+  }
+
+  it("muestra el sub-filtro de status solo con desaparecidos activa", async () => {
+    mockUseSnapshot.mockReturnValue({
+      data: SNAPSHOT_STATUS,
+      loading: false,
+      error: null,
+    });
+    render(<App />);
+    expect(screen.queryByRole("group", { name: /por estado/i })).toBeNull();
+
+    await userEvent.click(desaparecidosChips()[0]);
+    expect(
+      screen.getAllByRole("group", { name: /por estado/i }).length,
+    ).toBeGreaterThan(0);
+
+    // Desactivar la categoría lo oculta de nuevo.
+    await userEvent.click(desaparecidosChips()[0]);
+    expect(screen.queryByRole("group", { name: /por estado/i })).toBeNull();
+  });
+
+  it("filtra por Localizados dentro de desaparecidos", async () => {
+    mockUseSnapshot.mockReturnValue({
+      data: SNAPSHOT_STATUS,
+      loading: false,
+      error: null,
+    });
+    render(<App />);
+    await userEvent.click(desaparecidosChips()[0]);
+
+    const group = screen.getAllByRole("group", { name: /por estado/i })[0];
+    await userEvent.click(
+      within(group).getByRole("button", { name: "Localizados" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryAllByText("Persona desaparecida en Valencia"),
+      ).toHaveLength(0);
+    });
+    expect(
+      screen.getAllByText("Pedro Gomez localizado").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("feature-detect: snapshot sin statusClass no muestra el sub-filtro", async () => {
+    mockUseSnapshot.mockReturnValue({
+      data: SNAPSHOT,
+      loading: false,
+      error: null,
+    });
+    render(<App />);
+    await userEvent.click(desaparecidosChips()[0]);
+    expect(screen.queryByRole("group", { name: /por estado/i })).toBeNull();
   });
 });

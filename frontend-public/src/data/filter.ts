@@ -1,4 +1,4 @@
-import type { Category, Item, Snapshot } from "@/types";
+import type { Category, Item, Snapshot, StatusFilter } from "@/types";
 import { CATEGORY_ORDER } from "./categories";
 import { normalize, filterUsable, searchItems } from "@venezuelahelp/core";
 
@@ -17,22 +17,36 @@ export function flatten(snap: Snapshot): Item[] {
   return result;
 }
 
-// Filtra por categorías activas (multi-select) + query con el MISMO ranking que
-// el bot/API. Sin query, mantiene el orden de `flatten`.
+// Filtra por categorías activas (multi-select) + sub-filtro de status
+// (desaparecidos) + query con el MISMO ranking que el bot/API. Sin query,
+// mantiene el orden de `flatten`. El status compara SOLO statusClass (campo
+// canónico del enrichment); nunca se parsea el status crudo aquí.
 export function filterItems(
   items: Item[],
   query: string,
   active: Set<Category>,
+  status: StatusFilter = "todos",
 ): Item[] {
   const byCat =
     active.size > 0 ? items.filter((i) => active.has(i.category)) : items;
-  if (!query.trim()) return byCat;
-  // searchItems espera un Snapshot; envolvemos los ítems ya filtrados por cat.
+  const byStatus =
+    status === "todos"
+      ? byCat
+      : byCat.filter(
+          (i) => i.category !== "desaparecidos" || i.statusClass === status,
+        );
+  if (!query.trim()) return byStatus;
+  // searchItems espera un Snapshot; envolvemos los ítems ya filtrados.
   const snap = {
     generatedAt: "",
-    categories: groupByCategory(byCat),
+    categories: groupByCategory(byStatus),
   };
   return searchItems(snap, { q: query }) as Item[];
+}
+
+/** Feature-detect: el snapshot vivo trae statusClass (los pre-deploy no). */
+export function hasStatusClass(items: Item[]): boolean {
+  return items.some((i) => i.statusClass !== undefined);
 }
 
 function groupByCategory(items: Item[]): Record<string, Item[]> {

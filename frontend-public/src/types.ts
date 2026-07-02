@@ -43,6 +43,9 @@ export interface Item {
   statusClass?: "buscando" | "localizado";
 }
 
+/** Sub-filtro de status para la categoría desaparecidos. */
+export type StatusFilter = "todos" | "buscando" | "localizado";
+
 export interface SourceInfo {
   nombre: string;
   url?: string;

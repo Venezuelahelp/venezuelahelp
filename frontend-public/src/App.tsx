@@ -7,9 +7,10 @@ import {
   filterItems,
   countByCategory,
   sourcesForDisplay,
+  hasStatusClass,
 } from "@/data/filter";
 import { SourcesContext } from "@/data/sources";
-import type { Category } from "@/types";
+import type { Category, StatusFilter } from "@/types";
 
 import { MapTrifold } from "@phosphor-icons/react";
 import Header from "@/components/Header";
@@ -39,6 +40,8 @@ export default function App() {
   const [active, setActive] = useState<Set<Category>>(new Set());
   // Vista "Match": muestra el cruce buscado↔localizado en vez de la lista normal.
   const [matchView, setMatchView] = useState(false);
+  // Sub-filtro de status dentro de desaparecidos ("todos" | "buscando" | "localizado").
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
   const [view, setView] = useState<View>("lista");
   const [route, setRoute] = useState<string>(
     typeof window !== "undefined" ? window.location.hash : "",
@@ -70,6 +73,7 @@ export default function App() {
   function onToggle(cat: Category) {
     // Elegir una categoría sale de la vista Match (son excluyentes).
     setMatchView(false);
+    if (cat === "desaparecidos" && active.has(cat)) setStatusFilter("todos");
     setActive((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) {
@@ -89,6 +93,7 @@ export default function App() {
       if (next) {
         setActive(new Set());
         setQuery("");
+        setStatusFilter("todos");
       }
       return next;
     });
@@ -98,6 +103,7 @@ export default function App() {
     setQuery("");
     setActive(new Set());
     setMatchView(false);
+    setStatusFilter("todos");
   }
 
   const isAbout = route === "#/quienes-somos";
@@ -147,11 +153,17 @@ export default function App() {
               (() => {
                 const items = flatten(data);
                 const catCounts = countByCategory(items);
-                const filtered = filterItems(items, query, active);
+                const snapshotHasStatus = hasStatusClass(items);
+                const filtered = filterItems(
+                  items,
+                  query,
+                  active,
+                  statusFilter,
+                );
                 const located = filtered.filter((it) => it.ubicacion != null);
                 // Clave para reiniciar la lista infinita (volver arriba) cuando
                 // cambian los filtros.
-                const filterKey = `${query}|${[...active].sort().join(",")}`;
+                const filterKey = `${query}|${[...active].sort().join(",")}|${statusFilter}`;
                 const matches = data.matches ?? [];
                 const matchCount = matches.length;
 
@@ -186,6 +198,11 @@ export default function App() {
                           matchActive={matchView}
                           onToggleMatch={onToggleMatch}
                           matchCount={matchCount}
+                          statusFilter={statusFilter}
+                          onStatusFilter={setStatusFilter}
+                          showStatusFilter={
+                            active.has("desaparecidos") && snapshotHasStatus
+                          }
                         />
                       </div>
                     </div>
@@ -208,6 +225,11 @@ export default function App() {
                           matchActive={matchView}
                           onToggleMatch={onToggleMatch}
                           matchCount={matchCount}
+                          statusFilter={statusFilter}
+                          onStatusFilter={setStatusFilter}
+                          showStatusFilter={
+                            active.has("desaparecidos") && snapshotHasStatus
+                          }
                         />
 
                         {!matchView && filtered.length > 0 && (

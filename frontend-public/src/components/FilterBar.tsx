@@ -1,4 +1,4 @@
-import type { Category } from "@/types";
+import type { Category, StatusFilter } from "@/types";
 import CategoryFilter from "@/components/CategoryFilter";
 import styles from "./FilterBar.module.css";
 
@@ -14,6 +14,10 @@ interface FilterBarProps {
   matchActive: boolean;
   onToggleMatch: () => void;
   matchCount: number;
+  /** Sub-filtro de status (solo con desaparecidos activa y snapshot con statusClass). */
+  statusFilter?: StatusFilter;
+  onStatusFilter?: (s: StatusFilter) => void;
+  showStatusFilter?: boolean;
 }
 
 export default function FilterBar({
@@ -28,6 +32,9 @@ export default function FilterBar({
   matchActive,
   onToggleMatch,
   matchCount,
+  statusFilter = "todos",
+  onStatusFilter,
+  showStatusFilter = false,
 }: FilterBarProps) {
   const hasFilters = query.trim().length > 0 || active.size > 0 || matchActive;
 
@@ -50,6 +57,34 @@ export default function FilterBar({
         onToggleMatch={onToggleMatch}
         matchCount={matchCount}
       />
+
+      {showStatusFilter && onStatusFilter && (
+        <div
+          className={styles.statusGroup}
+          role="group"
+          aria-label="Filtrar desaparecidos por estado"
+        >
+          {(
+            [
+              ["todos", "Todos"],
+              ["buscando", "Buscando"],
+              ["localizado", "Localizados"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={`${styles.statusBtn} ${
+                statusFilter === value ? styles.statusBtnActive : ""
+              }`}
+              aria-pressed={statusFilter === value}
+              onClick={() => onStatusFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className={styles.results}>
         <p className={styles.resultsCount} aria-live="polite">

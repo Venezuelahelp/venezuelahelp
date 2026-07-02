@@ -5,6 +5,7 @@ import {
   filterItems,
   countByCategory,
   sourcesForDisplay,
+  hasStatusClass,
 } from "../filter";
 import type { Category, Item, Snapshot } from "@/types";
 
@@ -383,6 +384,112 @@ describe("filter functions", () => {
       expect(counts.acopios).toBe(0);
       expect(counts.edificios).toBe(0);
       expect(counts.solicitudes).toBe(0);
+    });
+  });
+
+  describe("filterItems por statusClass (sub-filtro desaparecidos)", () => {
+    const desap = (over: Partial<Item>): Item => ({
+      category: "desaparecidos",
+      sourceId: "s1",
+      externalId: "e1",
+      titulo: "Maria Perez",
+      texto: "Vista por última vez en Chacao",
+      ...over,
+    });
+
+    it("status='localizado' deja solo desaparecidos localizados", () => {
+      const items = [
+        desap({ externalId: "1", statusClass: "buscando" }),
+        desap({ externalId: "2", statusClass: "localizado" }),
+      ];
+      const out = filterItems(
+        items,
+        "",
+        new Set<Category>(["desaparecidos"]),
+        "localizado",
+      );
+      expect(out.map((i) => i.externalId)).toEqual(["2"]);
+    });
+
+    it("no afecta a otras categorías activas a la vez", () => {
+      const items: Item[] = [
+        desap({ externalId: "1", statusClass: "buscando" }),
+        {
+          category: "acopios",
+          sourceId: "s2",
+          externalId: "9",
+          titulo: "Acopio Las Mercedes",
+          texto: "Reciben agua y medicinas",
+        },
+      ];
+      const out = filterItems(
+        items,
+        "",
+        new Set<Category>(["desaparecidos", "acopios"]),
+        "localizado",
+      );
+      expect(out.map((i) => i.externalId)).toEqual(["9"]);
+    });
+
+    it("un desaparecido sin statusClass no pasa el sub-filtro (snapshot viejo)", () => {
+      const out = filterItems(
+        [desap({ externalId: "1" })],
+        "",
+        new Set<Category>(["desaparecidos"]),
+        "buscando",
+      );
+      expect(out).toEqual([]);
+    });
+
+    it("'todos' (default) no filtra por status", () => {
+      const out = filterItems(
+        [desap({ externalId: "1", statusClass: "buscando" })],
+        "",
+        new Set<Category>(["desaparecidos"]),
+      );
+      expect(out).toHaveLength(1);
+    });
+
+    it("se combina con la búsqueda por query", () => {
+      const items = [
+        desap({
+          externalId: "1",
+          statusClass: "localizado",
+          titulo: "Maria Perez",
+        }),
+        desap({
+          externalId: "2",
+          statusClass: "localizado",
+          titulo: "Pedro Gomez",
+        }),
+      ];
+      const out = filterItems(
+        items,
+        "maria",
+        new Set<Category>(["desaparecidos"]),
+        "localizado",
+      );
+      expect(out.map((i) => i.externalId)).toEqual(["1"]);
+    });
+  });
+
+  describe("hasStatusClass (feature-detect)", () => {
+    const base: Item = {
+      category: "desaparecidos",
+      sourceId: "s1",
+      externalId: "e1",
+      titulo: "Maria Perez",
+      texto: "t",
+    };
+
+    it("true si algún ítem trae statusClass", () => {
+      expect(hasStatusClass([base, { ...base, statusClass: "buscando" }])).toBe(
+        true,
+      );
+    });
+
+    it("false para snapshots viejos sin el campo", () => {
+      expect(hasStatusClass([base])).toBe(false);
     });
   });
 
