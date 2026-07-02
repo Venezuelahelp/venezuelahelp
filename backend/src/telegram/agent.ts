@@ -18,8 +18,8 @@ import type { PublicItem, Snapshot } from "@/telegram/types";
 
 // Fallback que GUÍA en vez de cortar (patrón "Data Boundary" + tono de
 // alo-ai-engine): cuando no hay datos para la consulta, orienta sobre qué sí
-// puede responder, sin inventar.
-const NO_DATA =
+// puede responder, sin inventar. Compartido con el fallback RAG del handler.
+export const NO_DATA_GUIDE =
   "No encontré información sobre eso. Puedo ayudarte a buscar una persona por su nombre, o a ver centros de acopio, refugios, hospitales y solicitudes de ayuda. ¿Qué necesitas? 🔎";
 
 // Respuestas fijas (sin Bedrock) para saludo y rechazo de fuera-de-tema.
@@ -215,7 +215,7 @@ export async function answerWithTools(
   }
   if (items.length === 0) {
     return {
-      reply: NO_DATA,
+      reply: NO_DATA_GUIDE,
       kind: "respuesta",
       intent: "agent_buscar",
       itemsUsed: [],
@@ -245,7 +245,7 @@ export async function answerWithTools(
     buildUserText(question, items),
   );
   return {
-    reply: ans.text.trim() || NO_DATA,
+    reply: ans.text.trim() || NO_DATA_GUIDE,
     kind: "respuesta",
     intent: "agent_buscar",
     itemsUsed: items.map((i) => key(i)),

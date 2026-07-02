@@ -25,6 +25,7 @@ import {
   answerWithTools,
   answerPersonSearch,
   GREETING,
+  NO_DATA_GUIDE,
 } from "@/telegram/agent";
 import {
   isBareSearchIntent,
@@ -53,8 +54,6 @@ import type { TgCallbackQuery, TgMessage, TgUpdate } from "@/telegram/types";
 
 const FALLBACK =
   "Disculpa, estoy con mucha demanda ahora mismo. Intenta de nuevo en un momento.";
-const NO_DATA =
-  "No tengo ese dato en la información del terremoto que tengo disponible.";
 const RATE_LIMITED =
   "Estás enviando preguntas muy rápido. Espera un momento y vuelve a intentar. 🙏";
 const HELP_GUIDE = [
@@ -577,12 +576,12 @@ export async function handler(
     }
     const items = retrieve(question, snap);
     if (items.length === 0) {
-      await d.sendMessage(token, chatId, NO_DATA);
+      await d.sendMessage(token, chatId, NO_DATA_GUIDE);
       await logQa(
         d,
         chatId,
         question,
-        NO_DATA,
+        NO_DATA_GUIDE,
         [],
         config.bedrockModelId,
         0,
@@ -596,7 +595,7 @@ export async function handler(
       config.systemPrompt,
       buildUserText(question, items),
     );
-    const reply = ans.text.trim() || NO_DATA;
+    const reply = ans.text.trim() || NO_DATA_GUIDE;
     await d.sendMessage(token, chatId, reply);
     await logQa(
       d,

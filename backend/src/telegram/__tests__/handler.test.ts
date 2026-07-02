@@ -154,6 +154,22 @@ describe("telegram handler", () => {
     );
   });
 
+  it("fallback RAG sin resultados responde con el mensaje orientador, no el seco", async () => {
+    const d = deps({
+      routeTools: vi.fn(async () => {
+        throw new Error("Bedrock 424");
+      }),
+    });
+    await handler(
+      event("xyzzy plutonio", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    expect(d.askBedrock).not.toHaveBeenCalled();
+    const reply = (d.sendMessage as any).mock.calls[0][2] as string;
+    expect(reply).toContain("No encontré información");
+    expect(reply).not.toContain("No tengo esse dato");
+  });
+
   it("'buscar a una persona' (sin nombre) → pide el nombre y guarda pendingSearch", async () => {
     const d = deps();
     await handler(
