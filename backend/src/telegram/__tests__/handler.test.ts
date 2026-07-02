@@ -218,6 +218,58 @@ describe("telegram handler", () => {
     );
   });
 
+  it("tras el saludo, un nombre suelto ('Robeth Enrique') devuelve resultados y NO lo rechaza (#55)", async () => {
+    // Repro del bug #55: (1) 'hola' → bienvenida; (2) un NOMBRE suelto. Sin
+    // pendingSearch ni verbo de búsqueda, el mensaje iría al router LLM, que
+    // puede clasificar un nombre pelado como 'fuera_de_tema' (aquí lo mockeamos
+    // así) → strike + rechazo en vez de resultados. El fix lo resuelve de forma
+    // determinista antes del router.
+    const nameSnap: Snapshot = {
+      generatedAt: "t",
+      categories: {
+        desaparecidos: [
+          {
+            category: "desaparecidos",
+            sourceId: "red-esperanza",
+            externalId: "1",
+            titulo: "Robeth Enrique Perez",
+            texto: "visto por última vez en Caracas",
+          },
+        ],
+      },
+    };
+    const d = deps({
+      loadSnapshot: vi.fn(async () => nameSnap),
+      // El router LLM se equivoca y llama 'fuera_de_tema' ante el nombre pelado.
+      routeTools: vi.fn(async () => ({
+        name: "fuera_de_tema",
+        input: {},
+        tokensIn: 1,
+        tokensOut: 1,
+      })),
+    });
+
+    // (1) 'hola' → bienvenida.
+    await handler(
+      event("hola", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    const greetReply = (d.sendMessage as any).mock.calls[0][2] as string;
+    expect(greetReply).toContain("VenezuelaHelp");
+
+    // (2) nombre suelto → resultados por nombre, sin pasar por el router ni
+    // sumar strike (no es off-topic).
+    await handler(
+      event("Robeth Enrique", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    expect(d.routeTools).not.toHaveBeenCalled();
+    expect((d.tgUserRepo as any).recordStrike).not.toHaveBeenCalled();
+    const nameReply = (d.sendMessage as any).mock.calls[1][2] as string;
+    expect(nameReply).toContain("Robeth Enrique");
+    expect(nameReply.toLowerCase()).not.toContain("no puedo ayudarte");
+  });
+
   it("'necesito ayuda' → muestra el menú de recursos con botones (no texto seco)", async () => {
     const d = deps();
     await handler(
