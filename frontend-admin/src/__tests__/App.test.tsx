@@ -100,6 +100,9 @@ function buildMockApi() {
     getApiKeys: vi.fn().mockResolvedValue([]),
     revokeApiKey: vi.fn().mockResolvedValue(undefined),
     setTgUserBlocked: vi.fn().mockResolvedValue({ chatId: 1, blocked: true }),
+    getQaLogs: vi.fn().mockResolvedValue([]),
+    searchItems: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    getScrapeRuns: vi.fn().mockResolvedValue([]),
   };
 }
 
