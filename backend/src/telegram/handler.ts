@@ -655,6 +655,30 @@ async function handleCallback(
       await d.sendMessage(token, chatId, nav.text, {
         replyMarkup: nav.replyMarkup,
       });
+    } else if (data.startsWith("more:")) {
+      // Paginación «Ver más»: more:<action>:<offset>. Reutiliza la ubicación
+      // fresca del MenuState; si caducó, loc=undefined → lista por trust sin
+      // distancia (mismo degrade que "Ver sin ubicación"), sin error.
+      const [, action = "", offsetRaw = ""] = data.split(":");
+      const offset = Number.parseInt(offsetRaw, 10);
+      if (
+        LOCATION_ACTIONS.has(action) &&
+        Number.isInteger(offset) &&
+        offset > 0
+      ) {
+        const state = await safeGetState(d, chatId);
+        const loc = freshLoc(state, Date.now());
+        const snap = await d.loadSnapshot();
+        const screen = categoryScreen(action, snap, loc, offset);
+        await d.sendMessage(token, chatId, screen.text, {
+          replyMarkup: screen.replyMarkup,
+        });
+      } else {
+        const home = homeScreen();
+        await d.sendMessage(token, chatId, home.text, {
+          replyMarkup: home.replyMarkup,
+        });
+      }
     } else if (LOCATION_ACTIONS.has(data)) {
       const state = await safeGetState(d, chatId);
       const loc = freshLoc(state, Date.now());

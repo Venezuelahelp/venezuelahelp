@@ -774,4 +774,88 @@ describe("telegram handler", () => {
       );
     });
   });
+
+  describe("callback more: (paginación «Ver más»)", () => {
+    const bigSnap: Snapshot = {
+      generatedAt: "t",
+      categories: {
+        acopios: Array.from({ length: 20 }, (_, i) => ({
+          category: "acopios",
+          sourceId: "s",
+          externalId: String(i),
+          titulo: `Albergue ${i + 1}`,
+          texto: "albergue con camas",
+          ubicacion: { lat: 10 + i * 0.01, lng: -66, nombre: "Zona" },
+        })),
+      },
+    };
+
+    it("more:refugios:8 pinta la 2ª página sin volver a pedir ubicación", async () => {
+      const d = deps({ loadSnapshot: vi.fn(async () => bigSnap) });
+      await handler(callbackEvent("more:refugios:8"), d as any);
+      expect(d.menuState.setPending).not.toHaveBeenCalled();
+      const [, , text, opts] = (d.sendMessage as any).mock.calls[0];
+      expect(text).toContain("9. Albergue");
+      expect(opts.replyMarkup.inline_keyboard).toBeTruthy();
+      expect(d.answerCallbackQuery).toHaveBeenCalledWith("TOK", "cb1");
+    });
+
+    it("more: con ubicación fresca mantiene el orden por distancia", async () => {
+      const d = deps({
+        loadSnapshot: vi.fn(async () => bigSnap),
+        menuState: {
+          get: vi.fn(async () => ({
+            lastLat: 10,
+            lastLng: -66,
+            lastLocationAt: new Date().toISOString(),
+          })),
+          setPending: vi.fn(async () => {}),
+          setLocation: vi.fn(async () => {}),
+          clearPending: vi.fn(async () => {}),
+          setPendingSearch: vi.fn(async () => {}),
+          clearPendingSearch: vi.fn(async () => {}),
+        },
+      });
+      await handler(callbackEvent("more:refugios:8"), d as any);
+      const [, , text] = (d.sendMessage as any).mock.calls[0];
+      expect(text).toContain("📏"); // pinta distancias
+      expect(text).toContain("9. ");
+    });
+
+    it("more: con ubicación caducada degrada a lista sin distancia, sin error", async () => {
+      const d = deps({
+        loadSnapshot: vi.fn(async () => bigSnap),
+        menuState: {
+          get: vi.fn(async () => ({
+            lastLat: 10,
+            lastLng: -66,
+            lastLocationAt: new Date(
+              Date.now() - 2 * 60 * 60 * 1000,
+            ).toISOString(),
+          })),
+          setPending: vi.fn(async () => {}),
+          setLocation: vi.fn(async () => {}),
+          clearPending: vi.fn(async () => {}),
+          setPendingSearch: vi.fn(async () => {}),
+          clearPendingSearch: vi.fn(async () => {}),
+        },
+      });
+      await handler(callbackEvent("more:refugios:8"), d as any);
+      const [, , text] = (d.sendMessage as any).mock.calls[0];
+      expect(text).toContain("9. ");
+      expect(text).not.toContain("📏"); // sin distancias
+      expect(d.menuState.setPending).not.toHaveBeenCalled(); // no re-pide ubicación
+    });
+
+    it.each([["more:refugios:zzz"], ["more:noexiste:8"], ["more:refugios:-8"]])(
+      "more: malformado (%s) cae a home sin lanzar",
+      async (data) => {
+        const d = deps();
+        await handler(callbackEvent(data), d as any);
+        const [, , text] = (d.sendMessage as any).mock.calls[0];
+        expect(text).toContain("VenezuelaHelp"); // homeScreen
+        expect(d.answerCallbackQuery).toHaveBeenCalledWith("TOK", "cb1");
+      },
+    );
+  });
 });
