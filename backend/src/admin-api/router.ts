@@ -37,6 +37,9 @@ export interface RouteDeps {
   probeRest?: (
     rest: RestConfig,
   ) => Promise<{ items: NormalizedItem[]; endpointStats: EndpointStat[] }>;
+  // Edad del snapshot público (LastModified en S3). Opcional y con contrato
+  // "nunca lanza": si falta o devuelve undefined, /stats sale sin la clave.
+  snapshotUpdatedAt?: () => Promise<string | undefined>;
 }
 
 export interface RouteResult {
@@ -337,7 +340,17 @@ export async function route(
       lastFetched: s.lastFetched,
       endpointStats: s.endpointStats,
     }));
-    return { status: 200, body: { counts, sources } };
+    const snapshotUpdatedAt = deps.snapshotUpdatedAt
+      ? await deps.snapshotUpdatedAt()
+      : undefined;
+    return {
+      status: 200,
+      body: {
+        counts,
+        sources,
+        ...(snapshotUpdatedAt ? { snapshotUpdatedAt } : {}),
+      },
+    };
   }
 
   // POST /sources — tipo "ai" (default, pega una URL) o "rest" (API JSON
