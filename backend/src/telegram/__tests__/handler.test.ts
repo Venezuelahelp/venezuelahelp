@@ -612,4 +612,88 @@ describe("telegram handler", () => {
     expect(reply).toMatch(/pedir ayuda/i);
     expect(reply).toContain("NECESITO AYUDA");
   });
+
+  describe("telemetría de intents (QaLog.intent)", () => {
+    it.each([
+      ["hola", "greeting"],
+      ["buscar a una persona", "bare_search"],
+      ["necesito ayuda", "help_cry"],
+      ["Cómo puedo solicitar ayuda", "help_guide"],
+      ["acopios", "bare_category"],
+    ])("'%s' registra intent %s", async (text, intent) => {
+      const d = deps();
+      await handler(
+        event(text, { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent }),
+      );
+    });
+
+    it("con pendingSearch activo registra intent pending_search", async () => {
+      const d = deps({
+        menuState: {
+          get: vi.fn(async () => ({
+            pendingSearch: "persona",
+            pendingSearchAt: new Date().toISOString(),
+          })),
+          setPending: vi.fn(async () => {}),
+          setLocation: vi.fn(async () => {}),
+          clearPending: vi.fn(async () => {}),
+          setPendingSearch: vi.fn(async () => {}),
+          clearPendingSearch: vi.fn(async () => {}),
+        },
+      });
+      await handler(
+        event("Pedro Gonzalez", { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent: "pending_search" }),
+      );
+    });
+
+    it("respuesta del agente registra el intent de la herramienta (agent_buscar)", async () => {
+      const d = deps(); // routeTools por defecto elige "buscar"
+      await handler(
+        event("dónde hay agua", { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent: "agent_buscar" }),
+      );
+    });
+
+    it("fallback RAG tras fallo del agente registra rag_retrieve", async () => {
+      const d = deps({
+        routeTools: vi.fn(async () => {
+          throw new Error("Bedrock 424");
+        }),
+      });
+      await handler(
+        event("dónde hay agua", { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent: "rag_retrieve" }),
+      );
+    });
+
+    it("fallback de conteo tras fallo del agente registra rag_count", async () => {
+      const d = deps({
+        routeTools: vi.fn(async () => {
+          throw new Error("Bedrock 424");
+        }),
+      });
+      await handler(
+        event("cuántos acopios hay", { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.askBedrock).not.toHaveBeenCalled();
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent: "rag_count" }),
+      );
+    });
+  });
 });

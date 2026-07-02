@@ -391,6 +391,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "greeting",
       );
       return ok();
     }
@@ -415,6 +416,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "pending_search",
       );
       return ok();
     }
@@ -440,6 +442,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "bare_search",
       );
       return ok();
     }
@@ -461,6 +464,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "help_cry",
       );
       return ok();
     }
@@ -478,6 +482,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "help_guide",
       );
       return ok();
     }
@@ -501,6 +506,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "bare_category",
       );
       return ok();
     }
@@ -539,6 +545,7 @@ export async function handler(
         config.bedrockModelId,
         r.tokensIn,
         r.tokensOut,
+        r.intent,
       );
       return ok();
     } catch (e) {
@@ -552,7 +559,17 @@ export async function handler(
     const count = countAnswer(question, snap);
     if (count) {
       await d.sendMessage(token, chatId, count);
-      await logQa(d, chatId, question, count, [], config.bedrockModelId, 0, 0);
+      await logQa(
+        d,
+        chatId,
+        question,
+        count,
+        [],
+        config.bedrockModelId,
+        0,
+        0,
+        "rag_count",
+      );
       return ok();
     }
     const items = retrieve(question, snap);
@@ -567,6 +584,7 @@ export async function handler(
         config.bedrockModelId,
         0,
         0,
+        "rag_retrieve",
       );
       return ok();
     }
@@ -586,6 +604,7 @@ export async function handler(
       config.bedrockModelId,
       ans.tokensIn,
       ans.tokensOut,
+      "rag_retrieve",
     );
     return ok();
   } catch (err) {
@@ -718,6 +737,7 @@ async function logQa(
   modelo: string,
   tokensIn: number,
   tokensOut: number,
+  intent: string,
 ): Promise<void> {
   await d.qaLogRepo.append({
     chatId: String(chatId),
@@ -730,6 +750,7 @@ async function logQa(
     modelo,
     costoEstimado: 0,
     flagged: false,
+    intent,
   });
 }
 
