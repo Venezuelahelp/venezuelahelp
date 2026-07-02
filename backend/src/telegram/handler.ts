@@ -549,8 +549,11 @@ export async function handler(
       );
       return ok();
     } catch (e) {
-      logger.warn("agente tool-use falló; usando RAG clásico", {
+      // Fin de la degradación silenciosa: error estructurado + intent para
+      // correlacionar en CloudWatch con las filas QaLog rag_* que siguen.
+      logger.error("agente tool-use falló; degradando a RAG clásico", {
         chatId,
+        intent: "agent_error_fallback",
         error: e instanceof Error ? e.message : String(e),
       });
     }

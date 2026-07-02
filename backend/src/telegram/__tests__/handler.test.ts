@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { handler } from "@/telegram/handler";
 import { SKIP_LOCATION_TEXT } from "@/telegram/menu";
+import { logger } from "@/shared/logger";
 import type { Snapshot } from "@/telegram/types";
 
 const snap: Snapshot = {
@@ -694,6 +695,33 @@ describe("telegram handler", () => {
       expect(d.qaLogRepo.append).toHaveBeenCalledWith(
         expect.objectContaining({ intent: "rag_count" }),
       );
+    });
+
+    it("cuando answerWithTools lanza, emite log estructurado agent_error_fallback", async () => {
+      const errorSpy = vi
+        .spyOn(logger, "error")
+        .mockImplementation(() => undefined as any);
+      try {
+        const d = deps({
+          routeTools: vi.fn(async () => {
+            throw new Error("Bedrock 424");
+          }),
+        });
+        await handler(
+          event("dónde hay agua", { chat: { id: 9, type: "private" } }),
+          d as any,
+        );
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("agente tool-use falló"),
+          expect.objectContaining({
+            chatId: 9,
+            intent: "agent_error_fallback",
+            error: "Bedrock 424",
+          }),
+        );
+      } finally {
+        errorSpy.mockRestore();
+      }
     });
   });
 });
