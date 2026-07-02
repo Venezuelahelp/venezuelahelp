@@ -16,6 +16,7 @@ import {
   type NormalizedItem,
 } from "@/shared/types";
 import type { RestConfig } from "@/connectors/restConfig";
+import type { QueryResult } from "@/data-api/query";
 
 export interface RouteDeps {
   configRepo: Pick<ConfigRepo, "get" | "put">;
@@ -40,6 +41,13 @@ export interface RouteDeps {
   // Edad del snapshot público (LastModified en S3). Opcional y con contrato
   // "nunca lanza": si falta o devuelve undefined, /stats sale sin la clave.
   snapshotUpdatedAt?: () => Promise<string | undefined>;
+  // Búsqueda sobre el snapshot público (mismo engine que el data-api /v1).
+  // Inyectado para que el router no conozca el fetch HTTP del snapshot.
+  searchSnapshot?: (params: {
+    q?: string;
+    category?: string;
+    limit?: number;
+  }) => Promise<QueryResult>;
 }
 
 export interface RouteResult {
@@ -142,6 +150,12 @@ const patchSourceConfigSchema = z
   .refine((b) => b.enabled !== undefined || b.rest !== undefined, {
     message: "se requiere 'enabled' o 'rest'",
   });
+
+const itemsSearchQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  category: z.enum(CATEGORIES).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
 
 function slugify(s: string): string {
   return (
@@ -314,6 +328,30 @@ export async function route(
     const limit = parseLimit(query.limit, 50, 200);
     const logs = await deps.qaLogRepo.listByChat(chatId, limit);
     return { status: 200, body: logs };
+  }
+
+  // GET /items/search — búsqueda de ítems sobre el snapshot (no toca DynamoDB)
+  if (method === "GET" && path === "/items/search") {
+    const parsed = itemsSearchQuerySchema.safeParse({
+      q: query.q,
+      category: query.category,
+      limit: query.limit,
+    });
+    if (!parsed.success) {
+      return {
+        status: 400,
+        body: { error: "invalid query", issues: parsed.error.issues },
+      };
+    }
+    const result = await deps.searchSnapshot?.({
+      q: parsed.data.q,
+      category: parsed.data.category,
+      limit: parsed.data.limit ?? 50,
+    });
+    if (!result) {
+      return { status: 500, body: { error: "searchSnapshot not configured" } };
+    }
+    return { status: 200, body: result };
   }
 
   // GET /stats

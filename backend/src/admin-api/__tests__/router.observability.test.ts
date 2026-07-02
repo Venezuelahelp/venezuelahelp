@@ -85,4 +85,61 @@ describe("admin-api router — observabilidad", () => {
       expect("snapshotUpdatedAt" in (res.body as object)).toBe(false);
     });
   });
+
+  describe("GET /items/search", () => {
+    const found = {
+      category: "desaparecidos",
+      sourceId: "s1",
+      externalId: "e1",
+      titulo: "Ana María Pérez",
+      texto: "Vista por última vez en Caracas",
+    };
+
+    it("busca en el snapshot con q, category y limit (default 50)", async () => {
+      const searchSnapshot = vi
+        .fn()
+        .mockResolvedValue({ items: [found], total: 1 });
+      const deps = makeDeps({ searchSnapshot });
+      const res = await route("GET", "/items/search", null, deps, {
+        q: "ana",
+        category: "desaparecidos",
+      });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ items: [found], total: 1 });
+      expect(searchSnapshot).toHaveBeenCalledWith({
+        q: "ana",
+        category: "desaparecidos",
+        limit: 50,
+      });
+    });
+
+    it("acepta limit explícito dentro del rango", async () => {
+      const searchSnapshot = vi.fn().mockResolvedValue({ items: [], total: 0 });
+      const deps = makeDeps({ searchSnapshot });
+      await route("GET", "/items/search", null, deps, { limit: "10" });
+      expect(searchSnapshot).toHaveBeenCalledWith({
+        q: undefined,
+        category: undefined,
+        limit: 10,
+      });
+    });
+
+    it("rechaza una categoría inválida con 400", async () => {
+      const searchSnapshot = vi.fn();
+      const deps = makeDeps({ searchSnapshot });
+      const res = await route("GET", "/items/search", null, deps, {
+        category: "inventada",
+      });
+      expect(res.status).toBe(400);
+      expect(searchSnapshot).not.toHaveBeenCalled();
+    });
+
+    it("rechaza limit fuera de rango con 400", async () => {
+      const deps = makeDeps({ searchSnapshot: vi.fn() });
+      const res = await route("GET", "/items/search", null, deps, {
+        limit: "9999",
+      });
+      expect(res.status).toBe(400);
+    });
+  });
 });
