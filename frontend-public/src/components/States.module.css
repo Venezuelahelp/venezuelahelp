@@ -72,6 +72,31 @@
   line-height: 1.6;
 }
 
+.emptyClear {
+  margin-top: 16px;
+  padding: 8px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.emptyClear:hover {
+  background: var(--primary-tint);
+  border-color: var(--primary);
+}
+
+.emptyClear:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* --------------- ErrorState --------------- */
 
 .errorRoot {

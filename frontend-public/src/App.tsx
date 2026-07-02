@@ -287,7 +287,16 @@ export default function App() {
                       {matchView ? (
                         <LocatedMatches matches={matches} />
                       ) : filtered.length === 0 ? (
-                        <Empty query={query} />
+                        <Empty
+                          query={debouncedQuery}
+                          onClear={
+                            debouncedQuery.trim().length > 0 ||
+                            active.size > 0 ||
+                            statusFilter !== "todos"
+                              ? onClear
+                              : undefined
+                          }
+                        />
                       ) : (
                         <div className={styles.results}>
                           {view === "lista" ? (

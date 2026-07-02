@@ -415,4 +415,36 @@ describe("App integration", () => {
       expect(screen.queryByRole("alert")).toBeNull();
     });
   });
+
+  it("empty state con filtros ofrece 'Limpiar filtros' y restaura la lista", async () => {
+    mockUseSnapshot.mockReturnValue({
+      data: SNAPSHOT,
+      loading: false,
+      error: null,
+    });
+    render(<App />);
+
+    // Sin filtros: solo hay botones de limpiar de FilterBar cuando hay filtros
+    // (hasFilters=false ⇒ 0 botones).
+    expect(
+      screen.queryAllByRole("button", { name: /limpiar filtros/i }),
+    ).toHaveLength(0);
+
+    const input = screen.getByRole("searchbox", { name: /buscar/i });
+    await userEvent.type(input, "xyzzy-no-existe");
+
+    const emptyMsg = await screen.findByText(/No hay resultados para/i);
+    const emptyBtn = within(emptyMsg.parentElement as HTMLElement).getByRole(
+      "button",
+      { name: /limpiar filtros/i },
+    );
+    await userEvent.click(emptyBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText("Edificio colapsado en Caracas").length,
+      ).toBeGreaterThan(0);
+    });
+    expect((input as HTMLInputElement).value).toBe("");
+  });
 });
