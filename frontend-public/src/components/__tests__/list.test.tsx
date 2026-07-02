@@ -76,6 +76,67 @@ describe("ItemList statusClass", () => {
   });
 });
 
+describe("ItemDetail — Actualizado y status crudo", () => {
+  it("muestra 'Actualizado:' cuando lastSeenAt difiere de firstSeenAt", async () => {
+    render(
+      <ItemList
+        items={[
+          {
+            ...items[0],
+            firstSeenAt: "2026-06-26T12:00:00Z",
+            lastSeenAt: "2026-07-01T09:30:00Z",
+          },
+        ]}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edificio colapsado/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/Registrado:/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Actualizado:/i)).toBeInTheDocument();
+  });
+
+  it("omite 'Actualizado:' cuando coincide con la fecha de registro", async () => {
+    render(
+      <ItemList
+        items={[
+          {
+            ...items[0],
+            firstSeenAt: "2026-06-26T12:00:00Z",
+            lastSeenAt: "2026-06-26T12:00:00Z",
+          },
+        ]}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edificio colapsado/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByText(/Actualizado:/i)).toBeNull();
+  });
+
+  it("muestra el status crudo de la fuente en cualquier categoría", async () => {
+    render(<ItemList items={[{ ...items[0], status: "en_revision" }]} />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edificio colapsado/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(/Estado según la fuente:/i),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText("en_revision")).toBeInTheDocument();
+  });
+
+  it("omite la fila de status crudo cuando la fuente no lo trae", async () => {
+    render(<ItemList items={[items[0]]} />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edificio colapsado/i }),
+    );
+    expect(screen.queryByText(/Estado según la fuente:/i)).toBeNull();
+  });
+});
+
 describe("ItemList", () => {
   it("renders a list element", () => {
     render(<ItemList items={items} />);

@@ -233,6 +233,18 @@
   overflow-wrap: anywhere;
 }
 
+/* Status crudo tal como lo reporta la fuente (informativo, sin normalizar). */
+.detailStatus {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.detailStatus strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .detailFoot {
   width: 100%;
   padding-top: 12px;

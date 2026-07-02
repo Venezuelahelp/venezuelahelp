@@ -73,6 +73,7 @@ function StatusChip({ item }: { item: Item }) {
 
 function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
   const fecha = formatDateTime(item.firstSeenAt);
+  const actualizado = formatDateTime(item.lastSeenAt);
   const titleId = "item-detail-title";
 
   return (
@@ -88,6 +89,12 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
             <span className={styles.detailMetaItem}>
               <Clock aria-hidden="true" size={14} />
               Registrado: {fecha}
+            </span>
+          )}
+          {actualizado && actualizado !== fecha && (
+            <span className={styles.detailMetaItem}>
+              <Clock aria-hidden="true" size={14} />
+              Actualizado: {actualizado}
             </span>
           )}
           {item.ubicacion?.nombre && (
@@ -120,6 +127,12 @@ function ItemDetail({ item, onClose }: { item: Item; onClose: () => void }) {
         )}
 
         {item.texto && <p className={styles.detailText}>{item.texto}</p>}
+
+        {item.status && (
+          <p className={styles.detailStatus}>
+            Estado según la fuente: <strong>{item.status}</strong>
+          </p>
+        )}
 
         <div className={styles.detailFoot}>
           <Source sourceId={item.sourceId} sourceUrl={item.sourceUrl} />
