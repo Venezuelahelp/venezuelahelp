@@ -14,13 +14,11 @@ const COUNTS: Record<Category, number> = {
 };
 
 describe("Hero", () => {
-  it("renders the editorial headline", () => {
+  it("no longer renders the editorial headline (removed per #57)", () => {
     render(
       <Hero total={6} counts={COUNTS} generatedAt="2026-06-26T18:00:00Z" />,
     );
-    expect(
-      screen.getByRole("heading", { level: 1, name: /terremoto/i }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
   });
 
   it("links to the Telegram bot safely", () => {
