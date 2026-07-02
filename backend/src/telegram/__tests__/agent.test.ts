@@ -182,4 +182,32 @@ describe("answerWithTools (agente sobre el JSON)", () => {
     });
     expect(r.reply).not.toContain("Coincidencia automática");
   });
+
+  it.each([
+    ["saludar", {}, "agent_saludar"],
+    ["fuera_de_tema", {}, "agent_rechazado"],
+    ["contar", { category: "desaparecidos" }, "agent_contar"],
+    ["listar", { category: "desaparecidos" }, "agent_listar"],
+  ] as const)(
+    "expone el intent de la herramienta: %s → %s",
+    async (tool, input, intent) => {
+      const r = await answerWithTools("pregunta", snap, config, {
+        routeTools: route(tool, input),
+        askBedrock: vi.fn(async () => ({
+          text: "ok",
+          tokensIn: 1,
+          tokensOut: 1,
+        })),
+      });
+      expect(r.intent).toBe(intent);
+    },
+  );
+
+  it("buscar expone agent_buscar incluso en la rama sin resultados", async () => {
+    const r = await answerWithTools("xyzzy plutonio", snap, config, {
+      routeTools: route("buscar", { consulta: "xyzzy plutonio" }),
+      askBedrock: vi.fn(async () => ({ text: "", tokensIn: 0, tokensOut: 0 })),
+    });
+    expect(r.intent).toBe("agent_buscar");
+  });
 });

@@ -20,14 +20,21 @@ export function Loading() {
 
 interface EmptyProps {
   query?: string;
+  /** Con filtros activos: botón para limpiarlos y volver a ver todo. */
+  onClear?: () => void;
 }
 
-export function Empty({ query }: EmptyProps) {
+export function Empty({ query, onClear }: EmptyProps) {
   return (
     <div className={styles.emptyRoot}>
       <p className={styles.emptyMessage}>
         {query ? `No hay resultados para «${query}».` : "No hay resultados."}
       </p>
+      {onClear && (
+        <button className={styles.emptyClear} type="button" onClick={onClear}>
+          Limpiar filtros
+        </button>
+      )}
     </div>
   );
 }

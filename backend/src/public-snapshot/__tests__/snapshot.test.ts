@@ -226,4 +226,54 @@ describe("buildSnapshot", () => {
     });
     expect(parsePutBody().matches).toEqual([]);
   });
+
+  it("statusClass viaja en el snapshot para desaparecidos (patrón sourceUrl)", async () => {
+    s3Mock.on(PutObjectCommand).resolves({});
+    const itemRepo = {
+      listByCategory: vi.fn(async (cat: string) =>
+        cat === "desaparecidos"
+          ? [
+              {
+                category: "desaparecidos",
+                sourceId: "A",
+                externalId: "1",
+                titulo: "Maria Perez",
+                texto: "Texto suficientemente largo",
+                status: "no_encontrado",
+                raw: {},
+                contentHash: "h",
+                firstSeenAt: "2026-07-01T00:00:00Z",
+                lastSeenAt: "2026-07-01T00:00:00Z",
+              },
+              {
+                category: "desaparecidos",
+                sourceId: "A",
+                externalId: "2",
+                titulo: "Pedro Gomez",
+                texto: "Texto suficientemente largo",
+                status: "estado_rarisimo_sin_mapear",
+                raw: {},
+                contentHash: "h",
+                firstSeenAt: "2026-07-01T00:00:00Z",
+                lastSeenAt: "2026-07-01T00:00:00Z",
+              },
+            ]
+          : [],
+      ),
+    };
+    await buildSnapshot("2026-07-02T00:00:00Z", {
+      itemRepo: itemRepo as never,
+      configRepo: configRepo as never,
+      sourceRepo: sourceRepo as never,
+    });
+    const body = parsePutBody();
+    const desap = body.categories.desaparecidos;
+    expect(desap.find((i: any) => i.externalId === "1").statusClass).toBe(
+      "buscando",
+    );
+    // "otro" → la clave NO existe en el JSON (feature-detect limpio en el front).
+    expect("statusClass" in desap.find((i: any) => i.externalId === "2")).toBe(
+      false,
+    );
+  });
 });

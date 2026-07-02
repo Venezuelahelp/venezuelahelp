@@ -5,6 +5,8 @@ import {
   filterItems,
   countByCategory,
   sourcesForDisplay,
+  hasStatusClass,
+  sortItems,
 } from "../filter";
 import type { Category, Item, Snapshot } from "@/types";
 
@@ -386,6 +388,112 @@ describe("filter functions", () => {
     });
   });
 
+  describe("filterItems por statusClass (sub-filtro desaparecidos)", () => {
+    const desap = (over: Partial<Item>): Item => ({
+      category: "desaparecidos",
+      sourceId: "s1",
+      externalId: "e1",
+      titulo: "Maria Perez",
+      texto: "Vista por última vez en Chacao",
+      ...over,
+    });
+
+    it("status='localizado' deja solo desaparecidos localizados", () => {
+      const items = [
+        desap({ externalId: "1", statusClass: "buscando" }),
+        desap({ externalId: "2", statusClass: "localizado" }),
+      ];
+      const out = filterItems(
+        items,
+        "",
+        new Set<Category>(["desaparecidos"]),
+        "localizado",
+      );
+      expect(out.map((i) => i.externalId)).toEqual(["2"]);
+    });
+
+    it("no afecta a otras categorías activas a la vez", () => {
+      const items: Item[] = [
+        desap({ externalId: "1", statusClass: "buscando" }),
+        {
+          category: "acopios",
+          sourceId: "s2",
+          externalId: "9",
+          titulo: "Acopio Las Mercedes",
+          texto: "Reciben agua y medicinas",
+        },
+      ];
+      const out = filterItems(
+        items,
+        "",
+        new Set<Category>(["desaparecidos", "acopios"]),
+        "localizado",
+      );
+      expect(out.map((i) => i.externalId)).toEqual(["9"]);
+    });
+
+    it("un desaparecido sin statusClass no pasa el sub-filtro (snapshot viejo)", () => {
+      const out = filterItems(
+        [desap({ externalId: "1" })],
+        "",
+        new Set<Category>(["desaparecidos"]),
+        "buscando",
+      );
+      expect(out).toEqual([]);
+    });
+
+    it("'todos' (default) no filtra por status", () => {
+      const out = filterItems(
+        [desap({ externalId: "1", statusClass: "buscando" })],
+        "",
+        new Set<Category>(["desaparecidos"]),
+      );
+      expect(out).toHaveLength(1);
+    });
+
+    it("se combina con la búsqueda por query", () => {
+      const items = [
+        desap({
+          externalId: "1",
+          statusClass: "localizado",
+          titulo: "Maria Perez",
+        }),
+        desap({
+          externalId: "2",
+          statusClass: "localizado",
+          titulo: "Pedro Gomez",
+        }),
+      ];
+      const out = filterItems(
+        items,
+        "maria",
+        new Set<Category>(["desaparecidos"]),
+        "localizado",
+      );
+      expect(out.map((i) => i.externalId)).toEqual(["1"]);
+    });
+  });
+
+  describe("hasStatusClass (feature-detect)", () => {
+    const base: Item = {
+      category: "desaparecidos",
+      sourceId: "s1",
+      externalId: "e1",
+      titulo: "Maria Perez",
+      texto: "t",
+    };
+
+    it("true si algún ítem trae statusClass", () => {
+      expect(hasStatusClass([base, { ...base, statusClass: "buscando" }])).toBe(
+        true,
+      );
+    });
+
+    it("false para snapshots viejos sin el campo", () => {
+      expect(hasStatusClass([base])).toBe(false);
+    });
+  });
+
   describe("sourcesForDisplay", () => {
     const items: Item[] = [
       {
@@ -441,5 +549,61 @@ describe("filter functions", () => {
       const result = sourcesForDisplay(["a"], items);
       expect(result.map((s) => s.sourceId)).toEqual(["a"]);
     });
+  });
+});
+
+describe("sortItems", () => {
+  const it1: Item = {
+    category: "reportes",
+    sourceId: "s1",
+    externalId: "1",
+    titulo: "Viejo corroborado",
+    texto: "t",
+    lastSeenAt: "2026-06-28T00:00:00Z",
+    sourcesCount: 3,
+  };
+  const it2: Item = {
+    category: "reportes",
+    sourceId: "s1",
+    externalId: "2",
+    titulo: "Reciente solitario",
+    texto: "t",
+    lastSeenAt: "2026-07-01T00:00:00Z",
+    sourcesCount: 1,
+  };
+  const it3: Item = {
+    category: "reportes",
+    sourceId: "s1",
+    externalId: "3",
+    titulo: "Sin fechas ni fuentes",
+    texto: "t",
+  };
+
+  it("'relevancia' devuelve el orden de entrada intacto (misma referencia)", () => {
+    const arr = [it1, it2, it3];
+    expect(sortItems(arr, "relevancia")).toBe(arr);
+  });
+
+  it("'recientes' ordena por lastSeenAt desc; ausentes al final", () => {
+    expect(
+      sortItems([it3, it1, it2], "recientes").map((i) => i.externalId),
+    ).toEqual(["2", "1", "3"]);
+  });
+
+  it("'corroborados' ordena por sourcesCount desc con empate por lastSeenAt", () => {
+    const it4: Item = {
+      ...it1,
+      externalId: "4",
+      lastSeenAt: "2026-07-02T00:00:00Z",
+    };
+    expect(
+      sortItems([it2, it1, it4, it3], "corroborados").map((i) => i.externalId),
+    ).toEqual(["4", "1", "2", "3"]);
+  });
+
+  it("no muta la entrada", () => {
+    const arr = [it1, it2];
+    sortItems(arr, "recientes");
+    expect(arr.map((i) => i.externalId)).toEqual(["1", "2"]);
   });
 });

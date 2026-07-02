@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { handler } from "@/telegram/handler";
 import { SKIP_LOCATION_TEXT } from "@/telegram/menu";
+import { logger } from "@/shared/logger";
 import type { Snapshot } from "@/telegram/types";
 
 const snap: Snapshot = {
@@ -151,6 +152,22 @@ describe("telegram handler", () => {
       9,
       expect.stringContaining("No encontré"),
     );
+  });
+
+  it("fallback RAG sin resultados responde con el mensaje orientador, no el seco", async () => {
+    const d = deps({
+      routeTools: vi.fn(async () => {
+        throw new Error("Bedrock 424");
+      }),
+    });
+    await handler(
+      event("xyzzy plutonio", { chat: { id: 9, type: "private" } }),
+      d as any,
+    );
+    expect(d.askBedrock).not.toHaveBeenCalled();
+    const reply = (d.sendMessage as any).mock.calls[0][2] as string;
+    expect(reply).toContain("No encontré información");
+    expect(reply).not.toContain("No tengo ese dato");
   });
 
   it("'buscar a una persona' (sin nombre) → pide el nombre y guarda pendingSearch", async () => {
@@ -611,5 +628,237 @@ describe("telegram handler", () => {
     const reply = (d.sendMessage as any).mock.calls[0][2] as string;
     expect(reply).toMatch(/pedir ayuda/i);
     expect(reply).toContain("NECESITO AYUDA");
+  });
+
+  describe("telemetría de intents (QaLog.intent)", () => {
+    it.each([
+      ["hola", "greeting"],
+      ["buscar a una persona", "bare_search"],
+      ["necesito ayuda", "help_cry"],
+      ["Cómo puedo solicitar ayuda", "help_guide"],
+      ["acopios", "bare_category"],
+    ])("'%s' registra intent %s", async (text, intent) => {
+      const d = deps();
+      await handler(
+        event(text, { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent }),
+      );
+    });
+
+    it("con pendingSearch activo registra intent pending_search", async () => {
+      const d = deps({
+        menuState: {
+          get: vi.fn(async () => ({
+            pendingSearch: "persona",
+            pendingSearchAt: new Date().toISOString(),
+          })),
+          setPending: vi.fn(async () => {}),
+          setLocation: vi.fn(async () => {}),
+          clearPending: vi.fn(async () => {}),
+          setPendingSearch: vi.fn(async () => {}),
+          clearPendingSearch: vi.fn(async () => {}),
+        },
+      });
+      await handler(
+        event("Pedro Gonzalez", { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent: "pending_search" }),
+      );
+    });
+
+    it("respuesta del agente registra el intent de la herramienta (agent_buscar)", async () => {
+      const d = deps(); // routeTools por defecto elige "buscar"
+      await handler(
+        event("dónde hay agua", { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent: "agent_buscar" }),
+      );
+    });
+
+    it("fallback RAG tras fallo del agente registra rag_retrieve", async () => {
+      const d = deps({
+        routeTools: vi.fn(async () => {
+          throw new Error("Bedrock 424");
+        }),
+      });
+      await handler(
+        event("dónde hay agua", { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent: "rag_retrieve" }),
+      );
+    });
+
+    it("fallback de conteo tras fallo del agente registra rag_count", async () => {
+      const d = deps({
+        routeTools: vi.fn(async () => {
+          throw new Error("Bedrock 424");
+        }),
+      });
+      await handler(
+        event("cuántos acopios hay", { chat: { id: 9, type: "private" } }),
+        d as any,
+      );
+      expect(d.askBedrock).not.toHaveBeenCalled();
+      expect(d.qaLogRepo.append).toHaveBeenCalledWith(
+        expect.objectContaining({ intent: "rag_count" }),
+      );
+    });
+
+    it("cuando answerWithTools lanza, emite log estructurado agent_error_fallback", async () => {
+      const errorSpy = vi
+        .spyOn(logger, "error")
+        .mockImplementation(() => undefined as any);
+      try {
+        const d = deps({
+          routeTools: vi.fn(async () => {
+            throw new Error("Bedrock 424");
+          }),
+        });
+        await handler(
+          event("dónde hay agua", { chat: { id: 9, type: "private" } }),
+          d as any,
+        );
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("agente tool-use falló"),
+          expect.objectContaining({
+            chatId: 9,
+            intent: "agent_error_fallback",
+            error: "Bedrock 424",
+          }),
+        );
+      } finally {
+        errorSpy.mockRestore();
+      }
+    });
+  });
+
+  describe("validación de coordenadas (handleLocation)", () => {
+    it.each([
+      [91, -66.9],
+      [-90.01, -66.9],
+      [10.5, 181],
+      [10.5, -180.5],
+      [0, 0],
+    ])(
+      "ubicación inválida (%s, %s) → pide reintentar y NO persiste",
+      async (lat, lng) => {
+        const d = deps();
+        await handler(locationEvent(lat, lng), d as any);
+        expect(d.menuState.setLocation).not.toHaveBeenCalled();
+        expect(d.loadSnapshot).not.toHaveBeenCalled();
+        expect(d.sendMessage).toHaveBeenCalledWith(
+          "TOK",
+          9,
+          expect.stringMatching(/ubicación no parece válida/i),
+        );
+      },
+    );
+
+    it("coordenadas límite válidas (-90, 180) SÍ se persisten", async () => {
+      const d = deps();
+      await handler(locationEvent(-90, 180), d as any);
+      expect(d.menuState.setLocation).toHaveBeenCalledWith(
+        9,
+        -90,
+        180,
+        expect.any(String),
+      );
+    });
+  });
+
+  describe("callback more: (paginación «Ver más»)", () => {
+    const bigSnap: Snapshot = {
+      generatedAt: "t",
+      categories: {
+        acopios: Array.from({ length: 20 }, (_, i) => ({
+          category: "acopios",
+          sourceId: "s",
+          externalId: String(i),
+          titulo: `Albergue ${i + 1}`,
+          texto: "albergue con camas",
+          ubicacion: { lat: 10 + i * 0.01, lng: -66, nombre: "Zona" },
+        })),
+      },
+    };
+
+    it("more:refugios:8 pinta la 2ª página sin volver a pedir ubicación", async () => {
+      const d = deps({ loadSnapshot: vi.fn(async () => bigSnap) });
+      await handler(callbackEvent("more:refugios:8"), d as any);
+      expect(d.menuState.setPending).not.toHaveBeenCalled();
+      const [, , text, opts] = (d.sendMessage as any).mock.calls[0];
+      expect(text).toContain("9. Albergue");
+      expect(opts.replyMarkup.inline_keyboard).toBeTruthy();
+      expect(d.answerCallbackQuery).toHaveBeenCalledWith("TOK", "cb1");
+    });
+
+    it("more: con ubicación fresca mantiene el orden por distancia", async () => {
+      const d = deps({
+        loadSnapshot: vi.fn(async () => bigSnap),
+        menuState: {
+          get: vi.fn(async () => ({
+            lastLat: 10,
+            lastLng: -66,
+            lastLocationAt: new Date().toISOString(),
+          })),
+          setPending: vi.fn(async () => {}),
+          setLocation: vi.fn(async () => {}),
+          clearPending: vi.fn(async () => {}),
+          setPendingSearch: vi.fn(async () => {}),
+          clearPendingSearch: vi.fn(async () => {}),
+        },
+      });
+      await handler(callbackEvent("more:refugios:8"), d as any);
+      const [, , text] = (d.sendMessage as any).mock.calls[0];
+      expect(text).toContain("📏"); // pinta distancias
+      expect(text).toContain("9. ");
+    });
+
+    it("more: con ubicación caducada degrada a lista sin distancia, sin error", async () => {
+      const d = deps({
+        loadSnapshot: vi.fn(async () => bigSnap),
+        menuState: {
+          get: vi.fn(async () => ({
+            lastLat: 10,
+            lastLng: -66,
+            lastLocationAt: new Date(
+              Date.now() - 2 * 60 * 60 * 1000,
+            ).toISOString(),
+          })),
+          setPending: vi.fn(async () => {}),
+          setLocation: vi.fn(async () => {}),
+          clearPending: vi.fn(async () => {}),
+          setPendingSearch: vi.fn(async () => {}),
+          clearPendingSearch: vi.fn(async () => {}),
+        },
+      });
+      await handler(callbackEvent("more:refugios:8"), d as any);
+      const [, , text] = (d.sendMessage as any).mock.calls[0];
+      expect(text).toContain("9. ");
+      expect(text).not.toContain("📏"); // sin distancias
+      expect(d.menuState.setPending).not.toHaveBeenCalled(); // no re-pide ubicación
+    });
+
+    it.each([
+      ["more:refugios:zzz"],
+      ["more:noexiste:8"],
+      ["more:refugios:-8"],
+      ["more:refugios:8.5"],
+      ["more:refugios:8abc"],
+    ])("more: malformado (%s) cae a home sin lanzar", async (data) => {
+      const d = deps();
+      await handler(callbackEvent(data), d as any);
+      const [, , text] = (d.sendMessage as any).mock.calls[0];
+      expect(text).toContain("VenezuelaHelp"); // homeScreen
+      expect(d.answerCallbackQuery).toHaveBeenCalledWith("TOK", "cb1");
+    });
   });
 });

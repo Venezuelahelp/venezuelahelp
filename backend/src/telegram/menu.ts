@@ -154,12 +154,13 @@ export function categoryScreen(
   action: string,
   snap: Snapshot,
   userLoc?: LatLng,
+  offset = 0,
 ): MenuResponse {
   const selected = selectItems(action, snap);
   const ordered = userLoc
     ? sortByDistance(selected, userLoc)
     : [...selected].sort(byTrust);
-  const items = ordered.slice(0, MAX_ITEMS);
+  const items = ordered.slice(offset, offset + MAX_ITEMS);
   const title = TITLES[action] ?? "Resultados";
   const back = BACK_TARGET[action] ?? "home";
   if (items.length === 0) {
@@ -168,10 +169,19 @@ export function categoryScreen(
       replyMarkup: backMarkup(back),
     };
   }
-  const { text, buttons } = renderList(items, userLoc);
+  const { text, buttons } = renderList(items, userLoc, offset);
+  const rows = [...buttons];
+  const next = offset + MAX_ITEMS;
+  if (ordered.length > next) {
+    // callback_data ≤ 64 bytes: "more:" + acción (≤12) + ":" + offset.
+    rows.push([
+      { text: "➕ Ver más", callback_data: `more:${action}:${next}` },
+    ]);
+  }
+  rows.push(backRow(back));
   return {
     text: `${title}\n\n${text}`,
-    replyMarkup: { inline_keyboard: [...buttons, backRow(back)] },
+    replyMarkup: { inline_keyboard: rows },
   };
 }
 

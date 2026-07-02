@@ -96,6 +96,11 @@ export interface ItemEnrichment {
   sourcesCount: number;
   trust: TrustLevel;
   trustReasons: string[];
+  // Solo en `desaparecidos`: clase canónica del status crudo, calculada con
+  // classifyLocated (matchLocated.ts) al construir el snapshot. "otro" no se
+  // emite (campo ausente). El frontend/bot usan SOLO este campo, nunca
+  // parsean `status` crudo.
+  statusClass?: "buscando" | "localizado";
 }
 
 // Moderación del bot: cuántos mensajes fuera de tema / no permitidos seguidos
@@ -174,6 +179,24 @@ export interface LocatedMatch {
   };
 }
 
+// Rama del handler que produjo la respuesta (telemetría; Bloque C1).
+// Nota: "agent_error_fallback" NO forma parte de esta unión — ese valor solo
+// va al log estructurado de CloudWatch (logger.error), nunca a QaLogEntry.
+export type QaIntent =
+  | "greeting"
+  | "bare_search"
+  | "pending_search"
+  | "help_cry"
+  | "help_guide"
+  | "bare_category"
+  | "agent_saludar"
+  | "agent_rechazado"
+  | "agent_contar"
+  | "agent_listar"
+  | "agent_buscar"
+  | "rag_count"
+  | "rag_retrieve";
+
 export interface QaLogEntry {
   chatId: string;
   ts: string;
@@ -185,6 +208,7 @@ export interface QaLogEntry {
   modelo: string;
   costoEstimado: number;
   flagged: boolean;
+  intent?: QaIntent;
 }
 
 // Resumen de una corrida del scraper (historial de observabilidad del admin).

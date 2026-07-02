@@ -24,12 +24,15 @@ export interface RenderedList {
 export function renderList(
   items: PublicItem[],
   userLoc?: LatLng,
+  startIndex = 0,
 ): RenderedList {
   const blocks: string[] = [];
   const buttons: InlineKeyboardButton[][] = [];
   items.forEach((it, i) => {
     const badge = TRUST_BADGE[it.trust ?? "no_verificado"] ?? "";
-    const parts = [`${i + 1}. ${it.titulo}${badge ? `  ·  ${badge}` : ""}`];
+    const parts = [
+      `${startIndex + i + 1}. ${it.titulo}${badge ? `  ·  ${badge}` : ""}`,
+    ];
     const ex = excerpt(it.texto);
     if (ex) parts.push(ex);
     const rowButtons: InlineKeyboardButton[] = [];

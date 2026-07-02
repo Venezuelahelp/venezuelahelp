@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, type MockedFunction } from "vitest";
 
@@ -88,6 +88,7 @@ const SNAPSHOT: Snapshot = {
 describe("App integration", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    window.location.hash = "";
   });
 
   it("shows loading state when loading=true", () => {
@@ -146,9 +147,11 @@ describe("App integration", () => {
     });
 
     // Valencia item should not be visible anywhere
-    expect(
-      screen.queryAllByText("Persona desaparecida en Valencia"),
-    ).toHaveLength(0);
+    await waitFor(() => {
+      expect(
+        screen.queryAllByText("Persona desaparecida en Valencia"),
+      ).toHaveLength(0);
+    });
   });
 
   it("shows Empty when query matches nothing", async () => {
@@ -219,5 +222,229 @@ describe("App integration", () => {
     render(<App />);
     // Hero renders "Última actualización · ..." with a formatted date
     expect(screen.getByText(/Última actualización/i)).toBeInTheDocument();
+  });
+
+  const SNAPSHOT_STATUS: Snapshot = {
+    ...SNAPSHOT,
+    categories: {
+      ...SNAPSHOT.categories,
+      desaparecidos: [
+        {
+          ...SNAPSHOT.categories.desaparecidos[0],
+          statusClass: "buscando",
+        },
+        {
+          category: "desaparecidos",
+          sourceId: "src-2",
+          externalId: "ext-9",
+          titulo: "Pedro Gomez localizado",
+          texto: "Reportado a salvo en Caracas.",
+          statusClass: "localizado",
+        },
+      ],
+    },
+  };
+
+  // Chips de categoría = botones con aria-pressed (los badges de la lista son spans).
+  function desaparecidosChips() {
+    return screen
+      .getAllByRole("button", { name: /Desaparecidos/i })
+      .filter((btn) => btn.getAttribute("aria-pressed") !== null);
+  }
+
+  it("muestra el sub-filtro de status solo con desaparecidos activa", async () => {
+    mockUseSnapshot.mockReturnValue({
+      data: SNAPSHOT_STATUS,
+      loading: false,
+      error: null,
+    });
+    render(<App />);
+    expect(screen.queryByRole("group", { name: /por estado/i })).toBeNull();
+
+    await userEvent.click(desaparecidosChips()[0]);
+    expect(
+      screen.getAllByRole("group", { name: /por estado/i }).length,
+    ).toBeGreaterThan(0);
+
+    // Desactivar la categoría lo oculta de nuevo.
+    await userEvent.click(desaparecidosChips()[0]);
+    expect(screen.queryByRole("group", { name: /por estado/i })).toBeNull();
+  });
+
+  it("filtra por Localizados dentro de desaparecidos", async () => {
+    mockUseSnapshot.mockReturnValue({
+      data: SNAPSHOT_STATUS,
+      loading: false,
+      error: null,
+    });
+    render(<App />);
+    await userEvent.click(desaparecidosChips()[0]);
+
+    const group = screen.getAllByRole("group", { name: /por estado/i })[0];
+    await userEvent.click(
+      within(group).getByRole("button", { name: "Localizados" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryAllByText("Persona desaparecida en Valencia"),
+      ).toHaveLength(0);
+    });
+    expect(
+      screen.getAllByText("Pedro Gomez localizado").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("feature-detect: snapshot sin statusClass no muestra el sub-filtro", async () => {
+    mockUseSnapshot.mockReturnValue({
+      data: SNAPSHOT,
+      loading: false,
+      error: null,
+    });
+    render(<App />);
+    await userEvent.click(desaparecidosChips()[0]);
+    expect(screen.queryByRole("group", { name: /por estado/i })).toBeNull();
+  });
+
+  it("ordena por 'Más recientes' con el selector", async () => {
+    const snap: Snapshot = {
+      ...SNAPSHOT,
+      categories: {
+        ...SNAPSHOT.categories,
+        reportes: [
+          {
+            ...SNAPSHOT.categories.reportes[0],
+            lastSeenAt: "2026-06-28T00:00:00Z",
+          },
+        ],
+        desaparecidos: [
+          {
+            ...SNAPSHOT.categories.desaparecidos[0],
+            lastSeenAt: "2026-07-01T00:00:00Z",
+          },
+        ],
+      },
+    };
+    mockUseSnapshot.mockReturnValue({
+      data: snap,
+      loading: false,
+      error: null,
+    });
+    const { container } = render(<App />);
+    // Escopar al <ul role="list"> del ItemList: el panel de resumen del Hero
+    // también renderiza un <ul><li> nativo (conteos por categoría) sin
+    // role="list" explícito, así que getAllByRole("listitem") a secas
+    // devolvería también esas filas.
+    const resultsList = () =>
+      within(container.querySelector('ul[role="list"]')!);
+
+    // Orden por defecto (relevancia = orden de flatten): reportes primero.
+    let rows = resultsList().getAllByRole("listitem");
+    expect(rows[0].textContent).toContain("Edificio colapsado en Caracas");
+
+    const select = screen.getAllByRole("combobox", {
+      name: /ordenar resultados/i,
+    })[0];
+    await userEvent.selectOptions(select, "recientes");
+
+    await waitFor(() => {
+      rows = resultsList().getAllByRole("listitem");
+      expect(rows[0].textContent).toContain("Persona desaparecida en Valencia");
+    });
+  });
+
+  describe("deeplink #/item", () => {
+    it("abre la home con el modal de detalle de la ficha", async () => {
+      window.location.hash = "#/item/src-2/ext-2";
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        within(dialog).getByText("Persona desaparecida en Valencia"),
+      ).toBeInTheDocument();
+      // La home sigue debajo (no es una página aparte).
+      expect(screen.getByText(/Última actualización/i)).toBeInTheDocument();
+    });
+
+    it("ficha inexistente → aviso 'No encontramos esa ficha' + home normal", () => {
+      window.location.hash = "#/item/src-x/no-existe";
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /No encontramos esa ficha/i,
+      );
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(
+        screen.getAllByText("Edificio colapsado en Caracas").length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("cerrar el modal restaura #/ y desmonta el detalle", async () => {
+      window.location.hash = "#/item/src-2/ext-2";
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: /cerrar/i }),
+      );
+      await waitFor(() => expect(window.location.hash).toBe("#/"));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    });
+
+    it("no rompe las páginas existentes (#/fuentes sigue siendo Fuentes)", () => {
+      window.location.hash = "#/fuentes";
+      mockUseSnapshot.mockReturnValue({
+        data: SNAPSHOT,
+        loading: false,
+        error: null,
+      });
+      render(<App />);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+  });
+
+  it("empty state con filtros ofrece 'Limpiar filtros' y restaura la lista", async () => {
+    mockUseSnapshot.mockReturnValue({
+      data: SNAPSHOT,
+      loading: false,
+      error: null,
+    });
+    render(<App />);
+
+    // Sin filtros: solo hay botones de limpiar de FilterBar cuando hay filtros
+    // (hasFilters=false ⇒ 0 botones).
+    expect(
+      screen.queryAllByRole("button", { name: /limpiar filtros/i }),
+    ).toHaveLength(0);
+
+    const input = screen.getByRole("searchbox", { name: /buscar/i });
+    await userEvent.type(input, "xyzzy-no-existe");
+
+    const emptyMsg = await screen.findByText(/No hay resultados para/i);
+    const emptyBtn = within(emptyMsg.parentElement as HTMLElement).getByRole(
+      "button",
+      { name: /limpiar filtros/i },
+    );
+    await userEvent.click(emptyBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText("Edificio colapsado en Caracas").length,
+      ).toBeGreaterThan(0);
+    });
+    expect((input as HTMLInputElement).value).toBe("");
   });
 });
