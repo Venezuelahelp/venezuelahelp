@@ -42,6 +42,9 @@ export default function Header() {
           <a href="#/fuentes" className={styles.navLink}>
             Fuentes
           </a>
+          <a href="#/api" className={styles.navLink}>
+            API
+          </a>
         </nav>
 
         {/* CTA — always visible at every viewport width */}
@@ -94,6 +97,13 @@ export default function Header() {
             onClick={() => setOpen(false)}
           >
             Fuentes
+          </a>
+          <a
+            href="#/api"
+            className={styles.menuLink}
+            onClick={() => setOpen(false)}
+          >
+            API
           </a>
         </div>
       )}
