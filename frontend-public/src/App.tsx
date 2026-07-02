@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useSnapshot } from "@/data/useSnapshot";
 import { useRevealOnScrollUp } from "@/hooks/useRevealOnScrollUp";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { sendBeacon } from "@/track";
 import {
   flatten,
@@ -38,6 +39,8 @@ const MapView = lazy(() => import("@/components/MapView"));
 export default function App() {
   const { data, loading, error } = useSnapshot();
   const [query, setQuery] = useState("");
+  // La búsqueda filtra ~66k ítems: debounce para no recalcular por tecla.
+  const debouncedQuery = useDebouncedValue(query, 300);
   const [active, setActive] = useState<Set<Category>>(new Set());
   // Vista "Match": muestra el cruce buscado↔localizado en vez de la lista normal.
   const [matchView, setMatchView] = useState(false);
@@ -120,8 +123,8 @@ export default function App() {
   const catCounts = useMemo(() => countByCategory(items), [items]);
   const snapshotHasStatus = useMemo(() => hasStatusClass(items), [items]);
   const filtered = useMemo(
-    () => filterItems(items, query, active, statusFilter),
-    [items, query, active, statusFilter],
+    () => filterItems(items, debouncedQuery, active, statusFilter),
+    [items, debouncedQuery, active, statusFilter],
   );
   const sorted = useMemo(() => sortItems(filtered, sort), [filtered, sort]);
   const located = useMemo(
@@ -170,7 +173,7 @@ export default function App() {
               (() => {
                 // Clave para reiniciar la lista infinita (volver arriba) cuando
                 // cambian los filtros.
-                const filterKey = `${query}|${[...active].sort().join(",")}|${statusFilter}|${sort}`;
+                const filterKey = `${debouncedQuery}|${[...active].sort().join(",")}|${statusFilter}|${sort}`;
                 const matches = data.matches ?? [];
                 const matchCount = matches.length;
 

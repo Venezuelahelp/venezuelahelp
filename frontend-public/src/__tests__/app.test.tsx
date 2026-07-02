@@ -146,9 +146,11 @@ describe("App integration", () => {
     });
 
     // Valencia item should not be visible anywhere
-    expect(
-      screen.queryAllByText("Persona desaparecida en Valencia"),
-    ).toHaveLength(0);
+    await waitFor(() => {
+      expect(
+        screen.queryAllByText("Persona desaparecida en Valencia"),
+      ).toHaveLength(0);
+    });
   });
 
   it("shows Empty when query matches nothing", async () => {
