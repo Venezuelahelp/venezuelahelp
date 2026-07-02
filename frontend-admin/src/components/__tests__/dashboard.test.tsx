@@ -98,3 +98,61 @@ describe("Dashboard", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });
+
+describe("Dashboard — observabilidad", () => {
+  const baseStats = {
+    counts: { reportes: 1 },
+    sources: [],
+  };
+
+  const run = {
+    ts: "2026-07-02T00:28:00.000Z",
+    durationMs: 660000,
+    sourcesTotal: 11,
+    sourcesOk: 10,
+    sourcesError: 1,
+    created: 12,
+    updated: 340,
+    unchanged: 45000,
+    errors: [{ sourceId: "bad", error: "HTTP 500" }],
+  };
+
+  it("muestra la edad del snapshot cuando es reciente (sin alerta)", () => {
+    const stats = {
+      ...baseStats,
+      snapshotUpdatedAt: new Date(Date.now() - 5 * 60000).toISOString(),
+    };
+    render(<Dashboard stats={stats} scrapeRateMin={30} />);
+    expect(screen.getByText(/Actualizado hace 5 min/)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("avisa en amarillo cuando la edad supera 2× scrapeRateMin", () => {
+    const stats = {
+      ...baseStats,
+      snapshotUpdatedAt: new Date(Date.now() - 90 * 60000).toISOString(),
+    };
+    render(<Dashboard stats={stats} scrapeRateMin={30} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(/revisar el scraper/);
+  });
+
+  it("no pinta la sección de snapshot sin snapshotUpdatedAt (feature-detect)", () => {
+    render(<Dashboard stats={baseStats} />);
+    expect(screen.queryByText(/Actualizado hace/)).not.toBeInTheDocument();
+  });
+
+  it("lista los últimos scrapes con duración e ítems", () => {
+    render(<Dashboard stats={baseStats} scrapeRuns={[run]} />);
+    expect(screen.getByText("Últimos scrapes")).toBeInTheDocument();
+    expect(screen.getByText("11 min")).toBeInTheDocument();
+    expect(screen.getByText("10 ok")).toBeInTheDocument();
+    expect(
+      screen.getByText(/12 nuevos · 340 actualizados/),
+    ).toBeInTheDocument();
+  });
+
+  it("sin corridas no pinta la sección", () => {
+    render(<Dashboard stats={baseStats} scrapeRuns={[]} />);
+    expect(screen.queryByText("Últimos scrapes")).not.toBeInTheDocument();
+  });
+});
