@@ -59,6 +59,12 @@ describe("AdminStack", () => {
     });
   });
 
+  it("gives the admin Lambda 1024MB (parses the ~38MB snapshot in /items/search)", () => {
+    template().hasResourceProperties("AWS::Lambda::Function", {
+      MemorySize: 1024,
+    });
+  });
+
   it("creates an HTTP API", () => {
     template().resourceCountIs("AWS::ApiGatewayV2::Api", 1);
   });

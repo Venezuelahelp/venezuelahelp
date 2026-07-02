@@ -65,7 +65,10 @@ export class AdminStack extends Stack {
       entry: path.join(__dirname, "../../backend/src/admin-api/handler.ts"),
       handler: "handler",
       timeout: Duration.seconds(30),
-      memorySize: 512,
+      // 1024MB: /items/search corre el mismo loadSnapshot del data-api (baja el
+      // gzip ~6.9MB, infla a ~38MB y JSON.parse ~55k ítems). El data-api usa
+      // 1024MB por esta razón; a 512MB el parse podía provocar OOM intermitente.
+      memorySize: 1024,
       // Short log retention so CloudWatch storage never grows without bound.
       logGroup: new logs.LogGroup(this, "AdminFnLogs", {
         retention: logs.RetentionDays.TWO_WEEKS,
