@@ -49,6 +49,8 @@ new AdminStack(app, "VenezuelaHelpAdminStack", {
   env,
   table: data.table,
   scraperFn: scraper.scraperFn,
+  snapshotBucket: data.snapshotBucket,
+  publicDomain: domainName,
   adminDomain: `admin.${domainName}`,
   certificate: domain.certificate,
   hostedZone: domain.hostedZone,

@@ -30,6 +30,11 @@ import * as path from "node:path";
 export interface AdminStackProps extends StackProps {
   table: dynamodb.Table;
   scraperFn: lambda.IFunction;
+  // Bucket del snapshot (HeadObject → edad del snapshot en /stats).
+  snapshotBucket: s3.Bucket;
+  // Dominio público del sitio: la URL del snapshot.json para /items/search
+  // se deriva de aquí (el Lambda lee por HTTP igual que el data-api).
+  publicDomain: string;
   adminDomain?: string;
   certificate?: acm.ICertificate;
   hostedZone?: route53.IHostedZone;
@@ -69,6 +74,8 @@ export class AdminStack extends Stack {
       environment: {
         TABLE_NAME: props.table.tableName,
         SCRAPER_FN_NAME: props.scraperFn.functionName,
+        SNAPSHOT_BUCKET: props.snapshotBucket.bucketName,
+        SNAPSHOT_URL: `https://${props.publicDomain}/snapshot.json`,
       },
       bundling: {
         format: OutputFormat.ESM,
@@ -78,6 +85,8 @@ export class AdminStack extends Stack {
 
     props.table.grantReadWriteData(fn);
     props.scraperFn.grantInvoke(fn);
+    // Solo lectura de snapshot.json (HeadObject → LastModified para /stats).
+    props.snapshotBucket.grantRead(fn, "snapshot.json");
 
     // ── HTTP API + JWT Authorizer ─────────────────────────────────────────────
     const authorizer = new HttpUserPoolAuthorizer("AdminAuthorizer", userPool, {
@@ -152,6 +161,23 @@ export class AdminStack extends Stack {
     });
     api.addRoutes({
       path: "/tg-users",
+      methods: [HttpMethod.GET],
+      integration,
+    });
+
+    // ── Observabilidad ────────────────────────────────────────────────────────
+    api.addRoutes({
+      path: "/qa-logs/{chatId}",
+      methods: [HttpMethod.GET],
+      integration,
+    });
+    api.addRoutes({
+      path: "/items/search",
+      methods: [HttpMethod.GET],
+      integration,
+    });
+    api.addRoutes({
+      path: "/scrape-runs",
       methods: [HttpMethod.GET],
       integration,
     });

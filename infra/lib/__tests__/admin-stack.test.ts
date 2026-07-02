@@ -26,6 +26,8 @@ function template() {
   const admin = new AdminStack(app, "Admin", {
     table: data.table,
     scraperFn: scraper.scraperFn,
+    snapshotBucket: data.snapshotBucket,
+    publicDomain: "venezuelahelp.click",
   });
   return Template.fromStack(admin);
 }
@@ -67,9 +69,9 @@ describe("AdminStack", () => {
     });
   });
 
-  it("creates exactly 15 routes, all protected with JWT", () => {
+  it("creates exactly 18 routes, all protected with JWT", () => {
     const t = template();
-    t.resourceCountIs("AWS::ApiGatewayV2::Route", 15);
+    t.resourceCountIs("AWS::ApiGatewayV2::Route", 18);
     const routes = t.findResources("AWS::ApiGatewayV2::Route");
     for (const [logicalId, resource] of Object.entries(routes)) {
       expect(
@@ -77,6 +79,33 @@ describe("AdminStack", () => {
         `Route ${logicalId} must use JWT auth`,
       ).toBe("JWT");
     }
+  });
+
+  it("registers the observability routes (qa-logs, items/search, scrape-runs)", () => {
+    const routes = template().findResources("AWS::ApiGatewayV2::Route");
+    const keys = Object.values(routes).map((r) => r.Properties?.RouteKey);
+    expect(keys).toContain("GET /qa-logs/{chatId}");
+    expect(keys).toContain("GET /items/search");
+    expect(keys).toContain("GET /scrape-runs");
+  });
+
+  it("el Lambda admin conoce el bucket y la URL pública del snapshot", () => {
+    template().hasResourceProperties("AWS::Lambda::Function", {
+      Environment: {
+        Variables: {
+          TABLE_NAME: Match.anyValue(),
+          SNAPSHOT_BUCKET: Match.anyValue(),
+          SNAPSHOT_URL: "https://venezuelahelp.click/snapshot.json",
+        },
+      },
+    });
+  });
+
+  it("concede s3:GetObject sobre snapshot.json (HeadObject para /stats)", () => {
+    const policies = template().findResources("AWS::IAM::Policy");
+    const json = JSON.stringify(policies);
+    expect(json).toContain("s3:GetObject");
+    expect(json).toContain("snapshot.json");
   });
 
   it("registers the API-program routes (programa de API para terceros)", () => {
