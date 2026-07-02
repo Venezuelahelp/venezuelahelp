@@ -3,8 +3,12 @@ import { vi } from "vitest";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 describe("useDebouncedValue", () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it("devuelve el valor inicial de inmediato", () => {
     const { result } = renderHook(() => useDebouncedValue("a", 300));
