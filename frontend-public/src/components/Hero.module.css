@@ -1,4 +1,18 @@
 /* Hero — editorial, sobrio. Sin hero-metric template, sin gradient text. */
+
+/* Oculto visualmente pero disponible para lectores de pantalla y crawlers. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .hero {
   position: relative;
   overflow: hidden;
