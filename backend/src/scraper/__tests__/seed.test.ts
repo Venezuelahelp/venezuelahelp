@@ -10,6 +10,7 @@ describe("ensureSeedSources", () => {
     await ensureSeedSources(repo);
     const ids = put.mock.calls.map((c) => c[0].id).sort();
     expect(ids).toEqual([
+      "ayuda-en-camino",
       "desaparecidosterremotovenezuela",
       "hospitalesvenezuela",
       "localiza-pacientes",
@@ -69,6 +70,7 @@ describe("ensureSeedSources", () => {
     await ensureSeedSources(repo);
     // todas las fuentes se escriben (las nuevas se crean, la existente se repara)
     expect(put.mock.calls.map((c) => c[0].id).sort()).toEqual([
+      "ayuda-en-camino",
       "desaparecidosterremotovenezuela",
       "hospitalesvenezuela",
       "localiza-pacientes",

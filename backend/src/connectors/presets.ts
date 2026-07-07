@@ -280,6 +280,72 @@ export const venezuelareporta: RestConfig = {
   ],
 };
 
+// ayuda-en-camino: SPA Vite/React con API JSON propia same-origin. Los endpoints
+// devuelven un array top-level (sin paginación). Requieren la cabecera pública
+// `x-site-key` (embebida en el bundle JS; sin ella la API responde 401) — es
+// protección anti-scraping básica, análoga a las anon keys de Supabase, no una
+// credencial de usuario. `/api/needs` (necesidades de artículos) → solicitudes;
+// `/api/organizations` (centros/organizaciones) → acopios. Ningún endpoint trae
+// lat/lng → los ítems no tienen coordenadas (geo() no crea `ubicacion`; aparecen
+// en la lista, no en el mapa) y la localización (estado/ciudad) viaja en `texto`.
+// Sin permalink por ítem → sin sourceUrl (cae a la home de la fuente).
+const AEC_BASE = "https://ayudaencamino.com";
+const AEC_SITE_KEY = "5699fbbdf439677b8825e84d826742eb82211d5c3f4491a7";
+const aecHeaders = { "x-site-key": AEC_SITE_KEY };
+export const ayudaencamino: RestConfig = {
+  base: AEC_BASE,
+  endpoints: [
+    {
+      label: "necesidades",
+      url: `${AEC_BASE}/api/needs`,
+      category: "solicitudes",
+      shape: "array",
+      headers: aecHeaders,
+      fieldMap: {
+        externalId: "id",
+        titulo: ["nombreArticulo"],
+        // El motor solo concatena dot-paths (no compone "necesita X de Y"), así
+        // que se usan los campos descriptivos disponibles; las cantidades son
+        // números sin etiqueta → se omiten por poco informativas.
+        texto: [
+          "descripcion",
+          "categoria",
+          "organizacion.nombre",
+          "organizacion.estado",
+          "organizacion.ciudad",
+          "organizacion.direccion",
+          "organizacion.contactoNombre",
+          "organizacion.contactoTelefono",
+        ],
+        // urgencia (critica|alta|media|baja) es más informativa que status.
+        status: "urgencia",
+      },
+    },
+    {
+      label: "organizaciones",
+      url: `${AEC_BASE}/api/organizations`,
+      category: "acopios",
+      shape: "array",
+      headers: aecHeaders,
+      fieldMap: {
+        externalId: "id",
+        titulo: ["nombre"],
+        texto: [
+          "tipo",
+          "direccion",
+          "ciudad",
+          "estado",
+          "contactoNombre",
+          "contactoTelefono",
+          "horario",
+        ],
+        // tipo (lugar_afectado|voluntarios|cocina|refugio|ong|hospital…).
+        status: "tipo",
+      },
+    },
+  ],
+};
+
 export const PRESETS: Record<string, RestConfig> = {
   usgs,
   vzlayuda,
@@ -288,4 +354,5 @@ export const PRESETS: Record<string, RestConfig> = {
   "red-esperanza": redesperanza,
   pacientesve,
   "venezuela-te-busca": venezuelareporta,
+  "ayuda-en-camino": ayudaencamino,
 };

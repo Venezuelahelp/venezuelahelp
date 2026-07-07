@@ -137,6 +137,105 @@ describe("presets rest", () => {
     });
   });
 
+  it("ayuda-en-camino needs→solicitudes: nombreArticulo→titulo, urgencia→status, org en texto, sin coords", async () => {
+    const need = {
+      id: 2581,
+      orgId: 541,
+      nombreArticulo: "COMIDAS: ALMUERZOS Y CENAS",
+      categoria: "comida_preparada",
+      descripcion: null,
+      cantidadNecesaria: 150,
+      cantidadComprometida: 50,
+      cantidadCumplida: 43,
+      urgencia: "critica",
+      status: "parcial",
+      notaInterna: null,
+      createdAt: "2026-07-05T15:59:01.581Z",
+      updatedAt: "2026-07-07T14:29:34.526Z",
+      commitmentCount: 2,
+      organizacion: {
+        id: 541,
+        nombre: "EDIFICIO PUERTAS DEL MAR",
+        tipo: "lugar_afectado",
+        estado: "La Guaira",
+        ciudad: "TANAGUARENAS",
+        direccion: "Tanaguarenas",
+        contactoNombre: "ANDRÉS MENDOZA",
+        contactoTelefono: "04243496964",
+        contactoEmail: "aandresmendoza.s@gmail.com",
+        verificada: true,
+        createdAt: "2026-07-05T15:52:56.992Z",
+      },
+    };
+    const { items } = await runRestSource(
+      "ayuda-en-camino",
+      {
+        base: "https://ayudaencamino.com",
+        endpoints: [PRESETS["ayuda-en-camino"].endpoints[0]],
+      },
+      { fetchJson: (async () => [need]) as never },
+    );
+    expect(items[0]).toMatchObject({
+      category: "solicitudes",
+      externalId: "2581",
+      titulo: "COMIDAS: ALMUERZOS Y CENAS",
+      status: "critica",
+    });
+    // Sin lat/lng → geo() no crea objeto ubicacion (no aparece en el mapa).
+    expect(items[0].ubicacion).toBeUndefined();
+    // La localización (estado/ciudad) y la organización viajan en el texto.
+    expect(items[0].texto).toContain("EDIFICIO PUERTAS DEL MAR");
+    expect(items[0].texto).toContain("La Guaira");
+    expect(items[0].texto).toContain("TANAGUARENAS");
+    // Sin permalink por ítem → sin sourceUrl (cae a la home de la fuente).
+    expect(items[0].sourceUrl).toBeUndefined();
+  });
+
+  it("ayuda-en-camino organizations→acopios: nombre→titulo, tipo→status, contacto/ubicacion en texto", async () => {
+    const org = {
+      id: 416,
+      nombre: "Edificio La Estrella, Macuto ",
+      tipo: "lugar_afectado",
+      estado: "La Guaira",
+      ciudad: "La Guaira ",
+      direccion: "Av. Alamo, Macuto, Edificio La Estrella",
+      contactoNombre: "Ivannia",
+      contactoTelefono: "0412-4028250",
+      horario: "URGENTE",
+      verificada: true,
+      createdAt: "2026-07-01T21:36:08.786Z",
+      mergedIntoOrgId: null,
+      additionalContacts: [],
+    };
+    const { items } = await runRestSource(
+      "ayuda-en-camino",
+      {
+        base: "https://ayudaencamino.com",
+        endpoints: [PRESETS["ayuda-en-camino"].endpoints[1]],
+      },
+      { fetchJson: (async () => [org]) as never },
+    );
+    expect(items[0]).toMatchObject({
+      category: "acopios",
+      externalId: "416",
+      titulo: "Edificio La Estrella, Macuto",
+      status: "lugar_afectado",
+    });
+    // Sin lat/lng → sin objeto ubicacion (la localización va en el texto).
+    expect(items[0].ubicacion).toBeUndefined();
+    expect(items[0].texto).toContain("Av. Alamo, Macuto, Edificio La Estrella");
+    expect(items[0].texto).toContain("Ivannia");
+    expect(items[0].sourceUrl).toBeUndefined();
+  });
+
+  it("ayuda-en-camino: el x-site-key viaja en endpoint.headers", () => {
+    for (const ep of PRESETS["ayuda-en-camino"].endpoints) {
+      expect(ep.headers?.["x-site-key"]).toBe(
+        "5699fbbdf439677b8825e84d826742eb82211d5c3f4491a7",
+      );
+    }
+  });
+
   it("venezuela-reporta sitios: nombre→titulo, lat/lng→ubicacion (acopios)", async () => {
     const sitio = {
       id: "53f412fb",
