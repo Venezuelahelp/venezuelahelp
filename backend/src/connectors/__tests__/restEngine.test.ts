@@ -152,6 +152,68 @@ describe("mapRow", () => {
     expect(mapRow(["", "", ""], ep, "https://s.com")).toBeNull();
   });
 
+  it("redactTextWhen: omite el dot-path del texto cuando la condición se cumple", () => {
+    const ep: RestEndpoint = {
+      ...arrEp,
+      fieldMap: { externalId: "id", titulo: "place", texto: ["tel", "dir"] },
+      redactTextWhen: [{ field: "tipo", equals: "privado", drop: ["tel"] }],
+    };
+    // condición true → sin el valor del path omitido
+    const dropped = mapRow(
+      { id: 1, place: "x", tipo: "privado", tel: "0412", dir: "Calle 1" },
+      ep,
+      "https://s.com",
+    );
+    expect(dropped!.texto).toBe("Calle 1");
+    expect(dropped!.texto).not.toContain("0412");
+    // condición false → el valor se mantiene
+    const kept = mapRow(
+      { id: 2, place: "x", tipo: "publico", tel: "0412", dir: "Calle 1" },
+      ep,
+      "https://s.com",
+    );
+    expect(kept!.texto).toBe("0412 · Calle 1");
+  });
+
+  it("redactTextWhen: sin regla el texto queda intacto (comportamiento actual)", () => {
+    const ep: RestEndpoint = {
+      ...arrEp,
+      fieldMap: { externalId: "id", titulo: "place", texto: ["tel", "dir"] },
+    };
+    const item = mapRow(
+      { id: 1, place: "x", tipo: "privado", tel: "0412", dir: "Calle 1" },
+      ep,
+      "https://s.com",
+    );
+    expect(item!.texto).toBe("0412 · Calle 1");
+  });
+
+  it("redactTextWhen: solo omite los paths de la regla que matchea (otros campos intactos)", () => {
+    const ep: RestEndpoint = {
+      ...arrEp,
+      fieldMap: {
+        externalId: "id",
+        titulo: "place",
+        texto: ["cat", "org.tel", "org.dir"],
+      },
+      redactTextWhen: [
+        { field: "org.tipo", equals: "lugar_afectado", drop: ["org.tel"] },
+      ],
+    };
+    const item = mapRow(
+      {
+        id: 1,
+        place: "x",
+        cat: "comida",
+        org: { tipo: "lugar_afectado", tel: "0412", dir: "Calle 1" },
+      },
+      ep,
+      "https://s.com",
+    );
+    expect(item!.texto).toBe("comida · Calle 1");
+    expect(item!.texto).not.toContain("0412");
+  });
+
   it("tituloDefault se usa como literal cuando la cadena queda vacía", () => {
     const ep: RestEndpoint = {
       ...arrEp,

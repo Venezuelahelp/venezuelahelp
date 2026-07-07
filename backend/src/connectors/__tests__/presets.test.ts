@@ -189,6 +189,44 @@ describe("presets rest", () => {
     expect(items[0].texto).toContain("TANAGUARENAS");
     // Sin permalink por ítem → sin sourceUrl (cae a la home de la fuente).
     expect(items[0].sourceUrl).toBeUndefined();
+    // PRIVACIDAD: emisor lugar_afectado (vivienda particular) → el teléfono NO
+    // va en el texto; el resto (nombre/estado/ciudad) se mantiene.
+    expect(items[0].texto).not.toContain("04243496964");
+  });
+
+  it("ayuda-en-camino needs de un centro institucional (refugio) SÍ publica el teléfono", async () => {
+    const need = {
+      id: 2806,
+      orgId: 510,
+      nombreArticulo: "Ceftazimida avibactam I.V",
+      categoria: "insumos_medicos",
+      descripcion: "En ampollas ",
+      urgencia: "critica",
+      status: "activa",
+      organizacion: {
+        id: 510,
+        nombre: "Centro de acopio Vista el lago",
+        tipo: "refugio",
+        estado: "Miranda",
+        ciudad: "Caracas",
+        direccion: "La california, calle campo rico, residencia vista el lago.",
+        contactoNombre: "Luis Galíndez",
+        contactoTelefono: "+584124859873",
+        contactoEmail: "odluisgalindez13@gmail.com",
+        verificada: true,
+      },
+    };
+    const { items } = await runRestSource(
+      "ayuda-en-camino",
+      {
+        base: "https://ayudaencamino.com",
+        endpoints: [PRESETS["ayuda-en-camino"].endpoints[0]],
+      },
+      { fetchJson: (async () => [need]) as never },
+    );
+    // Emisor institucional → el contacto es útil y se mantiene.
+    expect(items[0].texto).toContain("+584124859873");
+    expect(items[0].texto).toContain("Centro de acopio Vista el lago");
   });
 
   it("ayuda-en-camino organizations→acopios: nombre→titulo, tipo→status, contacto/ubicacion en texto", async () => {
@@ -226,6 +264,36 @@ describe("presets rest", () => {
     expect(items[0].texto).toContain("Av. Alamo, Macuto, Edificio La Estrella");
     expect(items[0].texto).toContain("Ivannia");
     expect(items[0].sourceUrl).toBeUndefined();
+    // PRIVACIDAD: org lugar_afectado (vivienda particular) → sin teléfono.
+    expect(items[0].texto).not.toContain("0412-4028250");
+  });
+
+  it("ayuda-en-camino org de un centro institucional (cocina) SÍ publica el teléfono", async () => {
+    const org = {
+      id: 392,
+      nombre: "Centro de comidas El Marqués",
+      tipo: "cocina",
+      estado: "Distrito Capital",
+      ciudad: "Caracas",
+      direccion: "Calle Terepaima",
+      contactoNombre: "Helen",
+      contactoTelefono: "04221471086",
+      horario: "Lunes a Domingo de 9 - 6 pm",
+      verificada: true,
+      mergedIntoOrgId: null,
+      additionalContacts: [],
+    };
+    const { items } = await runRestSource(
+      "ayuda-en-camino",
+      {
+        base: "https://ayudaencamino.com",
+        endpoints: [PRESETS["ayuda-en-camino"].endpoints[1]],
+      },
+      { fetchJson: (async () => [org]) as never },
+    );
+    // Centro institucional → el contacto es útil y se mantiene.
+    expect(items[0].texto).toContain("04221471086");
+    expect(items[0].texto).toContain("Calle Terepaima");
   });
 
   it("ayuda-en-camino: el x-site-key viaja en endpoint.headers", () => {

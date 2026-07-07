@@ -301,6 +301,16 @@ export const ayudaencamino: RestConfig = {
       category: "solicitudes",
       shape: "array",
       headers: aecHeaders,
+      // Privacidad: si el emisor es una vivienda particular (lugar_afectado) se
+      // omite su teléfono; los centros institucionales (refugio/ong/cocina/…) sí
+      // lo publican (el contacto es útil). El resto de la info se mantiene.
+      redactTextWhen: [
+        {
+          field: "organizacion.tipo",
+          equals: "lugar_afectado",
+          drop: ["organizacion.contactoTelefono"],
+        },
+      ],
       fieldMap: {
         externalId: "id",
         titulo: ["nombreArticulo"],
@@ -327,6 +337,15 @@ export const ayudaencamino: RestConfig = {
       category: "acopios",
       shape: "array",
       headers: aecHeaders,
+      // Privacidad: idem al endpoint de necesidades pero aquí el tipo va en la
+      // raíz de la fila (no bajo `organizacion`).
+      redactTextWhen: [
+        {
+          field: "tipo",
+          equals: "lugar_afectado",
+          drop: ["contactoTelefono"],
+        },
+      ],
       fieldMap: {
         externalId: "id",
         titulo: ["nombre"],
