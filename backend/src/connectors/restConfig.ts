@@ -41,6 +41,13 @@ export interface RestEndpoint {
   // Filas iniciales a descartar tras extraer el array (p.ej. la fila de
   // encabezados de una Google Sheet).
   skipRows?: number;
+  // Redacción condicional del `texto`: para cada regla, si el campo `field`
+  // (dot-path sobre la fila) es igual a `equals`, se omiten del `texto` los
+  // dot-paths listados en `drop` (los demás campos se mantienen). Opcional:
+  // sin reglas, el `texto` no cambia. Uso: ocultar el teléfono de una vivienda
+  // particular (`organizacion.tipo == "lugar_afectado"`) sin tocar los centros
+  // institucionales.
+  redactTextWhen?: { field: string; equals: string; drop: string[] }[];
   // Paginación: si está, se pagina con `&limit=<pageSize>&offset=<n>` (PostgREST
   // /Supabase) hasta agotar o alcanzar `maxItems`. Sin esto, un solo fetch.
   // `throttleMs`: pausa entre páginas para respetar rate-limits de la API

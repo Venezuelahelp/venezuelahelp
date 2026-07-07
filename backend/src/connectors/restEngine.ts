@@ -77,8 +77,19 @@ export function mapRow(
     120,
   );
 
+  // Redacción condicional: reúne los dot-paths a omitir del `texto` cuando la
+  // condición de la regla se cumple (p.ej. teléfono de una vivienda particular).
+  const droppedPaths = new Set<string>();
+  for (const rule of ep.redactTextWhen ?? []) {
+    const v = getPath(src, rule.field);
+    if (v != null && String(v) === rule.equals) {
+      for (const p of rule.drop) droppedPaths.add(p);
+    }
+  }
+
   const texto = truncate(
     (fm.texto ?? [])
+      .filter((p) => !droppedPaths.has(p))
       .map((p) => getPath(src, p))
       .filter((v) => v != null && String(v).trim() !== "")
       .map((v) => String(v))
