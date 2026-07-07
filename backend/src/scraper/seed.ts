@@ -110,6 +110,17 @@ const SEED: Source[] = [
     enabled: true,
   },
   {
+    // Ayuda en Camino: SPA con API JSON propia same-origin (x-site-key pública
+    // en headers). /api/needs (~1227 necesidades → solicitudes) + /api/organizations
+    // (~254 centros → acopios). Sin coords → ítems solo en lista, no en mapa.
+    id: "ayuda-en-camino",
+    nombre: "Ayuda en Camino",
+    url: "https://ayudaencamino.com/necesidades",
+    connector: "rest",
+    rest: PRESETS["ayuda-en-camino"],
+    enabled: true,
+  },
+  {
     // Fuente conocida pero BLOQUEADA: su API (desaparecidos-terremoto-api.
     // theempire.tech) exige x-recaptcha-token (reCAPTCHA v3) verificado en
     // backend → sin conector HTTP simple. Se siembra deshabilitada y marcada
